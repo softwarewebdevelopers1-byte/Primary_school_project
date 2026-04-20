@@ -94,6 +94,7 @@
 
 .tabButton:hover {
   transform: translateY(-1px);
+  color: #000;
   background: rgba(255, 255, 255, 0.94);
 }
 
