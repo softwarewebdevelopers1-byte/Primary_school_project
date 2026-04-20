@@ -1,0 +1,298 @@
+/* components/deputyhead/ClassManagement.module.css */
+
+.classContainer {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.5s ease;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.header h2 {
+  margin: 0 0 0.25rem 0;
+  color: #333;
+}
+
+.header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.addBtn {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.addBtn:hover {
+  background: #4338ca;
+  transform: translateY(-2px);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statCard {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  color: white;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.filters {
+  margin-bottom: 1.5rem;
+}
+
+.filters select {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.classCard {
+  background: #f9fafb;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.classHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.classHeader h3 {
+  margin: 0;
+  color: #333;
+}
+
+.classStats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.streamsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1rem;
+}
+
+.streamCard {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.streamCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.streamHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.streamHeader h4 {
+  margin: 0;
+  color: #4f46e5;
+}
+
+.viewBtn {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.streamDetails {
+  margin-bottom: 1rem;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.detailRow span:first-child {
+  color: #6b7280;
+}
+
+.detailRow span:last-child {
+  font-weight: 500;
+  color: #333;
+}
+
+.performance {
+  margin: 1rem 0;
+}
+
+.performanceHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: #6b7280;
+}
+
+.progressBar {
+  background: #e5e7eb;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  background: linear-gradient(90deg, #4f46e5, #764ba2);
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.streamActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.editStreamBtn,
+.assignTeacherBtn {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.editStreamBtn {
+  background: #f59e0b;
+  color: white;
+}
+
+.assignTeacherBtn {
+  background: #10b981;
+  color: white;
+}
+
+.subjectAllocation {
+  margin-top: 2rem;
+  background: #f9fafb;
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.subjectAllocation h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.subjectTable {
+  overflow-x: auto;
+}
+
+.subjectTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.subjectTable th {
+  text-align: left;
+  padding: 0.75rem;
+  background: #f3f4f6;
+  font-weight: 600;
+  color: #374151;
+}
+
+.subjectTable td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .classHeader {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .streamsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailRow {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .streamActions {
+    flex-direction: column;
+  }
+}

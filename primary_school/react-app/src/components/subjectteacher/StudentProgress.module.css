@@ -1,0 +1,272 @@
+/* components/subjectteacher/StudentProgress.module.css */
+
+.progressContainer {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.5s ease;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.header h2 {
+  margin: 0 0 0.25rem 0;
+  color: #333;
+}
+
+.header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filterGroup label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.filterGroup select {
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+}
+
+.statsSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summaryCard {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  color: white;
+}
+
+.summaryValue {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.summaryLabel {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.chartSection {
+  margin-bottom: 2rem;
+}
+
+.chartSection h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.distributionBars {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.distributionItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.distributionItem:last-child {
+  margin-bottom: 0;
+}
+
+.gradeLabel {
+  width: 100px;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.barContainer {
+  flex: 1;
+  height: 24px;
+  background: #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 12px;
+  transition: width 0.5s ease;
+}
+
+.percentage {
+  width: 50px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.studentsTable h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.studentsTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.studentsTable th {
+  text-align: left;
+  padding: 1rem;
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.studentsTable td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.studentAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.highScore {
+  color: #059669;
+  font-weight: bold;
+}
+
+.mediumScore {
+  color: #d97706;
+  font-weight: bold;
+}
+
+.lowScore {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+.attendanceBar {
+  position: relative;
+  background: #e5e7eb;
+  height: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100px;
+}
+
+.attendanceFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 12px;
+  transition: width 0.5s ease;
+}
+
+.attendanceBar span {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: white;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.excellent {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.good {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.atRisk {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+  }
+
+  .statsSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .distributionItem {
+    flex-wrap: wrap;
+  }
+
+  .gradeLabel {
+    width: 100%;
+  }
+
+  .barContainer {
+    width: 100%;
+  }
+}

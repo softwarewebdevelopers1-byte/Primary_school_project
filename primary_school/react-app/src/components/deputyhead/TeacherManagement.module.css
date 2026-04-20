@@ -1,0 +1,366 @@
+/* components/deputyhead/TeacherManagement.module.css */
+
+.teacherContainer {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.5s ease;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.header h2 {
+  margin: 0 0 0.25rem 0;
+  color: #333;
+}
+
+.header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.addBtn {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.addBtn:hover {
+  background: #4338ca;
+  transform: translateY(-2px);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statCard {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  color: white;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.searchBox {
+  flex: 1;
+}
+
+.searchBox input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.searchBox input:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.filters select {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: pointer;
+}
+
+.teachersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
+
+.teacherCard {
+  background: #f9fafb;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.teacherCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.cardHeader {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.teacherAvatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.teacherInfo h3 {
+  margin: 0 0 0.25rem 0;
+  color: #333;
+}
+
+.teacherInfo p {
+  margin: 0 0 0.5rem 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.active {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.inactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.onleave {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.cardDetails {
+  margin-bottom: 1rem;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.viewBtn,
+.editBtn,
+.assignBtn {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.viewBtn {
+  background: #4f46e5;
+  color: white;
+}
+
+.viewBtn:hover {
+  background: #4338ca;
+}
+
+.editBtn {
+  background: #f59e0b;
+  color: white;
+}
+
+.editBtn:hover {
+  background: #d97706;
+}
+
+.assignBtn {
+  background: #10b981;
+  color: white;
+}
+
+.assignBtn:hover {
+  background: #059669;
+}
+
+.noResults {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  color: #333;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.teacherProfile {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.teacherProfile img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+
+.teacherProfile h4 {
+  margin: 0 0 0.25rem 0;
+}
+
+.detailsGrid {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.detailsGrid div {
+  font-size: 0.875rem;
+}
+
+.modalActions {
+  display: flex;
+  gap: 1rem;
+}
+
+.editModalBtn,
+.messageBtn {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.editModalBtn {
+  background: #4f46e5;
+  color: white;
+}
+
+.messageBtn {
+  background: #f3f4f6;
+  color: #333;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .teachersGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailRow {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .cardActions {
+    flex-direction: column;
+  }
+}

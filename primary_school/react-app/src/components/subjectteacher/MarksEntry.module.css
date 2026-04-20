@@ -1,0 +1,292 @@
+/* components/subjectteacher/MarksEntry.module.css */
+
+.marksContainer {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.5s ease;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.backBtn {
+  background: #6b7280;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.backBtn:hover {
+  background: #4b5563;
+}
+
+.subjectInfo h2 {
+  margin: 0;
+  color: #333;
+}
+
+.subjectInfo p {
+  margin: 0.25rem 0 0 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.controlGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.controlGroup label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.controlGroup select,
+.controlGroup input {
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+}
+
+.bulkFillBtn {
+  padding: 0.5rem 1rem;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.bulkFillBtn:hover {
+  background: #d97706;
+}
+
+.statsSummary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.statItem {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  color: white;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.statValue {
+  font-weight: bold;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.marksTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.marksTable th {
+  text-align: left;
+  padding: 1rem;
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.marksTable td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.studentAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.markInput {
+  width: 100px;
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.markInput:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.excellent {
+  background: #d1fae5;
+  color: #059669;
+  font-weight: bold;
+}
+
+.good {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.average {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.pass {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
+.fail {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.gradeCell {
+  font-weight: bold;
+  text-align: center;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.entered {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.saveBtn,
+.previewBtn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.saveBtn {
+  background: #10b981;
+  color: white;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-2px);
+}
+
+.saveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.previewBtn {
+  background: #4f46e5;
+  color: white;
+}
+
+.previewBtn:hover {
+  background: #4338ca;
+  transform: translateY(-2px);
+}
+
+.noSubject {
+  background: white;
+  border-radius: 1rem;
+  padding: 3rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  .controlGroup {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .statsSummary {
+    justify-content: center;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+}
