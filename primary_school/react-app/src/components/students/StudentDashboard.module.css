@@ -1,0 +1,380 @@
+.dashboardShell {
+  min-height: 100vh;
+  color: #172033;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-end;
+  padding: 2rem 0 1rem;
+}
+
+.brandBlock h1 {
+  margin: 0.35rem 0;
+  font-size: clamp(2.2rem, 5vw, 4.4rem);
+  line-height: 0.95;
+}
+
+.brandBlock p {
+  max-width: 38rem;
+  margin: 0;
+  color: #50607d;
+}
+
+.brandBadge,
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.12);
+  color: #c2410c;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.studentCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 18rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 45px rgba(24, 39, 75, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.studentCard strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.studentCard p,
+.studentCard span {
+  margin: 0.15rem 0 0;
+  color: #5c6780;
+  font-size: 0.92rem;
+}
+
+.avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.2rem;
+  object-fit: cover;
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.28);
+}
+
+.tabBar {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0 1rem;
+}
+
+.tabButton {
+  border: 0;
+  background: rgba(255, 255, 255, 0.7);
+  color: #3e4a63;
+  border-radius: 999px;
+  padding: 0.85rem 1.15rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.tabButton:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.tabButtonActive {
+  background: linear-gradient(135deg, #172554, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(29, 78, 216, 0.24);
+}
+
+.mainContent {
+  padding-bottom: 2rem;
+}
+
+.overview {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.heroCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(18rem, 0.9fr);
+  gap: 1.5rem;
+  padding: 1.75rem;
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.82), transparent 38%),
+    linear-gradient(135deg, #fff7ed, #eff6ff 56%, #eef2ff);
+  box-shadow: 0 28px 65px rgba(24, 39, 75, 0.1);
+}
+
+.heroCopy h2 {
+  margin: 0.75rem 0;
+  max-width: 12ch;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+}
+
+.heroCopy p {
+  max-width: 40rem;
+  margin: 0;
+  color: #50607d;
+}
+
+.heroActions {
+  display: flex;
+  gap: 0.9rem;
+  margin-top: 1.4rem;
+  flex-wrap: wrap;
+}
+
+.primaryButton,
+.secondaryButton,
+.inlineButton {
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.primaryButton {
+  padding: 0.95rem 1.25rem;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(234, 88, 12, 0.24);
+}
+
+.secondaryButton {
+  padding: 0.95rem 1.25rem;
+  background: rgba(23, 37, 84, 0.08);
+  color: #172554;
+}
+
+.inlineButton {
+  padding: 0.7rem 1rem;
+  background: rgba(29, 78, 216, 0.1);
+  color: #1d4ed8;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover,
+.inlineButton:hover {
+  transform: translateY(-1px);
+}
+
+.heroPanel,
+.panel,
+.metricCard,
+.commentCard {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 20px 50px rgba(24, 39, 75, 0.08);
+}
+
+.heroPanel {
+  border-radius: 1.6rem;
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.goalHeader,
+.goalMeta,
+.masteryHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.goalHeader span,
+.goalMeta span,
+.masteryHeader p,
+.masteryTarget,
+.metricCard p,
+.focusItem p,
+.timelineItem p,
+.commentCard p {
+  color: #5c6780;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.progressBar,
+.progressBarAlt {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.progressBar {
+  background: linear-gradient(90deg, #f97316, #fb923c);
+}
+
+.progressBarAlt {
+  background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+}
+
+.heroStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+}
+
+.heroStats div,
+.metricCard {
+  padding: 1rem;
+  border-radius: 1.2rem;
+}
+
+.heroStats strong,
+.metricCard strong {
+  display: block;
+  font-size: 1.4rem;
+}
+
+.heroStats span,
+.metricLabel {
+  color: #5c6780;
+  font-size: 0.92rem;
+}
+
+.metricsGrid,
+.overviewGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.metricsGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.panel {
+  border-radius: 1.6rem;
+  padding: 1.35rem;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panelHeader h3 {
+  margin: 0.5rem 0 0;
+  font-size: 1.35rem;
+}
+
+.focusList,
+.timeline,
+.commentList,
+.masteryList {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.focusItem,
+.timelineItem,
+.commentCard,
+.masteryItem {
+  padding: 1rem;
+  border-radius: 1.1rem;
+  background: rgba(247, 249, 252, 0.96);
+}
+
+.focusItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.timelineDate span {
+  display: block;
+  margin-top: 0.25rem;
+  color: #c2410c;
+  font-weight: 700;
+}
+
+.masteryHeader strong,
+.focusItem strong,
+.timelineItem strong,
+.commentCard strong {
+  display: block;
+}
+
+@media (max-width: 1100px) {
+  .topbar,
+  .heroCard,
+  .metricsGrid,
+  .overviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    padding-top: 1rem;
+  }
+
+  .studentCard {
+    min-width: 0;
+  }
+
+  .heroCard,
+  .panel {
+    padding: 1.2rem;
+  }
+
+  .heroStats {
+    grid-template-columns: 1fr;
+  }
+
+  .focusItem,
+  .timelineItem {
+    grid-template-columns: 1fr;
+  }
+
+  .focusItem {
+    align-items: flex-start;
+  }
+}

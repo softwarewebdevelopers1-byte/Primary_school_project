@@ -1,0 +1,186 @@
+.page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.hero,
+.metricCard,
+.panel,
+.badgeCard,
+.progressItem,
+.parentCard {
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 20px 55px rgba(24, 39, 75, 0.08);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.profileBlock {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.avatar {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 1.5rem;
+  object-fit: cover;
+}
+
+.eyebrow {
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(29, 78, 216, 0.12);
+  color: #1d4ed8;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.hero h2 {
+  margin: 0.75rem 0 0.4rem;
+}
+
+.hero p,
+.progressMeta p,
+.panel li,
+.commentsBlock p,
+.parentCard p {
+  color: #55627d;
+}
+
+.parentCard {
+  min-width: 16rem;
+  padding: 1rem 1.2rem;
+}
+
+.metricsGrid,
+.contentGrid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.metricsGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.contentGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.metricCard,
+.panel {
+  padding: 1.3rem;
+}
+
+.metricCard span {
+  color: #55627d;
+}
+
+.metricCard strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 1.5rem;
+}
+
+.panelHeader {
+  margin-bottom: 1rem;
+}
+
+.panelHeader h3 {
+  margin: 0.5rem 0 0;
+}
+
+.badgeGrid,
+.progressList {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.badgeGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.badgeCard {
+  padding: 1rem;
+  background: linear-gradient(135deg, #fff7ed, #fff);
+}
+
+.badgeCard strong,
+.progressMeta strong {
+  display: block;
+}
+
+.listBlock ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.commentsBlock {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.commentsBlock p {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 1rem;
+  background: #f8fafc;
+}
+
+.progressItem {
+  padding: 1rem;
+}
+
+.progressMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 0.75rem;
+  margin: 0.75rem 0 0.45rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+}
+
+@media (max-width: 980px) {
+  .hero,
+  .metricsGrid,
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .profileBlock {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .badgeGrid {
+    grid-template-columns: 1fr;
+  }
+}
