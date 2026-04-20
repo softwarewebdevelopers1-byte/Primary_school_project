@@ -1,11 +1,15 @@
-import "./App.css";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import StudentDashboard from "./components/students/StudentDashboard";
+import ClassTeacherDashboard from "./components/classteacher/ClassTeacherDashboard";
 
 function App() {
   return (
-    <div className="App">
-      <StudentDashboard />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<StudentDashboard />} />
+        <Route path="/classteacher" element={<ClassTeacherDashboard />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

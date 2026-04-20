@@ -1,0 +1,261 @@
+/* components/classteacher/StudentList.module.css */
+
+.studentListContainer {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.header h2 {
+  margin: 0 0 0.25rem 0;
+  color: #333;
+}
+
+.header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.addStudentBtn {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.addStudentBtn:hover {
+  background: #4338ca;
+  transform: translateY(-2px);
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.searchBox {
+  flex: 1;
+}
+
+.searchBox input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.searchBox input:focus {
+  outline: none;
+  border-color: #4f46e5;
+}
+
+.filters select {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: pointer;
+}
+
+.bulkActions {
+  background: #f0fdf4;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bulkActions span {
+  font-weight: 500;
+  color: #059669;
+}
+
+.bulkActions button {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.bulkActions button:hover {
+  background: #f3f4f6;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.studentTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.studentTable th {
+  text-align: left;
+  padding: 1rem;
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.studentTable td {
+  padding: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.studentTable tr:hover {
+  background: #f9fafb;
+}
+
+.studentCell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.studentAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.studentName {
+  font-weight: 500;
+  color: #333;
+}
+
+.studentClass {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.parentEmail {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.active {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.inactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.transferred {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.viewBtn,
+.editBtn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  margin-right: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.viewBtn {
+  background: #4f46e5;
+  color: white;
+}
+
+.viewBtn:hover {
+  background: #4338ca;
+}
+
+.editBtn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.editBtn:hover {
+  background: #e5e7eb;
+}
+
+.noResults {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.statsSummary {
+  display: flex;
+  gap: 2rem;
+  padding-top: 1rem;
+  border-top: 2px solid #e5e7eb;
+}
+
+.statItem {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.statLabel {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.statValue {
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .bulkActions {
+    flex-wrap: wrap;
+  }
+
+  .statsSummary {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
