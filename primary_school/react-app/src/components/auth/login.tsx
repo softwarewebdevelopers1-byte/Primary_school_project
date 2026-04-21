@@ -1,9 +1,9 @@
 // components/auth/LoginPage.tsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./LoginPage.module.css";
 
-// Mock user database - simulates what would come from backend
+// Mock user database
 const mockUsers = [
   {
     id: "1",
@@ -63,6 +63,122 @@ const mockUsers = [
   },
 ];
 
+const roleLabels: Record<string, string> = {
+  superadmin: "Super Admin",
+  admin: "Admin",
+  headteacher: "Head Teacher",
+  deputy: "Deputy Head",
+  classteacher: "Class Teacher",
+  teacher: "Subject Teacher",
+};
+
+// SVG Icon Components
+const EyeIcon: React.FC<{ open: boolean }> = ({ open }) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {open ? (
+      <>
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ) : (
+      <>
+        <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+        <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+      </>
+    )}
+  </svg>
+);
+
+const MailIcon: React.FC = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+    <polyline points="22,6 12,13 2,6" />
+  </svg>
+);
+
+const LockIcon: React.FC = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0110 0v4" />
+  </svg>
+);
+
+const WarnIcon: React.FC = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+const HomeIcon: React.FC = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+
+const FeatureIcon: React.FC<{ d: string }> = ({ d }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d={d} />
+  </svg>
+);
+
 interface LoginPageProps {
   onLogin?: (user: any) => void;
 }
@@ -73,6 +189,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [activeDemo, setActiveDemo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +206,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // Find user in mock database
     const user = mockUsers.find(
       (u) => u.email === email && u.password === password,
     );
@@ -93,7 +216,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       return;
     }
 
-    // Store user data in localStorage/sessionStorage
+    // Store user data in localStorage
     localStorage.setItem(
       "user",
       JSON.stringify({
@@ -107,200 +230,224 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }),
     );
 
-    // Call the onLogin callback if provided
     if (onLogin) {
       onLogin(user);
     } else {
-      // Redirect based on role
-      switch (user.role) {
-        case "student":
-          window.location.href = "/students";
-          break;
-        case "headteacher":
-          window.location.href = "/deputyHead";
-          break;
-        case "deputy":
-          window.location.href = "/deputyHead";
-          break;
-        case "classteacher":
-          window.location.href = "/classTeacher";
-          break;
-        case "teacher":
-          window.location.href = "/subjectTeacher";
-          break;
-        default:
-          window.location.href = "/dashboard";
-      }
+      const paths: Record<string, string> = {
+        superadmin: "/superadmin/dashboard",
+        admin: "/admin/dashboard",
+        headteacher: "/headteacher/dashboard",
+        deputy: "/deputy/dashboard",
+        classteacher: "/classteacher/dashboard",
+        teacher: "/teacher/dashboard",
+      };
+      window.location.href = paths[user.role] || "/dashboard";
     }
-
     setLoading(false);
   };
 
   const handleDemoLogin = (role: string) => {
-    const demoUser = mockUsers.find((u) => u.role === role);
-    if (demoUser) {
-      setEmail(demoUser.email);
-      setPassword(demoUser.password);
+    const user = mockUsers.find((x) => x.role === role);
+    if (user) {
+      setEmail(user.email);
+      setPassword(user.password);
+      setActiveDemo(role);
+      setError("");
     }
   };
 
+  const features = [
+    { icon: "M18 20V10M12 20V4M6 20v-6", label: "Real-time Analytics" },
+    {
+      icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",
+      label: "Student Management",
+    },
+    {
+      icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8",
+      label: "Assessment & Grading",
+    },
+    {
+      icon: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6",
+      label: "Parent Communication",
+    },
+  ];
+
   return (
-    <div className={styles.loginContainer}>
+    <div
+      className={`${styles.loginContainer} ${mounted ? styles.mounted : ""}`}
+    >
       <div className={styles.loginWrapper}>
-        {/* Left Side - Branding */}
-        <div className={styles.brandSection}>
-          <div className={styles.brandContent}>
+        {/* Left Panel - Branding Section */}
+        <div className={styles.leftPanel}>
+          {/* Decorative elements */}
+          <div className={styles.decorativeCircle1} />
+          <div className={styles.decorativeCircle2} />
+          <div className={styles.decorativeCircle3} />
+
+          <div className={styles.leftContent}>
+            {/* Logo */}
             <div className={styles.logo}>
-              <span className={styles.logoIcon}>🏫</span>
-              <span className={styles.logoText}>School Management System</span>
+              <div className={styles.logoIcon}>
+                <HomeIcon />
+              </div>
+              <span className={styles.logoText}>School Management</span>
             </div>
-            <h1>Welcome Back!</h1>
-            <p>
-              Login to access your dashboard and manage school activities
-              efficiently.
+
+            {/* Heading */}
+            <h1 className={styles.welcomeTitle}>
+              Welcome
+              <br />
+              <em className={styles.welcomeEmphasis}>back.</em>
+            </h1>
+            <p className={styles.welcomeDescription}>
+              Access your dashboard and manage school activities with clarity
+              and ease.
             </p>
-            <div className={styles.features}>
-              <div className={styles.feature}>
-                <span>📊</span>
-                <span>Real-time Analytics</span>
-              </div>
-              <div className={styles.feature}>
-                <span>👨‍🎓</span>
-                <span>Student Management</span>
-              </div>
-              <div className={styles.feature}>
-                <span>📝</span>
-                <span>Assessment & Grading</span>
-              </div>
-              <div className={styles.feature}>
-                <span>📧</span>
-                <span>Parent Communication</span>
-              </div>
+
+            {/* Features List */}
+            <div className={styles.featuresList}>
+              {features.map(({ icon, label }) => (
+                <div key={label} className={styles.featureItem}>
+                  <div className={styles.featureIcon}>
+                    <FeatureIcon d={icon} />
+                  </div>
+                  <span className={styles.featureLabel}>{label}</span>
+                </div>
+              ))}
             </div>
+          </div>
+
+          {/* Footer */}
+          <div className={styles.leftFooter}>
+            <div className={styles.footerDivider} />
+            <p className={styles.copyright}>© 2024 School Management System</p>
           </div>
         </div>
 
-        {/* Right Side - Login Form */}
-        <div className={styles.formSection}>
+        {/* Right Panel - Form Section */}
+        <div className={styles.rightPanel}>
           <div className={styles.formContainer}>
+            {/* Header */}
             <div className={styles.formHeader}>
-              <h2>Sign In</h2>
-              <p>Enter your credentials to access your account</p>
+              <p className={styles.formSubtitle}>Portal Access</p>
+              <h2 className={styles.formTitle}>Sign in to your account</h2>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            {/* Form */}
+            <form onSubmit={handleSubmit} className={styles.form}>
+              {/* Email Field */}
               <div className={styles.inputGroup}>
-                <label htmlFor="email">Email Address</label>
-                <div className={styles.inputIcon}>
-                  <span className={styles.icon}>📧</span>
+                <label htmlFor="email" className={styles.inputLabel}>
+                  Email Address
+                </label>
+                <div className={styles.inputWrapper}>
+                  <span
+                    className={`${styles.inputIcon} ${focusedField === "email" ? styles.inputIconFocused : ""}`}
+                  >
+                    <MailIcon />
+                  </span>
                   <input
-                    type="email"
                     id="email"
+                    type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="your@school.com"
                     required
                     autoComplete="email"
+                    className={`${styles.input} ${focusedField === "email" ? styles.inputFocused : ""}`}
                   />
                 </div>
               </div>
 
+              {/* Password Field */}
               <div className={styles.inputGroup}>
-                <label htmlFor="password">Password</label>
-                <div className={styles.inputIcon}>
-                  <span className={styles.icon}>🔒</span>
+                <label htmlFor="password" className={styles.inputLabel}>
+                  Password
+                </label>
+                <div className={styles.inputWrapper}>
+                  <span
+                    className={`${styles.inputIcon} ${focusedField === "password" ? styles.inputIconFocused : ""}`}
+                  >
+                    <LockIcon />
+                  </span>
                   <input
-                    type={showPassword ? "text" : "password"}
                     id="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    onFocus={() => setFocusedField("password")}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="••••••••"
                     required
                     autoComplete="current-password"
+                    className={`${styles.input} ${styles.inputWithRightPadding} ${focusedField === "password" ? styles.inputFocused : ""}`}
                   />
                   <button
                     type="button"
-                    className={styles.passwordToggle}
+                    className={styles.eyeButton}
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? "🙈" : "👁️"}
+                    <EyeIcon open={showPassword} />
                   </button>
                 </div>
               </div>
 
-              {error && (
-                <div className={styles.errorMessage}>
-                  <span>⚠️</span>
-                  <span>{error}</span>
-                </div>
-              )}
-
+              {/* Options */}
               <div className={styles.formOptions}>
-                <label className={styles.rememberMe}>
-                  <input type="checkbox" />
+                <label className={styles.checkboxLabel}>
+                  <input type="checkbox" className={styles.checkbox} />
                   <span>Remember me</span>
                 </label>
-                <a href="#" className={styles.forgotPassword}>
-                  Forgot Password?
+                <a href="#" className={styles.forgotLink}>
+                  Forgot password?
                 </a>
               </div>
 
+              {/* Error Message */}
+              {error && (
+                <div className={styles.errorMessage}>
+                  <span className={styles.errorIcon}>
+                    <WarnIcon />
+                  </span>
+                  <span className={styles.errorText}>{error}</span>
+                </div>
+              )}
+
+              {/* Submit Button */}
               <button
                 type="submit"
-                className={styles.loginBtn}
+                className={styles.submitButton}
                 disabled={loading}
               >
-                {loading ? <span className={styles.loader}></span> : "Sign In"}
+                {loading ? <span className={styles.loader} /> : "Sign In"}
               </button>
             </form>
 
+            {/* Demo Section */}
             <div className={styles.demoSection}>
-              <p className={styles.demoTitle}>Demo Credentials</p>
-              <div className={styles.demoButtons}>
-                <button
-                  className={styles.demoBtn}
-                  onClick={() => handleDemoLogin("superadmin")}
-                >
-                  Super Admin
-                </button>
-                <button
-                  className={styles.demoBtn}
-                  onClick={() => handleDemoLogin("admin")}
-                >
-                  Admin
-                </button>
-                <button
-                  className={styles.demoBtn}
-                  onClick={() => handleDemoLogin("headteacher")}
-                >
-                  Head Teacher
-                </button>
-                <button
-                  className={styles.demoBtn}
-                  onClick={() => handleDemoLogin("deputy")}
-                >
-                  Deputy Head
-                </button>
-                <button
-                  className={styles.demoBtn}
-                  onClick={() => handleDemoLogin("classteacher")}
-                >
-                  Class Teacher
-                </button>
-                <button
-                  className={styles.demoBtn}
-                  onClick={() => handleDemoLogin("teacher")}
-                >
-                  Subject Teacher
-                </button>
+              <div className={styles.demoDivider}>
+                <div className={styles.dividerLine} />
+                <span className={styles.dividerText}>Quick Demo Access</span>
+                <div className={styles.dividerLine} />
               </div>
-              <p className={styles.demoNote}>
-                Click any demo button to auto-fill credentials
-              </p>
-            </div>
-
-            <div className={styles.footerNote}>
-              <p>© 2024 School Management System. All rights reserved.</p>
+              <div className={styles.demoButtons}>
+                {Object.entries(roleLabels).map(([role, label]) => (
+                  <button
+                    key={role}
+                    onClick={() => handleDemoLogin(role)}
+                    className={`${styles.demoButton} ${activeDemo === role ? styles.demoButtonActive : ""}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {activeDemo && (
+                <p className={styles.demoMessage}>
+                  Credentials filled — click Sign In to continue
+                </p>
+              )}
             </div>
           </div>
         </div>
