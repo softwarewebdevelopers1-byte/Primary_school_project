@@ -1,5 +1,3 @@
-// components/deputyhead/DeputyHeadDashboard.tsx
-
 import React, { useState } from "react";
 import styles from "./DeputyHeadDashboard.module.css";
 import SchoolOverview from "./SchoolOverview";
@@ -9,16 +7,16 @@ import StudentManagement from "./StudentManagement";
 import PerformanceAnalytics from "./PerformanceAnalytics";
 import Reports from "./Reports";
 import ParentConcerns from "./ParentConcerns";
+import DeputyHeadSidebar from "./DeputyHeadSidebar";
 import { User, UserRole } from "./types";
 
-// Dummy User Data
 const dummyDeputy: User = {
   id: "DEP001",
   name: "Mrs. Jane Wanjiku",
   email: "jane.wanjiku@school.com",
   role: "deputy",
   avatar:
-    "https://ui-avatars.com/api/?name=Jane+Wanjiku&background=4F46E5&color=fff",
+    "https://ui-avatars.com/api/?name=Jane+Wanjiku&background=0B2018&color=fff",
   phone: "+254712345678",
   joinDate: "2020-01-15",
 };
@@ -29,7 +27,7 @@ const dummyHeadTeacher: User = {
   email: "john.mwangi@school.com",
   role: "headteacher",
   avatar:
-    "https://ui-avatars.com/api/?name=John+Wangari&background=10B981&color=fff",
+    "https://ui-avatars.com/api/?name=John+Mwangi&background=0B2018&color=fff",
   phone: "+254723456789",
   joinDate: "2018-01-10",
 };
@@ -47,6 +45,56 @@ type Tab =
   | "reports"
   | "concerns";
 
+const menuItems: Array<{
+  id: Tab;
+  label: string;
+  description: string;
+  allowedFor: UserRole[];
+}> = [
+  {
+    id: "overview",
+    label: "School overview",
+    description: "Key metrics and schoolwide readiness.",
+    allowedFor: ["deputy", "headteacher"],
+  },
+  {
+    id: "teachers",
+    label: "Teacher management",
+    description: "Monitor staffing, workload, and support needs.",
+    allowedFor: ["deputy", "headteacher"],
+  },
+  {
+    id: "classes",
+    label: "Class management",
+    description: "Track streams, structure, and class assignments.",
+    allowedFor: ["deputy", "headteacher"],
+  },
+  {
+    id: "students",
+    label: "Student management",
+    description: "Review learner records and movement across school.",
+    allowedFor: ["deputy", "headteacher"],
+  },
+  {
+    id: "analytics",
+    label: "Analytics",
+    description: "See trends, attainment, and operational patterns.",
+    allowedFor: ["deputy", "headteacher"],
+  },
+  {
+    id: "reports",
+    label: "Reports",
+    description: "Prepare leadership summaries and reporting packs.",
+    allowedFor: ["headteacher"],
+  },
+  {
+    id: "concerns",
+    label: "Parent concerns",
+    description: "Stay on top of follow-up and family feedback.",
+    allowedFor: ["deputy", "headteacher"],
+  },
+];
+
 const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
   userRole = "deputy",
 }) => {
@@ -56,10 +104,38 @@ const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
 
   const user = userRole === "deputy" ? dummyDeputy : dummyHeadTeacher;
   const isHeadTeacher = userRole === "headteacher";
+  const filteredMenuItems = menuItems.filter((item) =>
+    item.allowedFor.includes(userRole),
+  );
+  const activeMenuItem =
+    filteredMenuItems.find((item) => item.id === activeTab) ?? filteredMenuItems[0];
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
+  const leadershipActions = [
+    {
+      title: "Review staffing",
+      detail: "Check class allocation pressure and teacher support needs.",
+      tag: "TM",
+      onClick: () => setActiveTab("teachers"),
+    },
+    {
+      title: "Open analytics",
+      detail: "See schoolwide patterns before weekly leadership meetings.",
+      tag: "AN",
+      onClick: () => setActiveTab("analytics"),
+    },
+    {
+      title: "Track concerns",
+      detail: "Follow parent issues and response timelines from one place.",
+      tag: "PC",
+      onClick: () => setActiveTab("concerns"),
+    },
+  ];
+
+  const leadershipHighlights = [
+    `${filteredMenuItems.length} leadership workspaces are visible in this account.`,
+    `${isHeadTeacher ? "Full-school" : "Deputy"} access is active for daily oversight.`,
+    `3 active alerts still need attention across operations and family follow-up.`,
+  ];
 
   const renderContent = () => {
     switch (activeTab) {
@@ -82,65 +158,8 @@ const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
     }
   };
 
-  const menuItems = [
-    {
-      id: "overview" as Tab,
-      label: "School Overview",
-      icon: "🏫",
-      description: "Key metrics & statistics",
-      allowedFor: ["deputy", "headteacher"],
-    },
-    {
-      id: "teachers" as Tab,
-      label: "Teacher Management",
-      icon: "👨‍🏫",
-      description: "Manage teaching staff",
-      allowedFor: ["deputy", "headteacher"],
-    },
-    {
-      id: "classes" as Tab,
-      label: "Class Management",
-      icon: "📚",
-      description: "Manage classes & streams",
-      allowedFor: ["deputy", "headteacher"],
-    },
-    {
-      id: "students" as Tab,
-      label: "Student Management",
-      icon: "👨‍🎓",
-      description: "View all students",
-      allowedFor: ["deputy", "headteacher"],
-    },
-    {
-      id: "analytics" as Tab,
-      label: "Analytics",
-      icon: "📊",
-      description: "Performance insights",
-      allowedFor: ["deputy", "headteacher"],
-    },
-    {
-      id: "reports" as Tab,
-      label: "Reports",
-      icon: "📄",
-      description: "Generate school reports",
-      allowedFor: ["headteacher"],
-    },
-    {
-      id: "concerns" as Tab,
-      label: "Parent Concerns",
-      icon: "💬",
-      description: "Manage feedback",
-      allowedFor: ["deputy", "headteacher"],
-    },
-  ];
-
-  const filteredMenuItems = menuItems.filter((item) =>
-    item.allowedFor.includes(userRole),
-  );
-
   return (
     <div className={styles.dashboard}>
-      {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div
           className={styles.mobileOverlay}
@@ -148,116 +167,35 @@ const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
         />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ""} ${mobileMenuOpen ? styles.mobileOpen : ""}`}
-      >
-        <div className={styles.sidebarHeader}>
-          <div className={styles.logo}>
-            {!sidebarCollapsed ? (
-              <>
-                <span className={styles.logoIcon}>🏫</span>
-                <span className={styles.logoText}>School Admin</span>
-              </>
-            ) : (
-              <span className={styles.logoIcon}>🏫</span>
-            )}
-          </div>
-          <button className={styles.collapseBtn} onClick={toggleSidebar}>
-            {sidebarCollapsed ? "→" : "←"}
-          </button>
-        </div>
+      <DeputyHeadSidebar
+        activeTab={activeTab}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        user={user}
+        userRole={userRole}
+        onSelectTab={(tab) => {
+          setActiveTab(tab);
+          setMobileMenuOpen(false);
+        }}
+        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+      />
 
-        <div className={styles.userProfile}>
-          <div className={styles.profileAvatar}>
-            <img src={user.avatar} alt={user.name} />
-            {isHeadTeacher && <span className={styles.roleBadge}>Head</span>}
-          </div>
-          {!sidebarCollapsed && (
-            <div className={styles.profileInfo}>
-              <p className={styles.profileName}>{user.name}</p>
-              <p className={styles.profileRole}>
-                {isHeadTeacher ? "Head Teacher" : "Deputy Head Teacher"}
-              </p>
-              <p className={styles.profileEmail}>{user.email}</p>
-            </div>
-          )}
-        </div>
-
-        <nav className={styles.sidebarNav}>
-          {filteredMenuItems.map((item) => (
-            <button
-              key={item.id}
-              className={`${styles.navItem} ${activeTab === item.id ? styles.active : ""}`}
-              onClick={() => {
-                setActiveTab(item.id);
-                setMobileMenuOpen(false);
-              }}
-            >
-              <span className={styles.navIcon}>{item.icon}</span>
-              {!sidebarCollapsed && (
-                <div className={styles.navText}>
-                  <span className={styles.navLabel}>{item.label}</span>
-                  <span className={styles.navDescription}>
-                    {item.description}
-                  </span>
-                </div>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          {!sidebarCollapsed ? (
-            <>
-              <button className={styles.footerBtn}>
-                <span>🔔</span>
-                <span>Notifications</span>
-                <span className={styles.notificationCount}>3</span>
-              </button>
-              <button className={styles.footerBtn}>
-                <span>⚙️</span>
-                <span>Settings</span>
-              </button>
-              <button className={styles.footerBtn}>
-                <span>🚪</span>
-                <span>Logout</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button className={styles.footerBtnIcon}>
-                🔔
-                <span className={styles.notificationDot} />
-              </button>
-              <button className={styles.footerBtnIcon}>⚙️</button>
-              <button className={styles.footerBtnIcon}>🚪</button>
-            </>
-          )}
-        </div>
-      </aside>
-
-      {/* Main Content */}
       <main
         className={`${styles.mainContent} ${sidebarCollapsed ? styles.expanded : ""}`}
       >
-        {/* Top Bar */}
         <div className={styles.topBar}>
           <button
             className={styles.mobileMenuBtn}
+            type="button"
             onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open navigation menu"
           >
-            ☰
+            Menu
           </button>
           <div className={styles.topBarTitle}>
-            <h2>
-              {filteredMenuItems.find((item) => item.id === activeTab)?.label ||
-                "Dashboard"}
-            </h2>
-            <p>
-              {filteredMenuItems.find((item) => item.id === activeTab)
-                ?.description || "Overview"}
-            </p>
+            <span className={styles.topBarEyebrow}>Leadership dashboard</span>
+            <h2>{activeMenuItem.label}</h2>
+            <p>{activeMenuItem.description}</p>
           </div>
           <div className={styles.topBarActions}>
             <div className={styles.dateDisplay}>
@@ -268,23 +206,96 @@ const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
                 day: "numeric",
               })}
             </div>
-            <div className={styles.notificationBadge}>
-              <span>🔔</span>
+            <div className={styles.notificationBadge} role="status">
+              <span className={styles.notificationLabel}>Alerts</span>
               <span className={styles.badge}>3</span>
             </div>
-            <div className={styles.topBarUser}>
+            <div className={styles.topBarTeacher}>
               <img src={user.avatar} alt={user.name} />
               <div>
                 <p className={styles.topBarName}>{user.name}</p>
                 <p className={styles.topBarRole}>
-                  {isHeadTeacher ? "Head Teacher" : "Deputy Head"}
+                  {isHeadTeacher ? "Head Teacher" : "Deputy Head Teacher"}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content Area */}
+        <section className={styles.overviewPanel}>
+          <div className={styles.heroCard}>
+            <div className={styles.heroCopy}>
+              <span className={styles.heroEyebrow}>School operations</span>
+              <h1>
+                Lead academic operations with a calmer, clearer view of school
+                performance, staffing, and learner support.
+              </h1>
+              <p>
+                The leadership workspace now follows the same green and gold
+                system as the login experience, while keeping the daily admin
+                flow polished and easy to scan.
+              </p>
+              <div className={styles.heroActions}>
+                {leadershipActions.map((action) => (
+                  <button
+                    key={action.title}
+                    type="button"
+                    className={styles.heroActionBtn}
+                    onClick={action.onClick}
+                  >
+                    <span className={styles.heroActionTag}>{action.tag}</span>
+                    <div>
+                      <strong>{action.title}</strong>
+                      <span>{action.detail}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.heroAside}>
+              <div className={styles.heroInsight}>
+                <span>Leadership access</span>
+                <strong>{isHeadTeacher ? "Full" : "Deputy"}</strong>
+                <p>
+                  Permissions are aligned to the current role for focused
+                  decision-making.
+                </p>
+              </div>
+              <div className={styles.heroList}>
+                {leadershipHighlights.map((item) => (
+                  <div key={item} className={styles.heroListItem}>
+                    <span className={styles.heroListDot} />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.metricGrid}>
+            <article className={styles.metricCard}>
+              <span className={styles.metricLabel}>Visible workspaces</span>
+              <strong>{filteredMenuItems.length}</strong>
+              <p>Leadership actions are grouped into clear operational areas.</p>
+            </article>
+            <article className={styles.metricCard}>
+              <span className={styles.metricLabel}>Open alerts</span>
+              <strong>3</strong>
+              <p>Outstanding issues stay visible before they become urgent.</p>
+            </article>
+            <article className={styles.metricCard}>
+              <span className={styles.metricLabel}>Oversight mode</span>
+              <strong>{isHeadTeacher ? "Whole school" : "Academic support"}</strong>
+              <p>Role-specific visibility keeps the dashboard focused.</p>
+            </article>
+            <article className={styles.metricCard}>
+              <span className={styles.metricLabel}>Reporting cadence</span>
+              <strong>Weekly</strong>
+              <p>Summaries and reviews remain ready for leadership meetings.</p>
+            </article>
+          </div>
+        </section>
+
         <div className={styles.contentArea}>{renderContent()}</div>
       </main>
     </div>

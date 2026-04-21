@@ -4,6 +4,7 @@ import StudentList from "./StudentList";
 import StudentDetails from "./StudentDetails";
 import MarksManagement from "./MarksManagement";
 import ResultsDownload from "./ResultsDownload";
+import ClassTeacherSidebar from "./ClassTeacherSidebar";
 import { Student, StreamInfo, Subject } from "./types";
 
 const dummyStreamInfo: StreamInfo = {
@@ -17,11 +18,36 @@ const dummyStreamInfo: StreamInfo = {
 };
 
 const dummySubjects: Subject[] = [
-  { id: "SUB001", name: "Mathematics", code: "MATH101", teacher: "Mr. Peter Otieno" },
-  { id: "SUB002", name: "English", code: "ENG101", teacher: "Mrs. Jane Wanjiku" },
-  { id: "SUB003", name: "Kiswahili", code: "KSW101", teacher: "Mr. James Kamau" },
-  { id: "SUB004", name: "Science", code: "SCI101", teacher: "Mrs. Mary Achieng" },
-  { id: "SUB005", name: "Social Studies", code: "SST101", teacher: "Mr. John Mwangi" },
+  {
+    id: "SUB001",
+    name: "Mathematics",
+    code: "MATH101",
+    teacher: "Mr. Peter Otieno",
+  },
+  {
+    id: "SUB002",
+    name: "English",
+    code: "ENG101",
+    teacher: "Mrs. Jane Wanjiku",
+  },
+  {
+    id: "SUB003",
+    name: "Kiswahili",
+    code: "KSW101",
+    teacher: "Mr. James Kamau",
+  },
+  {
+    id: "SUB004",
+    name: "Science",
+    code: "SCI101",
+    teacher: "Mrs. Mary Achieng",
+  },
+  {
+    id: "SUB005",
+    name: "Social Studies",
+    code: "SST101",
+    teacher: "Mr. John Mwangi",
+  },
 ];
 
 const dummyStudents: Student[] = [
@@ -119,41 +145,47 @@ const menuItems: Array<{
   label: string;
   shortLabel: string;
   description: string;
+  icon: string;
 }> = [
   {
     id: "students",
     label: "Student records",
     shortLabel: "SR",
     description: "View rosters, contacts, and learner profiles.",
+    icon: "ST",
   },
   {
     id: "marks",
     label: "Marks management",
     shortLabel: "MM",
     description: "Capture marks and review class performance quickly.",
+    icon: "MK",
   },
   {
     id: "results",
     label: "Results and reports",
     shortLabel: "RR",
     description: "Prepare downloadable reports for this class stream.",
+    icon: "RP",
   },
   {
     id: "analytics",
     label: "Analytics",
     shortLabel: "AN",
     description: "Track readiness, averages, and class-level patterns.",
+    icon: "AN",
   },
   {
     id: "settings",
     label: "Settings",
     shortLabel: "ST",
     description: "Update class information and reporting preferences.",
+    icon: "CF",
   },
 ];
 
 const teacherAvatar =
-  "https://ui-avatars.com/api/?name=Peter+Otieno&background=4F46E5&color=fff";
+  "https://ui-avatars.com/api/?name=Peter+Otieno&background=0B2018&color=fff";
 
 const ClassTeacherDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("students");
@@ -195,22 +227,26 @@ const ClassTeacherDashboard: React.FC = () => {
     (student) => student.status === "Active",
   ).length;
   const attendanceRate = Math.round((activeStudents / students.length) * 100);
-  const activeMenuItem = menuItems.find((item) => item.id === activeTab) ?? menuItems[0];
+  const activeMenuItem =
+    menuItems.find((item) => item.id === activeTab) ?? menuItems[0];
 
   const quickActions = [
     {
       title: "Review marks",
       detail: "Open the current grading workflow for this stream.",
+      icon: "MK",
       onClick: () => handleSelectTab("marks"),
     },
     {
       title: "Generate reports",
       detail: "Move straight into result slips and summaries.",
+      icon: "RP",
       onClick: () => handleSelectTab("results"),
     },
     {
       title: "Check analytics",
       detail: "See class averages and readiness trends at a glance.",
+      icon: "AN",
       onClick: () => handleSelectTab("analytics"),
     },
   ];
@@ -282,123 +318,17 @@ const ClassTeacherDashboard: React.FC = () => {
         />
       )}
 
-      <aside
-        className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ""} ${mobileMenuOpen ? styles.mobileOpen : ""}`}
-      >
-        <div className={styles.sidebarHeader}>
-          <div className={styles.logo}>
-            {!sidebarCollapsed ? (
-              <>
-                <span className={styles.logoIcon}>TP</span>
-                <span className={styles.logoText}>Class Teacher Hub</span>
-              </>
-            ) : (
-              <span className={styles.logoIcon}>TP</span>
-            )}
-          </div>
-          <button
-            className={styles.collapseBtn}
-            type="button"
-            onClick={() => setSidebarCollapsed((value) => !value)}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {sidebarCollapsed ? ">" : "<"}
-          </button>
-        </div>
-
-        <div className={styles.teacherProfile}>
-          <div className={styles.profileAvatar}>
-            <img src={teacherAvatar} alt="Teacher" />
-          </div>
-          {!sidebarCollapsed && (
-            <div className={styles.profileInfo}>
-              <p className={styles.profileName}>{streamInfo.classTeacher}</p>
-              <p className={styles.profileRole}>Class Teacher</p>
-              <p className={styles.profileStream}>
-                {streamInfo.className} | Stream {streamInfo.name}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className={styles.streamInfo}>
-          {!sidebarCollapsed ? (
-            <>
-              <div className={styles.streamDetail}>
-                <span className={styles.streamLabel}>Academic year</span>
-                <span className={styles.streamValue}>{streamInfo.academicYear}</span>
-              </div>
-              <div className={styles.streamDetail}>
-                <span className={styles.streamLabel}>Term</span>
-                <span className={styles.streamValue}>Term {streamInfo.term}</span>
-              </div>
-              <div className={styles.streamDetail}>
-                <span className={styles.streamLabel}>Students</span>
-                <span className={styles.streamValue}>{streamInfo.totalStudents}</span>
-              </div>
-            </>
-          ) : (
-            <div className={styles.streamBadge}>{streamInfo.name}</div>
-          )}
-        </div>
-
-        <nav className={styles.sidebarNav}>
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`${styles.navItem} ${activeTab === item.id ? styles.active : ""}`}
-              onClick={() => handleSelectTab(item.id)}
-            >
-              <span className={styles.navIcon}>{item.shortLabel}</span>
-              {!sidebarCollapsed && (
-                <div className={styles.navText}>
-                  <span className={styles.navLabel}>{item.label}</span>
-                  <span className={styles.navDescription}>{item.description}</span>
-                </div>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        {!sidebarCollapsed && (
-          <div className={styles.sidebarPanel}>
-            <p className={styles.sidebarPanelLabel}>Class pulse</p>
-            <div className={styles.sidebarPanelStat}>
-              <strong>{attendanceRate}%</strong>
-              <span>Current active enrollment</span>
-            </div>
-            <div className={styles.sidebarPanelStat}>
-              <strong>{subjects.length}</strong>
-              <span>Teachers aligned to this stream</span>
-            </div>
-          </div>
-        )}
-
-        <div className={styles.sidebarFooter}>
-          {!sidebarCollapsed ? (
-            <>
-              <button className={styles.footerBtn} type="button">
-                <span className={styles.footerBtnTag}>3</span>
-                <span>Notifications</span>
-              </button>
-              <button className={styles.footerBtn} type="button">
-                <span className={styles.footerBtnTag}>Out</span>
-                <span>Logout</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button className={styles.footerBtnIcon} type="button">
-                3
-              </button>
-              <button className={styles.footerBtnIcon} type="button">
-                O
-              </button>
-            </>
-          )}
-        </div>
-      </aside>
+      <ClassTeacherSidebar
+        activeTab={activeTab}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        streamInfo={streamInfo}
+        teacherAvatar={teacherAvatar}
+        subjectsCount={subjects.length}
+        attendanceRate={attendanceRate}
+        onSelectTab={handleSelectTab}
+        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+      />
 
       <main
         className={`${styles.mainContent} ${sidebarCollapsed ? styles.expanded : ""}`}
@@ -413,20 +343,24 @@ const ClassTeacherDashboard: React.FC = () => {
             Menu
           </button>
           <div className={styles.topBarTitle}>
-            <span className={styles.topBarEyebrow}>Class teacher dashboard</span>
+            <span className={styles.topBarEyebrow}>
+              Class teacher dashboard
+            </span>
             <h2>{activeMenuItem.label}</h2>
             <p>{activeMenuItem.description}</p>
           </div>
           <div className={styles.topBarActions}>
-            <div className={styles.notificationBadge} role="status">
-              <span className={styles.notificationLabel}>Alerts</span>
-              <span className={styles.badge}>3</span>
+            <div className={styles.dateDisplay}>
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
             </div>
-            <div className={styles.topBarMeta}>
-              <span>Current term</span>
-              <strong>
-                Term {streamInfo.term}, {streamInfo.academicYear}
-              </strong>
+            <div className={styles.notificationBadge} role="status">
+              <span>Alerts</span>
+              <span className={styles.badge}>3</span>
             </div>
             <div className={styles.topBarTeacher}>
               <img src={teacherAvatar} alt="Teacher" />
@@ -441,15 +375,15 @@ const ClassTeacherDashboard: React.FC = () => {
         <section className={styles.overviewPanel}>
           <div className={styles.heroCard}>
             <div className={styles.heroCopy}>
-              <span className={styles.heroEyebrow}>Today&apos;s focus</span>
+              <span className={styles.heroEyebrow}>Today's focus</span>
               <h1>
                 Keep {streamInfo.className} {streamInfo.name} organized,
                 supported, and ready for the next reporting cycle.
               </h1>
               <p>
-                The dashboard now surfaces the most important class actions
-                first, so it is easier to move from learner follow-up to marks
-                review and reporting without extra clicks.
+                The dashboard surfaces the most important class actions first,
+                making it easier to move from learner follow-up to marks review
+                and reporting without extra clicks.
               </p>
               <div className={styles.heroActions}>
                 {quickActions.map((action) => (
@@ -459,8 +393,11 @@ const ClassTeacherDashboard: React.FC = () => {
                     className={styles.heroActionBtn}
                     onClick={action.onClick}
                   >
-                    <strong>{action.title}</strong>
-                    <span>{action.detail}</span>
+                    <span className={styles.heroActionIcon}>{action.icon}</span>
+                    <div>
+                      <strong>{action.title}</strong>
+                      <span>{action.detail}</span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -469,12 +406,14 @@ const ClassTeacherDashboard: React.FC = () => {
               <div className={styles.heroInsight}>
                 <span>Readiness score</span>
                 <strong>{attendanceRate}%</strong>
-                <p>Most class records are active and ready for term workflows.</p>
+                <p>
+                  Most class records are active and ready for term workflows.
+                </p>
               </div>
               <div className={styles.heroList}>
-                {focusItems.map((item) => (
-                  <div key={item} className={styles.heroListItem}>
-                    {item}
+                {focusItems.map((item, idx) => (
+                  <div key={idx} className={styles.heroListItem}>
+                    <span className={styles.heroListDot} /> {item}
                   </div>
                 ))}
               </div>
@@ -483,24 +422,44 @@ const ClassTeacherDashboard: React.FC = () => {
 
           <div className={styles.metricGrid}>
             <article className={styles.metricCard}>
-              <span className={styles.metricLabel}>Students enrolled</span>
-              <strong>{students.length}</strong>
-              <p>Complete roster visibility for student support and outreach.</p>
+              <div className={styles.metricIcon}>ST</div>
+              <div>
+                <span className={styles.metricLabel}>Students enrolled</span>
+                <strong>{students.length}</strong>
+                <p>
+                  Complete roster visibility for student support and outreach.
+                </p>
+              </div>
             </article>
             <article className={styles.metricCard}>
-              <span className={styles.metricLabel}>Subject coverage</span>
-              <strong>{subjects.length}</strong>
-              <p>All attached subject teachers are visible from one workspace.</p>
+              <div className={styles.metricIcon}>SB</div>
+              <div>
+                <span className={styles.metricLabel}>Subject coverage</span>
+                <strong>{subjects.length}</strong>
+                <p>
+                  All attached subject teachers are visible from one workspace.
+                </p>
+              </div>
             </article>
             <article className={styles.metricCard}>
-              <span className={styles.metricLabel}>Report readiness</span>
-              <strong>85%</strong>
-              <p>Most grading workflows are on track ahead of report download.</p>
+              <div className={styles.metricIcon}>RP</div>
+              <div>
+                <span className={styles.metricLabel}>Report readiness</span>
+                <strong>85%</strong>
+                <p>
+                  Most grading workflows are on track ahead of report download.
+                </p>
+              </div>
             </article>
             <article className={styles.metricCard}>
-              <span className={styles.metricLabel}>Family follow-up</span>
-              <strong>6</strong>
-              <p>Parent communication tasks remain easy to spot and act on.</p>
+              <div className={styles.metricIcon}>FM</div>
+              <div>
+                <span className={styles.metricLabel}>Family follow-up</span>
+                <strong>6</strong>
+                <p>
+                  Parent communication tasks remain easy to spot and act on.
+                </p>
+              </div>
             </article>
           </div>
         </section>
@@ -528,6 +487,7 @@ const AnalyticsDashboard: React.FC<{
 
       <div className={styles.analyticsGrid}>
         <div className={styles.analyticsCard}>
+          <div className={styles.analyticsCardIcon}>OV</div>
           <h3>Class overview</h3>
           <div className={styles.statItem}>
             <span>Total students</span>
@@ -546,6 +506,7 @@ const AnalyticsDashboard: React.FC<{
         </div>
 
         <div className={styles.analyticsCard}>
+          <div className={styles.analyticsCardIcon}>PF</div>
           <h3>Performance summary</h3>
           <div className={styles.statItem}>
             <span>Class average</span>
@@ -564,6 +525,28 @@ const AnalyticsDashboard: React.FC<{
             on revision consistency and writing confidence.
           </div>
         </div>
+
+        <div className={styles.analyticsCard}>
+          <div className={styles.analyticsCardIcon}>TP</div>
+          <h3>Top performers</h3>
+          <div className={styles.topPerformerList}>
+            <div className={styles.topPerformer}>
+              <span className={styles.topPerformerRank}>1</span>
+              <span>Emma Mwangi</span>
+              <strong>92%</strong>
+            </div>
+            <div className={styles.topPerformer}>
+              <span className={styles.topPerformerRank}>2</span>
+              <span>James Otieno</span>
+              <strong>88%</strong>
+            </div>
+            <div className={styles.topPerformer}>
+              <span className={styles.topPerformerRank}>3</span>
+              <span>Aisha Hassan</span>
+              <strong>85%</strong>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -577,7 +560,9 @@ const SettingsPage: React.FC<{ streamInfo: StreamInfo }> = ({ streamInfo }) => {
           <span className={styles.sectionEyebrow}>Configuration</span>
           <h2>Class settings</h2>
         </div>
-        <p>Refresh stream details while keeping the rest of your workflow intact.</p>
+        <p>
+          Refresh stream details while keeping the rest of your workflow intact.
+        </p>
       </div>
 
       <div className={styles.settingsCard}>

@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@300;400;500;600&display=swap");
+
 /* components/auth/LoginPage.module.css */
 
 /* Variables */
@@ -600,5 +602,3 @@
   }
 }
 
-/* Font Import - Add to your global CSS or index.html */
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@300;400;500;600&display=swap");

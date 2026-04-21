@@ -5,6 +5,7 @@ import MarksEntry from "./MarksEntry";
 import MyAssessments from "./MyAssessments";
 import StudentProgress from "./StudentProgress";
 import MyResources from "./MyResources";
+import SubjectTeacherSidebar from "./SubjectTeacherSidebar";
 import { Teacher, Subject, Student, Assessment } from "./types";
 
 const dummyTeacher: Teacher = {
@@ -15,7 +16,7 @@ const dummyTeacher: Teacher = {
   subject: "Mathematics",
   department: "Science",
   avatar:
-    "https://ui-avatars.com/api/?name=Peter+Otieno&background=4F46E5&color=fff",
+    "https://ui-avatars.com/api/?name=Peter+Otieno&background=0B2018&color=fff",
   joinDate: "2022-01-10",
 };
 
@@ -120,37 +121,31 @@ type Tab = "subjects" | "marks" | "assessments" | "progress" | "resources";
 const menuItems: Array<{
   id: Tab;
   label: string;
-  shortLabel: string;
   description: string;
 }> = [
   {
     id: "subjects",
     label: "My subjects",
-    shortLabel: "SB",
     description: "Review assigned streams and jump into classroom work.",
   },
   {
     id: "marks",
     label: "Marks entry",
-    shortLabel: "ME",
     description: "Capture and revise student marks without extra friction.",
   },
   {
     id: "assessments",
     label: "Assessments",
-    shortLabel: "AS",
     description: "Create tests, monitor status, and keep tasks aligned.",
   },
   {
     id: "progress",
     label: "Student progress",
-    shortLabel: "PR",
     description: "Track performance patterns across classes and streams.",
   },
   {
     id: "resources",
     label: "Resources",
-    shortLabel: "RS",
     description: "Organize lesson files and learning materials quickly.",
   },
 ];
@@ -173,6 +168,7 @@ const SubjectTeacherDashboard: React.FC = () => {
   const handleSelectSubject = (subject: Subject) => {
     setSelectedSubject(subject);
     setActiveTab("marks");
+    setMobileMenuOpen(false);
   };
 
   const totalLearners = subjects.reduce((sum, subject) => sum + subject.students, 0);
@@ -182,6 +178,7 @@ const SubjectTeacherDashboard: React.FC = () => {
     {
       title: "Open marks entry",
       detail: "Start grading from the most recent assigned stream.",
+      tag: "MK",
       onClick: () => {
         setSelectedSubject(subjects[0] ?? null);
         handleSelectTab("marks");
@@ -190,11 +187,13 @@ const SubjectTeacherDashboard: React.FC = () => {
     {
       title: "Review progress",
       detail: "Compare class trends and quickly spot learning gaps.",
+      tag: "PG",
       onClick: () => handleSelectTab("progress"),
     },
     {
       title: "Prepare resources",
       detail: "Upload or organize learning materials for the week.",
+      tag: "RS",
       onClick: () => handleSelectTab("resources"),
     },
   ];
@@ -243,107 +242,16 @@ const SubjectTeacherDashboard: React.FC = () => {
         />
       )}
 
-      <aside
-        className={`${styles.sidebar} ${sidebarCollapsed ? styles.collapsed : ""} ${mobileMenuOpen ? styles.mobileOpen : ""}`}
-      >
-        <div className={styles.sidebarHeader}>
-          <div className={styles.logo}>
-            {!sidebarCollapsed ? (
-              <>
-                <span className={styles.logoIcon}>TP</span>
-                <span className={styles.logoText}>Subject Teacher Hub</span>
-              </>
-            ) : (
-              <span className={styles.logoIcon}>TP</span>
-            )}
-          </div>
-          <button
-            className={styles.collapseBtn}
-            type="button"
-            onClick={() => setSidebarCollapsed((value) => !value)}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {sidebarCollapsed ? ">" : "<"}
-          </button>
-        </div>
-
-        <div className={styles.teacherProfile}>
-          <div className={styles.profileAvatar}>
-            <img src={teacher.avatar} alt={teacher.name} />
-          </div>
-          {!sidebarCollapsed && (
-            <div className={styles.profileInfo}>
-              <p className={styles.profileName}>{teacher.name}</p>
-              <p className={styles.profileRole}>{teacher.subject} Teacher</p>
-              <p className={styles.profileDept}>{teacher.department} Department</p>
-            </div>
-          )}
-        </div>
-
-        <nav className={styles.sidebarNav}>
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`${styles.navItem} ${activeTab === item.id ? styles.active : ""}`}
-              onClick={() => handleSelectTab(item.id)}
-            >
-              <span className={styles.navIcon}>{item.shortLabel}</span>
-              {!sidebarCollapsed && (
-                <div className={styles.navText}>
-                  <span className={styles.navLabel}>{item.label}</span>
-                  <span className={styles.navDescription}>{item.description}</span>
-                </div>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        {!sidebarCollapsed && (
-          <div className={styles.sidebarPanel}>
-            <p className={styles.sidebarPanelLabel}>Teaching pulse</p>
-            <div className={styles.sidebarPanelStat}>
-              <strong>{subjects.length}</strong>
-              <span>Streams currently assigned</span>
-            </div>
-            <div className={styles.sidebarPanelStat}>
-              <strong>{totalLearners}</strong>
-              <span>Learner seats covered this term</span>
-            </div>
-          </div>
-        )}
-
-        <div className={styles.sidebarFooter}>
-          {!sidebarCollapsed ? (
-            <>
-              <button className={styles.footerBtn} type="button">
-                <span className={styles.footerBtnTag}>2</span>
-                <span>Notifications</span>
-              </button>
-              <button className={styles.footerBtn} type="button">
-                <span className={styles.footerBtnTag}>Cfg</span>
-                <span>Settings</span>
-              </button>
-              <button className={styles.footerBtn} type="button">
-                <span className={styles.footerBtnTag}>Out</span>
-                <span>Logout</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button className={styles.footerBtnIcon} type="button">
-                2
-              </button>
-              <button className={styles.footerBtnIcon} type="button">
-                C
-              </button>
-              <button className={styles.footerBtnIcon} type="button">
-                O
-              </button>
-            </>
-          )}
-        </div>
-      </aside>
+      <SubjectTeacherSidebar
+        activeTab={activeTab}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        teacher={teacher}
+        subjects={subjects}
+        totalLearners={totalLearners}
+        onSelectTab={handleSelectTab}
+        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+      />
 
       <main
         className={`${styles.mainContent} ${sidebarCollapsed ? styles.expanded : ""}`}
@@ -363,13 +271,17 @@ const SubjectTeacherDashboard: React.FC = () => {
             <p>{activeMenuItem.description}</p>
           </div>
           <div className={styles.topBarActions}>
+            <div className={styles.dateDisplay}>
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
             <div className={styles.notificationBadge} role="status">
               <span className={styles.notificationLabel}>Alerts</span>
               <span className={styles.badge}>2</span>
-            </div>
-            <div className={styles.topBarMeta}>
-              <span>Department</span>
-              <strong>{teacher.department}</strong>
             </div>
             <div className={styles.topBarTeacher}>
               <img src={teacher.avatar} alt={teacher.name} />
@@ -387,11 +299,12 @@ const SubjectTeacherDashboard: React.FC = () => {
               <span className={styles.heroEyebrow}>Teaching overview</span>
               <h1>
                 Guide every {teacher.subject.toLowerCase()} lesson with faster
-                access to grading, assessment, and progress tracking.
+                access to grading, assessment, and learner progress.
               </h1>
               <p>
-                The updated layout keeps your main workflows visible and reduces
-                the effort needed to move between class streams during the day.
+                This workspace keeps the daily teaching flow professional and
+                predictable, from stream coverage to marks follow-up and
+                classroom resources.
               </p>
               <div className={styles.heroActions}>
                 {quickActions.map((action) => (
@@ -401,8 +314,11 @@ const SubjectTeacherDashboard: React.FC = () => {
                     className={styles.heroActionBtn}
                     onClick={action.onClick}
                   >
-                    <strong>{action.title}</strong>
-                    <span>{action.detail}</span>
+                    <span className={styles.heroActionTag}>{action.tag}</span>
+                    <div>
+                      <strong>{action.title}</strong>
+                      <span>{action.detail}</span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -416,7 +332,8 @@ const SubjectTeacherDashboard: React.FC = () => {
               <div className={styles.heroList}>
                 {teachingHighlights.map((item) => (
                   <div key={item} className={styles.heroListItem}>
-                    {item}
+                    <span className={styles.heroListDot} />
+                    <span>{item}</span>
                   </div>
                 ))}
               </div>
@@ -442,7 +359,7 @@ const SubjectTeacherDashboard: React.FC = () => {
             <article className={styles.metricCard}>
               <span className={styles.metricLabel}>Assessment rhythm</span>
               <strong>Weekly</strong>
-              <p>Regular checkpoints make follow-up more predictable.</p>
+              <p>Regular checkpoints keep progress conversations grounded.</p>
             </article>
           </div>
         </section>
