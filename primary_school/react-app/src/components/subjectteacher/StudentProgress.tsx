@@ -18,11 +18,6 @@ const StudentProgress: React.FC<StudentProgressProps> = ({
   );
   const [selectedClass, setSelectedClass] = useState<string>("all");
 
-  const filteredSubjects =
-    selectedSubject === "all"
-      ? subjects
-      : subjects.filter((s) => s.id === selectedSubject);
-
   const filteredStudents = students.filter(
     (s) => selectedClass === "all" || s.stream === selectedClass,
   );
@@ -30,7 +25,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({
   const classes = ["all", ...new Set(students.map((s) => s.stream))];
 
   // Dummy performance data
-  const getStudentPerformance = (studentId: string) => {
+  const getStudentPerformance = () => {
     return {
       average: Math.floor(Math.random() * 40) + 50,
       trend: Math.random() > 0.5 ? "up" : "down",
@@ -159,7 +154,7 @@ const StudentProgress: React.FC<StudentProgressProps> = ({
             </thead>
             <tbody>
               {filteredStudents.map((student, idx) => {
-                const performance = getStudentPerformance(student.id);
+                const performance = getStudentPerformance();
                 return (
                   <tr key={student.id}>
                     <td>{idx + 1}</td>

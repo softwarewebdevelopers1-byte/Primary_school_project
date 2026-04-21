@@ -266,7 +266,6 @@ const MyAssessments: React.FC<MyAssessmentsProps> = ({
           </div>
         ) : (
           assessments.map((assessment) => {
-            const subject = subjects.find((s) => s.id === assessment.subjectId);
             return (
               <div key={assessment.id} className={styles.assessmentCard}>
                 <div className={styles.assessmentHeader}>

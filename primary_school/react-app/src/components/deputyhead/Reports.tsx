@@ -8,7 +8,7 @@ interface ReportsProps {
   userRole: UserRole;
 }
 
-const Reports: React.FC<ReportsProps> = ({ userRole }) => {
+const Reports: React.FC<ReportsProps> = () => {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [generating, setGenerating] = useState(false);
 

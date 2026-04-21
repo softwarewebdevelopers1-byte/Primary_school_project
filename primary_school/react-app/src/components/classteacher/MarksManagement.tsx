@@ -123,8 +123,6 @@ const MarksManagement: React.FC<MarksManagementProps> = ({
 
   const stats = calculateStats();
 
-  const selectedSubjectObj = subjects.find((s) => s.id === selectedSubject);
-
   return (
     <div className={styles.marksContainer}>
       <div className={styles.header}>

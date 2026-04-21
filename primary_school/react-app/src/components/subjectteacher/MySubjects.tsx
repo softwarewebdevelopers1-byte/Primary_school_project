@@ -12,7 +12,6 @@ interface MySubjectsProps {
 
 const MySubjects: React.FC<MySubjectsProps> = ({
   subjects,
-  teacher,
   onSelectSubject,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");

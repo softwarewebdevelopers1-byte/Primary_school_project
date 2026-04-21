@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import styles from "./MarksEntry.module.css";
-import { Subject, Student, StudentMark } from "./types";
+import { Subject, Student } from "./types";
 
 interface MarksEntryProps {
   selectedSubject: Subject | null;
@@ -21,8 +21,6 @@ const MarksEntry: React.FC<MarksEntryProps> = ({
   const [maxMarks, setMaxMarks] = useState<number>(100);
   const [searchTerm, setSearchTerm] = useState("");
   const [saving, setSaving] = useState(false);
-  const [selectedAssessment, setSelectedAssessment] = useState<string>("");
-
   useEffect(() => {
     if (selectedSubject) {
       const streamStudents = students.filter(

@@ -11,7 +11,6 @@ interface TeacherManagementProps {
 const TeacherManagement: React.FC<TeacherManagementProps> = ({ userRole }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
 
   const isHeadTeacher = userRole === "headteacher";
@@ -145,12 +144,7 @@ const TeacherManagement: React.FC<TeacherManagementProps> = ({ userRole }) => {
           <p>Manage all teaching staff, their assignments, and performance</p>
         </div>
         {isHeadTeacher && (
-          <button
-            className={styles.addBtn}
-            onClick={() => setShowAddModal(true)}
-          >
-            + Add New Teacher
-          </button>
+          <button className={styles.addBtn}>+ Add New Teacher</button>
         )}
       </div>
 

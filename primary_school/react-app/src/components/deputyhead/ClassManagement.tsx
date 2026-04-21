@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import styles from "./ClassManagement.module.css";
-import { UserRole, Class, Stream } from "./types";
+import { UserRole, Class } from "./types";
 
 interface ClassManagementProps {
   userRole: UserRole;

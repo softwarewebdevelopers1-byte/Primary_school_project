@@ -8,7 +8,7 @@ interface ParentConcernsProps {
   userRole: UserRole;
 }
 
-const ParentConcerns: React.FC<ParentConcernsProps> = ({ userRole }) => {
+const ParentConcerns: React.FC<ParentConcernsProps> = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedConcern, setSelectedConcern] =
     useState<ParentConcernType | null>(null);
