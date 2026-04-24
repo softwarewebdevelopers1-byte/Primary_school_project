@@ -29,6 +29,11 @@
   --serif: "Cormorant Garamond", serif;
   --sans: "Nunito", sans-serif;
 }
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
 
 @keyframes fadeUp {
   from {
