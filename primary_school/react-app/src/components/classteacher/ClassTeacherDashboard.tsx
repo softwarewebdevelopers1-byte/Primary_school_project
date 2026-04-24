@@ -1,5 +1,5 @@
 // components/classteacher/ClassTeacherDashboard.tsx
-import  { useState } from "react";
+import { useEffect, useState } from "react";
 import { GlobalStyles } from "./shared/GlobalStyles";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -56,7 +56,24 @@ const NAV = [
 export default function ClassTeacherDashboard() {
   const [tab, setTab] = useState("students");
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [selectedStudent, setSelectedStudent] = useState(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 900);
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(false);
+    } else {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
 
   const activeNav = NAV.find((n) => n.id === tab) || NAV[0];
   const classAvg = Math.round(
@@ -66,6 +83,7 @@ export default function ClassTeacherDashboard() {
   const handleSelectTab = (t: string) => {
     setTab(t);
     setSelectedStudent(null);
+    setMobileMenuOpen(false);
   };
 
   const renderContent = () => {
@@ -96,6 +114,12 @@ export default function ClassTeacherDashboard() {
   return (
     <>
       <GlobalStyles />
+      {mobileMenuOpen && (
+        <div
+          className="ct-mobileOverlay"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <div
         style={{
           display: "flex",
@@ -108,21 +132,35 @@ export default function ClassTeacherDashboard() {
         <Sidebar
           navItems={NAV}
           activeTab={tab}
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed(!collapsed)}
+          collapsed={isMobile ? false : collapsed}
+          mobileOpen={mobileMenuOpen}
+          isMobile={isMobile}
+          onToggleCollapse={() => {
+            if (isMobile) {
+              setMobileMenuOpen(false);
+              return;
+            }
+            setCollapsed(!collapsed);
+          }}
           onSelectTab={handleSelectTab}
           classAvg={classAvg}
         />
 
         <div
+          className="ct-mainPanel"
           style={{
             flex: 1,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
+            minWidth: 0,
           }}
         >
-          <TopBar activeLabel={activeNav.label} />
+          <TopBar
+            activeLabel={activeNav.label}
+            isMobile={isMobile}
+            onOpenMenu={() => setMobileMenuOpen(true)}
+          />
 
           {/* Hero panel - shown only on students/home tab */}
           {tab === "students" && !selectedStudent && (
@@ -173,7 +211,7 @@ export default function ClassTeacherDashboard() {
                   gap: 16,
                 }}
               >
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <p
                     style={{
                       fontFamily: FONT.sans,
@@ -214,7 +252,7 @@ export default function ClassTeacherDashboard() {
                     Term {streamInfo.term} well underway
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {[
                     { label: "Review marks", tab: "marks" },
                     { label: "Download results", tab: "results" },
@@ -248,6 +286,7 @@ export default function ClassTeacherDashboard() {
           {/* Metric strip */}
           {tab === "students" && !selectedStudent && (
             <div
+              className="ct-metricStrip"
               style={{
                 padding: "14px 24px",
                 background: C.cream,
@@ -330,7 +369,10 @@ export default function ClassTeacherDashboard() {
           )}
 
           {/* Content area */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+          <div
+            className="ct-contentArea"
+            style={{ flex: 1, overflowY: "auto", padding: "24px" }}
+          >
             {renderContent()}
           </div>
         </div>

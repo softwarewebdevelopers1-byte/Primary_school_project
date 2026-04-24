@@ -22,5 +22,30 @@ export const GlobalStyles: React.FC = () => (
     .dh-actbtn:hover{background:${C.goldPale}!important;border-color:${C.gold}!important;color:${C.textMid}!important}
     .dh-input:focus{border-color:${C.gold}!important;box-shadow:0 0 0 3px rgba(201,150,61,.12)!important;outline:none}
     .dh-tag{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+    .dh-mobileOverlay{display:none}
+    .dh-menuBtn{
+      display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(201,150,61,.2);
+      background:rgba(201,150,61,.12);color:${C.textMid};border-radius:10px;padding:8px 12px;
+      font:700 12px/1 Nunito,sans-serif;cursor:pointer
+    }
+    @media (max-width:900px){
+      .dh-sidebarShell{
+        transform:translateX(-100%);
+        transition:transform .28s cubic-bezier(.22,1,.36,1),width .28s cubic-bezier(.22,1,.36,1)
+      }
+      .dh-sidebarShell.dh-mobileOpen{transform:translateX(0)}
+      .dh-mobileOverlay{
+        display:block;position:fixed;inset:0;background:rgba(11,32,24,.34);z-index:900
+      }
+      .dh-mainPanel{width:100%!important}
+      .dh-topBar{
+        height:auto!important;padding:14px 16px!important;align-items:flex-start!important;flex-direction:column!important;gap:12px!important
+      }
+      .dh-topBarMeta{width:100%;justify-content:space-between;gap:12px!important;flex-wrap:wrap}
+      .dh-contentArea{padding:16px!important}
+    }
+    @media (max-width:640px){
+      .dh-topBarMeta{justify-content:flex-start}
+    }
   `}</style>
 );

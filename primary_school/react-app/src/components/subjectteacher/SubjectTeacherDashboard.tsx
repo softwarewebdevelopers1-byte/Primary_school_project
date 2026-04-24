@@ -176,24 +176,21 @@ const SubjectTeacherDashboard: React.FC = () => {
 
   const quickActions = [
     {
-      title: "Open marks entry",
-      detail: "Start grading from the most recent assigned stream.",
-      tag: "MK",
+      label: "Marks entry",
+      detail: "Jump into the latest grading work for this week.",
       onClick: () => {
         setSelectedSubject(subjects[0] ?? null);
         handleSelectTab("marks");
       },
     },
     {
-      title: "Review progress",
-      detail: "Compare class trends and quickly spot learning gaps.",
-      tag: "PG",
+      label: "Progress",
+      detail: "Compare stream trends and learner performance.",
       onClick: () => handleSelectTab("progress"),
     },
     {
-      title: "Prepare resources",
-      detail: "Upload or organize learning materials for the week.",
-      tag: "RS",
+      label: "Resources",
+      detail: "Keep lesson materials ready for classroom use.",
       onClick: () => handleSelectTab("resources"),
     },
   ];
@@ -294,49 +291,30 @@ const SubjectTeacherDashboard: React.FC = () => {
         </div>
 
         <section className={styles.overviewPanel}>
-          <div className={styles.heroCard}>
-            <div className={styles.heroCopy}>
+          <div className={styles.heroStrip}>
+            <div className={styles.heroStripCopy}>
               <span className={styles.heroEyebrow}>Teaching overview</span>
               <h1>
-                Guide every {teacher.subject.toLowerCase()} lesson with faster
-                access to grading, assessment, and learner progress.
+                Keep every {teacher.subject.toLowerCase()} class organized and
+                ready for marks, assessment follow-up, and learner support.
               </h1>
               <p>
-                This workspace keeps the daily teaching flow professional and
-                predictable, from stream coverage to marks follow-up and
-                classroom resources.
+                Your streams, grading flow, and progress checks now sit in the
+                same clear dashboard rhythm used across teacher leadership views.
               </p>
-              <div className={styles.heroActions}>
-                {quickActions.map((action) => (
-                  <button
-                    key={action.title}
-                    type="button"
-                    className={styles.heroActionBtn}
-                    onClick={action.onClick}
-                  >
-                    <span className={styles.heroActionTag}>{action.tag}</span>
-                    <div>
-                      <strong>{action.title}</strong>
-                      <span>{action.detail}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
             </div>
-            <div className={styles.heroAside}>
-              <div className={styles.heroInsight}>
-                <span>Coverage this term</span>
-                <strong>{totalLearners}</strong>
-                <p>Learner records are ready across your assigned streams.</p>
-              </div>
-              <div className={styles.heroList}>
-                {teachingHighlights.map((item) => (
-                  <div key={item} className={styles.heroListItem}>
-                    <span className={styles.heroListDot} />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
+            <div className={styles.heroQuickActions}>
+              {quickActions.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  className={styles.heroQuickButton}
+                  onClick={action.onClick}
+                >
+                  <strong>{action.label}</strong>
+                  <span>{action.detail}</span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -347,20 +325,36 @@ const SubjectTeacherDashboard: React.FC = () => {
               <p>Your teaching load is clearly grouped by class and stream.</p>
             </article>
             <article className={styles.metricCard}>
-              <span className={styles.metricLabel}>Learners reached</span>
+              <span className={styles.metricLabel}>Learners covered</span>
               <strong>{totalLearners}</strong>
-              <p>Total seats covered across all active subject allocations.</p>
+              <p>Every assigned seat is ready for marks and progress tracking.</p>
             </article>
             <article className={styles.metricCard}>
               <span className={styles.metricLabel}>Marks pending</span>
               <strong>14</strong>
-              <p>Remaining entries are easy to find before report deadlines.</p>
+              <p>Remaining entries are visible before reporting deadlines.</p>
             </article>
             <article className={styles.metricCard}>
               <span className={styles.metricLabel}>Assessment rhythm</span>
               <strong>Weekly</strong>
-              <p>Regular checkpoints keep progress conversations grounded.</p>
+              <p>Regular checkpoints keep teaching decisions grounded.</p>
             </article>
+          </div>
+
+          <div className={styles.insightPanel}>
+            <div className={styles.heroInsight}>
+              <span>Coverage this term</span>
+              <strong>{totalLearners}</strong>
+              <p>Learner records are ready across your assigned streams.</p>
+            </div>
+            <div className={styles.heroList}>
+              {teachingHighlights.map((item) => (
+                <div key={item} className={styles.heroListItem}>
+                  <span className={styles.heroListDot} />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

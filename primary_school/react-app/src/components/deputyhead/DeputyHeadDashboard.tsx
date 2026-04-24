@@ -1,5 +1,5 @@
 // components/deputyhead/DeputyHeadDashboard.tsx
-import  { useState } from "react";
+import { useEffect, useState } from "react";
 import { GlobalStyles } from "./shared/GlobalStyles";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -24,7 +24,24 @@ export default function DeputyHeadDashboard({
 }: DeputyHeadDashboardProps) {
   const [tab, setTab] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [roleToggle, setRoleToggle] = useState<UserRoleType>(userRole);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 900);
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(false);
+    } else {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
 
   const isHT = roleToggle === "headteacher";
   const user = {
@@ -44,6 +61,12 @@ export default function DeputyHeadDashboard({
   const handleRoleToggle = (role: UserRoleType) => {
     setRoleToggle(role);
     setTab("overview");
+    setMobileMenuOpen(false);
+  };
+
+  const handleSelectTab = (nextTab: string) => {
+    setTab(nextTab);
+    setMobileMenuOpen(false);
   };
 
   const renderContent = () => {
@@ -70,6 +93,12 @@ export default function DeputyHeadDashboard({
   return (
     <>
       <GlobalStyles />
+      {mobileMenuOpen && (
+        <div
+          className="dh-mobileOverlay"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <div
         style={{
           display: "flex",
@@ -82,16 +111,25 @@ export default function DeputyHeadDashboard({
         <Sidebar
           navItems={nav}
           activeTab={tab}
-          collapsed={collapsed}
+          collapsed={isMobile ? false : collapsed}
+          mobileOpen={mobileMenuOpen}
+          isMobile={isMobile}
           roleToggle={roleToggle}
-          onToggleCollapse={() => setCollapsed(!collapsed)}
-          onSelectTab={setTab}
+          onToggleCollapse={() => {
+            if (isMobile) {
+              setMobileMenuOpen(false);
+              return;
+            }
+            setCollapsed(!collapsed);
+          }}
+          onSelectTab={handleSelectTab}
           onRoleToggle={handleRoleToggle}
           userName={user.name}
           userRole={user.role}
         />
 
         <div
+          className="dh-mainPanel"
           style={{
             flex: 1,
             display: "flex",
@@ -105,6 +143,8 @@ export default function DeputyHeadDashboard({
             userName={user.name}
             userRole={user.role}
             date={date}
+            isMobile={isMobile}
+            onOpenMenu={() => setMobileMenuOpen(true)}
           />
 
           {/* Hero — only on overview */}
@@ -156,7 +196,7 @@ export default function DeputyHeadDashboard({
                   gap: 14,
                 }}
               >
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <p
                     style={{
                       fontFamily: F.sans,
@@ -203,7 +243,7 @@ export default function DeputyHeadDashboard({
                   ].map(({ l, t }) => (
                     <button
                       key={t}
-                      onClick={() => setTab(t)}
+                      onClick={() => handleSelectTab(t)}
                       className="dh-hbtn"
                       style={{
                         padding: "8px 14px",
@@ -227,7 +267,10 @@ export default function DeputyHeadDashboard({
           )}
 
           {/* Content */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "22px" }}>
+          <div
+            className="dh-contentArea"
+            style={{ flex: 1, overflowY: "auto", padding: "22px" }}
+          >
             {renderContent()}
           </div>
         </div>

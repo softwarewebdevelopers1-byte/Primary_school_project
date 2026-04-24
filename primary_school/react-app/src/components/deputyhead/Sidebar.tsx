@@ -14,6 +14,8 @@ interface SidebarProps {
   navItems: any[];
   activeTab: string;
   collapsed: boolean;
+  mobileOpen: boolean;
+  isMobile: boolean;
   roleToggle: "deputy" | "headteacher"; // Fixed type
   onToggleCollapse: () => void;
   onSelectTab: (tabId: string) => void;
@@ -26,6 +28,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   navItems,
   activeTab,
   collapsed,
+  mobileOpen,
+  isMobile,
   roleToggle,
   onToggleCollapse,
   onSelectTab,
@@ -38,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
+      className={`dh-sidebarShell${mobileOpen ? " dh-mobileOpen" : ""}`}
       style={{
         width: collapsed ? 64 : 232,
         flexShrink: 0,
@@ -46,8 +51,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         flexDirection: "column",
         transition: "width .28s cubic-bezier(.22,1,.36,1)",
         overflow: "hidden",
-        position: "relative",
-        zIndex: 10,
+        position: isMobile ? "fixed" : "relative",
+        inset: isMobile ? "0 auto 0 0" : undefined,
+        height: isMobile ? "100vh" : undefined,
+        zIndex: isMobile ? 1000 : 10,
+        boxShadow: isMobile ? "0 18px 42px rgba(11,32,24,.24)" : undefined,
       }}
     >
       {/* Logo */}
@@ -120,6 +128,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={onToggleCollapse}
           className="dh-sbtn"
+          aria-label={
+            isMobile
+              ? "Close navigation menu"
+              : collapsed
+                ? "Expand sidebar"
+                : "Collapse sidebar"
+          }
           style={{
             width: 26,
             height: 26,
@@ -135,7 +150,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             transition: "background .15s",
           }}
         >
-          {collapsed ? <ChevronRight /> : <ChevronLeft />}
+          {isMobile ? (
+            <ChevronLeft />
+          ) : collapsed ? (
+            <ChevronRight />
+          ) : (
+            <ChevronLeft />
+          )}
         </button>
       </div>
 

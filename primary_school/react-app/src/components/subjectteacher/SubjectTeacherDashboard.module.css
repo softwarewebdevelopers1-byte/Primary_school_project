@@ -37,7 +37,6 @@
 }
 
 .topBar,
-.heroCard,
 .metricCard {
   border: 1px solid var(--border-light);
   background: var(--cream-panel);
@@ -84,13 +83,13 @@
 }
 
 .topBarTitle h2,
-.heroCopy h1 {
+.heroStripCopy h1 {
   margin: 0.25rem 0 0;
   color: var(--text-dark);
 }
 
 .topBarTitle p,
-.heroCopy p,
+.heroStripCopy p,
 .heroInsight p,
 .metricCard p,
 .dateDisplay,
@@ -167,82 +166,95 @@
   margin-top: 1.4rem;
 }
 
-.heroCard {
-  display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.95fr);
-  gap: 1.2rem;
+.heroStrip {
+  background: var(--green-primary);
   border-radius: 30px;
   padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
 }
 
-.heroCopy h1 {
+.heroStrip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(201, 150, 61, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201, 150, 61, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.heroStripCopy,
+.heroQuickActions {
+  position: relative;
+  z-index: 1;
+}
+
+.heroStripCopy {
+  min-width: 0;
+  max-width: 760px;
+}
+
+.heroStripCopy h1 {
   font-size: clamp(2rem, 2.8vw, 3rem);
   line-height: 1.08;
-}
-
-.heroActions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem;
-  margin-top: 1.35rem;
-}
-
-.heroActionBtn {
-  border: 1px solid var(--border-light);
-  background: rgba(255, 255, 255, 0.56);
-  border-radius: 22px;
-  padding: 0.95rem;
-  text-align: left;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.8rem;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.heroActionBtn:hover {
-  transform: translateY(-2px);
-  border-color: rgba(201, 150, 61, 0.3);
-  box-shadow: 0 18px 30px rgba(11, 32, 24, 0.08);
-}
-
-.heroActionTag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 16px;
-  background: var(--green-primary);
   color: #fdf9f2;
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
 }
 
-.heroActionBtn strong,
+.heroStripCopy p {
+  color: #9eb8aa;
+  max-width: 600px;
+}
+
+.heroQuickActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.8rem;
+}
+
+.heroQuickButton {
+  min-width: 180px;
+  max-width: 220px;
+  border: 1px solid rgba(201, 150, 61, 0.3);
+  background: rgba(201, 150, 61, 0.15);
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  text-align: left;
+  color: #fdf9f2;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.heroQuickButton:hover {
+  background: rgba(201, 150, 61, 0.24);
+  transform: translateY(-1px);
+}
+
+.heroQuickButton strong,
 .heroInsight strong,
 .metricCard strong {
   display: block;
-  color: var(--text-dark);
 }
 
-.heroActionBtn span {
+.heroQuickButton span {
   display: block;
-}
-
-.heroActionBtn div span {
   margin-top: 0.25rem;
-  color: var(--text-light);
-  font-size: 0.9rem;
+  color: #d3e0d8;
+  font-size: 0.88rem;
   line-height: 1.45;
 }
 
-.heroAside {
+.insightPanel {
+  margin-top: 1rem;
   display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
   gap: 1rem;
 }
 
@@ -257,6 +269,7 @@
 .heroInsight strong {
   margin-top: 0.3rem;
   font-size: 2.6rem;
+  color: var(--text-dark);
 }
 
 .heroList {
@@ -296,6 +309,7 @@
 .metricCard strong {
   margin-top: 0.35rem;
   font-size: 2rem;
+  color: var(--text-dark);
 }
 
 .contentArea {
@@ -307,11 +321,7 @@
 }
 
 @media (max-width: 1200px) {
-  .heroCard {
-    grid-template-columns: 1fr;
-  }
-
-  .heroActions,
+  .insightPanel,
   .metricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -341,10 +351,29 @@
   .mobileMenuBtn {
     display: inline-flex;
   }
+
+  .heroStrip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heroQuickActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .heroQuickButton {
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 220px;
+  }
+
+  .insightPanel {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
-  .heroActions,
   .metricGrid {
     grid-template-columns: 1fr;
   }
@@ -356,5 +385,10 @@
 
   .topBarTeacher {
     width: 100%;
+  }
+
+  .heroQuickButton {
+    width: 100%;
+    flex-basis: 100%;
   }
 }

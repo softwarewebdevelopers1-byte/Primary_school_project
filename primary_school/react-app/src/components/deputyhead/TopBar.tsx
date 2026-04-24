@@ -8,6 +8,8 @@ interface TopBarProps {
   userName: string;
   userRole: string;
   date: string;
+  isMobile: boolean;
+  onOpenMenu: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -15,8 +17,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   userName,
   userRole,
   date,
+  isMobile,
+  onOpenMenu,
 }) => (
   <header
+    className="dh-topBar"
     style={{
       background: C.white,
       borderBottom: `1px solid ${C.border}`,
@@ -29,7 +34,18 @@ export const TopBar: React.FC<TopBarProps> = ({
       gap: 16,
     }}
   >
-    <div>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+      {isMobile && (
+        <button
+          type="button"
+          className="dh-menuBtn"
+          onClick={onOpenMenu}
+          aria-label="Open navigation menu"
+        >
+          Menu
+        </button>
+      )}
+      <div style={{ minWidth: 0 }}>
       <p
         style={{
           fontFamily: F.sans,
@@ -55,8 +71,12 @@ export const TopBar: React.FC<TopBarProps> = ({
       >
         {activeLabel}
       </h2>
+      </div>
     </div>
-    <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+    <div
+      className="dh-topBarMeta"
+      style={{ display: "flex", alignItems: "center", gap: 18 }}
+    >
       <p
         style={{
           fontFamily: F.sans,

@@ -6,10 +6,17 @@ import { streamInfo } from "./shared/data";
 
 interface TopBarProps {
   activeLabel: string;
+  isMobile: boolean;
+  onOpenMenu: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ activeLabel }) => (
+export const TopBar: React.FC<TopBarProps> = ({
+  activeLabel,
+  isMobile,
+  onOpenMenu,
+}) => (
   <header
+    className="ct-topBar"
     style={{
       background: C.white,
       borderBottom: `1px solid ${C.border}`,
@@ -21,7 +28,18 @@ export const TopBar: React.FC<TopBarProps> = ({ activeLabel }) => (
       flexShrink: 0,
     }}
   >
-    <div>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+      {isMobile && (
+        <button
+          type="button"
+          className="ct-menuBtn"
+          onClick={onOpenMenu}
+          aria-label="Open navigation menu"
+        >
+          Menu
+        </button>
+      )}
+      <div style={{ minWidth: 0 }}>
       <p
         style={{
           fontFamily: FONT.sans,
@@ -47,8 +65,12 @@ export const TopBar: React.FC<TopBarProps> = ({ activeLabel }) => (
       >
         {activeLabel}
       </h2>
+      </div>
     </div>
-    <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+    <div
+      className="ct-topBarMeta"
+      style={{ display: "flex", alignItems: "center", gap: 18 }}
+    >
       <div style={{ textAlign: "right" }}>
         <p
           style={{

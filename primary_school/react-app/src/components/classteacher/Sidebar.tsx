@@ -16,6 +16,8 @@ interface SidebarProps {
   navItems: NavItem[];
   activeTab: string;
   collapsed: boolean;
+  mobileOpen: boolean;
+  isMobile: boolean;
   onToggleCollapse: () => void;
   onSelectTab: (tabId: string) => void;
   classAvg: number;
@@ -25,12 +27,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   navItems,
   activeTab,
   collapsed,
+  mobileOpen,
+  isMobile,
   onToggleCollapse,
   onSelectTab,
   classAvg,
 }) => {
   return (
     <aside
+      className={`ct-sidebarShell${mobileOpen ? " ct-mobileOpen" : ""}`}
       style={{
         width: collapsed ? 64 : 240,
         flexShrink: 0,
@@ -39,8 +44,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         flexDirection: "column",
         transition: "width 0.28s cubic-bezier(.22,1,.36,1)",
         overflow: "hidden",
-        position: "relative",
-        zIndex: 10,
+        position: isMobile ? "fixed" : "relative",
+        inset: isMobile ? "0 auto 0 0" : undefined,
+        height: isMobile ? "100vh" : undefined,
+        zIndex: isMobile ? 1000 : 10,
+        boxShadow: isMobile ? "0 18px 42px rgba(11,32,24,0.24)" : undefined,
       }}
     >
       {/* Logo row */}
@@ -86,6 +94,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
         <button
           onClick={onToggleCollapse}
+          aria-label={
+            isMobile
+              ? "Close navigation menu"
+              : collapsed
+                ? "Expand sidebar"
+                : "Collapse sidebar"
+          }
           style={{
             width: 28,
             height: 28,
@@ -101,7 +116,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             transition: "background 0.15s",
           }}
         >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {isMobile ? (
+            <ChevronLeft size={14} />
+          ) : collapsed ? (
+            <ChevronRight size={14} />
+          ) : (
+            <ChevronLeft size={14} />
+          )}
         </button>
       </div>
 
