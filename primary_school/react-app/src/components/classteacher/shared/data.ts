@@ -1,0 +1,113 @@
+// components/classteacher/shared/data.ts
+import { StreamInfo, Subject, Student } from "../types";
+
+export const streamInfo: StreamInfo = {
+  id: "STR001",
+  name: "7A",
+  className: "Grade 7",
+  classTeacher: "Mr. Peter Otieno",
+  academicYear: "2024",
+  term: 1,
+  totalStudents: 35,
+};
+
+export const subjects: Subject[] = [
+  {
+    id: "SUB001",
+    name: "Mathematics",
+    code: "MATH101",
+    teacher: "Mr. Peter Otieno",
+    avg: 82,
+    pass: 88,
+  },
+  {
+    id: "SUB002",
+    name: "English",
+    code: "ENG101",
+    teacher: "Mrs. Jane Wanjiku",
+    avg: 74,
+    pass: 80,
+  },
+  {
+    id: "SUB003",
+    name: "Kiswahili",
+    code: "KSW101",
+    teacher: "Mr. James Kamau",
+    avg: 79,
+    pass: 85,
+  },
+  {
+    id: "SUB004",
+    name: "Science",
+    code: "SCI101",
+    teacher: "Mrs. Mary Achieng",
+    avg: 71,
+    pass: 76,
+  },
+  {
+    id: "SUB005",
+    name: "Social Studies",
+    code: "SST101",
+    teacher: "Mr. John Mwangi",
+    avg: 76,
+    pass: 82,
+  },
+];
+
+export const students: Student[] = [
+  {
+    id: "STU001",
+    admissionNumber: "2024/001",
+    name: "Emma Mwangi",
+    gender: "Female",
+    dob: "2012-05-15",
+    parentName: "John Mwangi",
+    parentPhone: "+254712345678",
+    status: "Active",
+    marks: { SUB001: 88, SUB002: 76, SUB003: 82, SUB004: 71, SUB005: 79 },
+  },
+  {
+    id: "STU002",
+    admissionNumber: "2024/002",
+    name: "James Otieno",
+    gender: "Male",
+    dob: "2012-08-22",
+    parentName: "Peter Otieno",
+    parentPhone: "+254723456789",
+    status: "Active",
+    marks: { SUB001: 92, SUB002: 68, SUB003: 75, SUB004: 84, SUB005: 70 },
+  },
+  {
+    id: "STU003",
+    admissionNumber: "2024/003",
+    name: "Aisha Hassan",
+    gender: "Female",
+    dob: "2012-03-10",
+    parentName: "Hassan Ali",
+    parentPhone: "+254734567890",
+    status: "Active",
+    marks: { SUB001: 65, SUB002: 88, SUB003: 91, SUB004: 60, SUB005: 85 },
+  },
+  {
+    id: "STU004",
+    admissionNumber: "2024/004",
+    name: "Brian Kipchoge",
+    gender: "Male",
+    dob: "2012-11-30",
+    parentName: "Kipchoge Kimutai",
+    parentPhone: "+254745678901",
+    status: "Active",
+    marks: { SUB001: 74, SUB002: 72, SUB003: 68, SUB004: 79, SUB005: 73 },
+  },
+  {
+    id: "STU005",
+    admissionNumber: "2024/005",
+    name: "Cynthia Achieng",
+    gender: "Female",
+    dob: "2012-07-18",
+    parentName: "Michael Achieng",
+    parentPhone: "+254756789012",
+    status: "Inactive",
+    marks: { SUB001: 55, SUB002: 61, SUB003: 70, SUB004: 58, SUB005: 66 },
+  },
+];

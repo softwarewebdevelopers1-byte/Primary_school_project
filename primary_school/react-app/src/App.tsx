@@ -1,10 +1,10 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import StudentDashboard from "./components/students/StudentDashboard";
-import ClassTeacherDashboard from "./components/classteacher/ClassTeacherDashboard";
 import SubjectTeacherDashboard from "./components/subjectteacher/SubjectTeacherDashboard";
 import DeputyHeadDashboard from "./components/deputyhead/DeputyHeadDashboard";
 import LoginPage from "./components/auth/login";
 import ErrorPage from "./components/error";
+import ClassTeacherDashboard from "./components/classteacher/ClassTeacherDashboard";
 
 function App() {
   return (
