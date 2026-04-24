@@ -141,6 +141,7 @@ export default function ClassTeacherDashboard() {
         />
       )}
       <div
+        className="ct-dashboardShell"
         style={{
           display: "flex",
           height: "100vh",

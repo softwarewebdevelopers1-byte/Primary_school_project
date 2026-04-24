@@ -100,6 +100,7 @@ export default function DeputyHeadDashboard({
         />
       )}
       <div
+        className="dh-dashboardShell"
         style={{
           display: "flex",
           height: "100vh",

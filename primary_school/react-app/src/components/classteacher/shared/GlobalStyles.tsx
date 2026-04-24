@@ -6,15 +6,65 @@ export const GlobalStyles: React.FC = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@300;400;500;600;700&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .ct-dashboardShell {
+      --ct-green: #0B2018;
+      --ct-green-mid: #163325;
+      --ct-green-light: #1e4232;
+      --ct-gold: #C9963D;
+      --ct-gold-light: #f5ead4;
+      --ct-gold-pale: #faf4e8;
+      --ct-cream: #FDFBF7;
+      --ct-sand: #f0e9dc;
+      --ct-border: #e8dcc8;
+      --ct-border-light: #f0e8d8;
+      --ct-text: #1a1208;
+      --ct-text-mid: #4a3820;
+      --ct-text-muted: #7a6040;
+      --ct-text-faint: #b8a58a;
+      --ct-white: #ffffff;
+      --ct-success-bg: #eaf3de;
+      --ct-success-text: #3b6d11;
+      --ct-warn-bg: #faeeda;
+      --ct-warn-text: #854f0b;
+      --ct-danger-bg: #fcebeb;
+      --ct-danger-text: #a32d2d;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      .ct-dashboardShell {
+        --ct-green: #08110d;
+        --ct-green-mid: #102018;
+        --ct-green-light: #173126;
+        --ct-gold: #d7ab59;
+        --ct-gold-light: #312617;
+        --ct-gold-pale: #221a11;
+        --ct-cream: #121714;
+        --ct-sand: #0c120f;
+        --ct-border: #283329;
+        --ct-border-light: #1b241d;
+        --ct-text: #f3eadb;
+        --ct-text-mid: #ddcdb8;
+        --ct-text-muted: #baa88c;
+        --ct-text-faint: #93836b;
+        --ct-white: #161d19;
+        --ct-success-bg: #172416;
+        --ct-success-text: #98cd73;
+        --ct-warn-bg: #241b11;
+        --ct-warn-text: #e7bc71;
+        --ct-danger-bg: #261515;
+        --ct-danger-text: #f09b9b;
+        color-scheme: dark;
+      }
+    }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin { to { transform: rotate(360deg); } }
     .ct-anim { animation: fadeUp 0.4s cubic-bezier(.22,1,.36,1) both; }
     .ct-navbtn { transition: background 0.18s, color 0.18s, border-color 0.18s; }
-    .ct-navbtn:hover:not(.ct-active) { background: rgba(201,150,61,0.09) !important; }
-    .ct-navbtn.ct-active { background: rgba(201,150,61,0.18) !important; border-left: 3px solid #C9963D !important; }
-    .ct-row:hover td { background: #faf4e8 !important; }
+    .ct-navbtn:hover:not(.ct-active) { background: color-mix(in srgb, var(--ct-gold) 14%, transparent) !important; }
+    .ct-navbtn.ct-active { background: color-mix(in srgb, var(--ct-gold) 24%, transparent) !important; border-left: 3px solid var(--ct-gold) !important; }
+    .ct-row:hover td { background: var(--ct-gold-pale) !important; }
     .ct-actionbtn:hover { background: ${C.goldPale} !important; border-color: ${C.gold} !important; color: ${C.textMid} !important; transform: translateY(-1px); }
-    .ct-primarybtn:hover { background: #a87a2a !important; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(180,128,45,.25) !important; }
+    .ct-primarybtn:hover { background: color-mix(in srgb, var(--ct-gold) 82%, black) !important; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(180,128,45,.25) !important; }
     .ct-ghostbtn:hover { background: ${C.sand} !important; }
     .ct-pill:hover { background: ${C.gold} !important; color: #fff !important; border-color: ${C.gold} !important; }
     .ct-input:focus { border-color: ${C.gold} !important; box-shadow: 0 0 0 3px rgba(201,150,61,0.12) !important; outline: none; }
