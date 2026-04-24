@@ -30,8 +30,7 @@ export const GlobalStyles: React.FC = () => (
       --ct-danger-text: #a32d2d;
       color-scheme: light;
     }
-    @media (prefers-color-scheme: dark) {
-      .ct-dashboardShell {
+    .ct-dashboardShell[data-theme="dark"] {
         --ct-green: #08110d;
         --ct-green-mid: #102018;
         --ct-green-light: #173126;
@@ -54,7 +53,6 @@ export const GlobalStyles: React.FC = () => (
         --ct-danger-bg: #261515;
         --ct-danger-text: #f09b9b;
         color-scheme: dark;
-      }
     }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin { to { transform: rotate(360deg); } }

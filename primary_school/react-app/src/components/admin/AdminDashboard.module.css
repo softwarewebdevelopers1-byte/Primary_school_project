@@ -2,7 +2,7 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@300;400;500;600;700&display=swap");
 
-:root {
+.dashboard {
   --cg: #0b2018;
   --cgm: #163325;
   --cgl: rgba(255, 255, 255, 0.06);
@@ -28,6 +28,36 @@
   --iText: #1a4a99;
   --serif: "Cormorant Garamond", serif;
   --sans: "Nunito", sans-serif;
+  --panelBg: linear-gradient(180deg, #fdfbf7 0%, #f7f0e3 100%);
+  color-scheme: light;
+}
+
+.dashboard[data-theme="dark"] {
+  --cg: #08110d;
+  --cgm: #102018;
+  --cgl: rgba(255, 255, 255, 0.09);
+  --gold: #d7ab59;
+  --goldL: #312617;
+  --goldP: #221a11;
+  --cream: #121714;
+  --sand: #0c120f;
+  --border: #283329;
+  --borderL: #1b241d;
+  --text: #f3eadb;
+  --textM: #ddcdb8;
+  --textMut: #baa88c;
+  --textF: #93836b;
+  --white: #161d19;
+  --sBg: #172416;
+  --sText: #98cd73;
+  --wBg: #241b11;
+  --wText: #e7bc71;
+  --dBg: #261515;
+  --dText: #f09b9b;
+  --iBg: #142030;
+  --iText: #8ab5ff;
+  --panelBg: linear-gradient(180deg, #101612 0%, #0b100d 100%);
+  color-scheme: dark;
 }
 
 @keyframes fadeUp {

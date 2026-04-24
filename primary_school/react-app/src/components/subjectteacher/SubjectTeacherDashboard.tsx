@@ -10,6 +10,7 @@ import { ProgressTab } from "./ProgressTab";
 import { ResourcesTab } from "./ResourcesTab";
 import { Subject, Student, Assessment, Resource, MarksData } from "./types";
 import { streamInfo } from "../classteacher/shared/data";
+import { useDashboardTheme } from "../../lib/useDashboardTheme";
 
 // Mock Data
 const SUBJECTS: Subject[] = [
@@ -271,6 +272,7 @@ const SubjectTeacherDashboard: React.FC = () => {
     new Set(SUBJECTS.filter((s) => s.pushed).map((s) => s.id)),
   );
   const [pushedStudents, setPushedStudents] = useState<Set<string>>(new Set());
+  const { theme, toggleTheme } = useDashboardTheme();
 
   const teacherName = streamInfo.classTeacher;
   const teacherInitials = initials(teacherName);
@@ -302,7 +304,7 @@ const SubjectTeacherDashboard: React.FC = () => {
     });
   };
 
-  const handleSaveMarks = (subjectId: string) => {
+  const handleSaveMarks = (_subjectId: string) => {
     alert("Marks saved successfully!");
   };
 
@@ -361,7 +363,6 @@ const SubjectTeacherDashboard: React.FC = () => {
             onSaveMarks={handleSaveMarks}
             onPushMarks={handlePushMarks}
             avatar={avatar}
-            gc={gc}
           />
         );
       case "assessments":
@@ -386,7 +387,7 @@ const SubjectTeacherDashboard: React.FC = () => {
   };
 
   return (
-    <div className={styles.dashboard}>
+    <div className={styles.dashboard} data-theme={theme}>
       <Sidebar
         collapsed={collapsed}
         activeTab={activeTab}
@@ -408,6 +409,8 @@ const SubjectTeacherDashboard: React.FC = () => {
           teacherAvatarColor={teacherAvatarColor}
           role="Subject Teacher"
           canSwitchToClassDashboard={canSwitchToClassDashboard}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
         <div className={styles.contentArea}>{renderContent()}</div>
       </div>

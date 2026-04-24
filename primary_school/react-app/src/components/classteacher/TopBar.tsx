@@ -3,17 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 import { streamInfo, subjects } from "./shared/data";
+import { DashboardTheme } from "../../lib/useDashboardTheme";
 
 interface TopBarProps {
   activeLabel: string;
   isMobile: boolean;
   onOpenMenu: () => void;
+  theme: DashboardTheme;
+  onToggleTheme: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   activeLabel,
   isMobile,
   onOpenMenu,
+  theme,
+  onToggleTheme,
 }) => {
   const navigate = useNavigate();
   const teachesSubjects = subjects.some(
@@ -100,6 +105,24 @@ export const TopBar: React.FC<TopBarProps> = ({
             Switch to Subject Dashboard
           </button>
         )}
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          style={{
+            padding: "9px 14px",
+            borderRadius: 10,
+            border: `1px solid ${C.border}`,
+            background: C.white,
+            color: C.text,
+            fontFamily: FONT.sans,
+            fontSize: 12.5,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {theme === "dark" ? "Light mode" : "Dark mode"}
+        </button>
 
         <div style={{ textAlign: "right" }}>
           <p

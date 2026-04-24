@@ -12,6 +12,7 @@ import { Reports } from "./Reports";
 import { ParentConcerns } from "./ParentConcerns";
 import { C, F } from "./shared/constants";
 import { NAV_ALL } from "./shared/data";
+import { useDashboardTheme } from "../../lib/useDashboardTheme";
 
 export type UserRoleType = "deputy" | "headteacher";
 
@@ -27,6 +28,7 @@ export default function DeputyHeadDashboard({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [roleToggle, setRoleToggle] = useState<UserRoleType>(userRole);
+  const { theme, toggleTheme } = useDashboardTheme();
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
@@ -101,6 +103,7 @@ export default function DeputyHeadDashboard({
       )}
       <div
         className="dh-dashboardShell"
+        data-theme={theme}
         style={{
           display: "flex",
           height: "100vh",
@@ -146,6 +149,8 @@ export default function DeputyHeadDashboard({
             date={date}
             isMobile={isMobile}
             onOpenMenu={() => setMobileMenuOpen(true)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
           />
 
           {/* Hero — only on overview */}

@@ -2,6 +2,7 @@
 import React from "react";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
+import { DashboardTheme } from "../../lib/useDashboardTheme";
 
 interface TopBarProps {
   activeLabel: string;
@@ -10,6 +11,8 @@ interface TopBarProps {
   date: string;
   isMobile: boolean;
   onOpenMenu: () => void;
+  theme: DashboardTheme;
+  onToggleTheme: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -19,6 +22,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   date,
   isMobile,
   onOpenMenu,
+  theme,
+  onToggleTheme,
 }) => (
   <header
     className="dh-topBar"
@@ -77,6 +82,24 @@ export const TopBar: React.FC<TopBarProps> = ({
       className="dh-topBarMeta"
       style={{ display: "flex", alignItems: "center", gap: 18 }}
     >
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        style={{
+          padding: "8px 12px",
+          borderRadius: 10,
+          border: `1px solid ${C.border}`,
+          background: C.white,
+          color: C.text,
+          fontFamily: F.sans,
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {theme === "dark" ? "Light mode" : "Dark mode"}
+      </button>
       <p
         style={{
           fontFamily: F.sans,

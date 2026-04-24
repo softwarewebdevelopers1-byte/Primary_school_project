@@ -9,6 +9,7 @@ import { SubjectsTab } from "./SubjectsTab";
 import { TeachersTab } from "./TeachersTab";
 import { TopBar } from "./TopBar";
 import { Class, NavItem, Student, Subject, Teacher } from "./types";
+import { useDashboardTheme } from "../../lib/useDashboardTheme";
 
 const initialTeachers: Teacher[] = [
   {
@@ -187,6 +188,7 @@ const AdminDashboard: React.FC = () => {
     syncClassCounts(initialClasses, initialStudents),
   );
   const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
+  const { theme, toggleTheme } = useDashboardTheme();
 
   const updateClassesWithCounts = (nextClasses: Class[]) => {
     setClasses(syncClassCounts(nextClasses, students));
@@ -387,7 +389,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className={styles.dashboard}>
+    <div className={styles.dashboard} data-theme={theme}>
       <Sidebar
         collapsed={collapsed}
         activeTab={activeTab}
@@ -411,6 +413,8 @@ const AdminDashboard: React.FC = () => {
           onSwitchTab={setActiveTab}
           teacherInitials={teacherInitials}
           teacherAvatarColor={teacherAvatarColor}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
 
         <div
@@ -418,7 +422,7 @@ const AdminDashboard: React.FC = () => {
             flex: 1,
             overflowY: "auto",
             padding: "18px 20px 24px",
-            background: "linear-gradient(180deg, #fdfbf7 0%, #f7f0e3 100%)",
+            background: "var(--panelBg)",
           }}
         >
           {renderActiveTab()}

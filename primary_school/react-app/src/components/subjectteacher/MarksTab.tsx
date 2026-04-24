@@ -20,7 +20,6 @@ interface MarksTabProps {
   onSaveMarks: (subjectId: string) => void;
   onPushMarks: (subjectId: string) => void;
   avatar: (name: string, size: number) => string;
-  gc: (value: number) => string;
 }
 
 export const MarksTab: React.FC<MarksTabProps> = ({
@@ -35,7 +34,6 @@ export const MarksTab: React.FC<MarksTabProps> = ({
   onSaveMarks,
   onPushMarks,
   avatar,
-  gc,
 }) => {
   const currentSubject =
     subjects.find((s) => s.id === activeSubjectId) || subjects[0];
@@ -162,8 +160,6 @@ export const MarksTab: React.FC<MarksTabProps> = ({
                   marks.exam !== null
                     ? marks.cat1 + marks.cat2 + marks.exam
                     : null;
-                const totalPct =
-                  total !== null ? Math.round(total / 1.8) : null;
                 const pushed = pushedStudents.has(student.id);
 
                 return (

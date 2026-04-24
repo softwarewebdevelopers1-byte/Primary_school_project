@@ -1,6 +1,5 @@
 // components/admin/Sidebar.tsx
 import React from "react";
-import styles from "./AdminDashboard.module.css";
 
 interface SidebarProps {
   collapsed: boolean;

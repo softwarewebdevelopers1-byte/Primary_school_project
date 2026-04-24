@@ -32,8 +32,7 @@ export const GlobalStyles: React.FC = () => (
       --dh-info-text:#1a4a99;
       color-scheme:light;
     }
-    @media (prefers-color-scheme: dark){
-      .dh-dashboardShell{
+    .dh-dashboardShell[data-theme="dark"]{
         --dh-green:#08110d;
         --dh-green-mid:#102018;
         --dh-green-light:rgba(255,255,255,0.09);
@@ -58,7 +57,6 @@ export const GlobalStyles: React.FC = () => (
         --dh-info-bg:#142030;
         --dh-info-text:#8ab5ff;
         color-scheme:dark;
-      }
     }
     @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     .dh-anim{animation:fadeUp .38s cubic-bezier(.22,1,.36,1) both}

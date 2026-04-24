@@ -22,6 +22,7 @@ import {
   HomeIcon,
 } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
+import { useDashboardTheme } from "../../lib/useDashboardTheme";
 
 const NAV = [
   {
@@ -69,6 +70,7 @@ export default function ClassTeacherDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const { theme, toggleTheme } = useDashboardTheme();
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
@@ -142,6 +144,7 @@ export default function ClassTeacherDashboard() {
       )}
       <div
         className="ct-dashboardShell"
+        data-theme={theme}
         style={{
           display: "flex",
           height: "100vh",
@@ -181,6 +184,8 @@ export default function ClassTeacherDashboard() {
             activeLabel={activeNav.label}
             isMobile={isMobile}
             onOpenMenu={() => setMobileMenuOpen(true)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
           />
 
           {/* Hero panel - shown only on students/home tab */}

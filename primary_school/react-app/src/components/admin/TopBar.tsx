@@ -1,5 +1,6 @@
 // components/admin/TopBar.tsx
 import React from "react";
+import { DashboardTheme } from "../../lib/useDashboardTheme";
 
 interface TopBarProps {
   title: string;
@@ -7,6 +8,8 @@ interface TopBarProps {
   onSwitchTab: (tab: string) => void;
   teacherInitials: string;
   teacherAvatarColor: string;
+  theme: DashboardTheme;
+  onToggleTheme: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -15,6 +18,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSwitchTab,
   teacherInitials,
   teacherAvatarColor,
+  theme,
+  onToggleTheme,
 }) => {
   const date = new Date().toLocaleDateString("en-GB", {
     weekday: "short",
@@ -102,6 +107,23 @@ export const TopBar: React.FC<TopBarProps> = ({
             </span>
           </button>
         )}
+        <button
+          onClick={onToggleTheme}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: "1px solid var(--border)",
+            background: "var(--white)",
+            color: "var(--text)",
+            fontFamily: "var(--sans)",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {theme === "dark" ? "Light mode" : "Dark mode"}
+        </button>
         <p style={{ fontSize: 11.5, color: "var(--textF)", margin: 0 }}>
           {date}
         </p>
