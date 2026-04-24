@@ -108,34 +108,8 @@ const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
     item.allowedFor.includes(userRole),
   );
   const activeMenuItem =
-    filteredMenuItems.find((item) => item.id === activeTab) ?? filteredMenuItems[0];
-
-  const leadershipActions = [
-    {
-      title: "Review staffing",
-      detail: "Check class allocation pressure and teacher support needs.",
-      tag: "TM",
-      onClick: () => setActiveTab("teachers"),
-    },
-    {
-      title: "Open analytics",
-      detail: "See schoolwide patterns before weekly leadership meetings.",
-      tag: "AN",
-      onClick: () => setActiveTab("analytics"),
-    },
-    {
-      title: "Track concerns",
-      detail: "Follow parent issues and response timelines from one place.",
-      tag: "PC",
-      onClick: () => setActiveTab("concerns"),
-    },
-  ];
-
-  const leadershipHighlights = [
-    `${filteredMenuItems.length} leadership workspaces are visible in this account.`,
-    `${isHeadTeacher ? "Full-school" : "Deputy"} access is active for daily oversight.`,
-    `3 active alerts still need attention across operations and family follow-up.`,
-  ];
+    filteredMenuItems.find((item) => item.id === activeTab) ??
+    filteredMenuItems[0];
 
   const renderContent = () => {
     switch (activeTab) {
@@ -223,60 +197,13 @@ const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
         </div>
 
         <section className={styles.overviewPanel}>
-          <div className={styles.heroCard}>
-            <div className={styles.heroCopy}>
-              <span className={styles.heroEyebrow}>School operations</span>
-              <h1>
-                Lead academic operations with a calmer, clearer view of school
-                performance, staffing, and learner support.
-              </h1>
-              <p>
-                The leadership workspace now follows the same green and gold
-                system as the login experience, while keeping the daily admin
-                flow polished and easy to scan.
-              </p>
-              <div className={styles.heroActions}>
-                {leadershipActions.map((action) => (
-                  <button
-                    key={action.title}
-                    type="button"
-                    className={styles.heroActionBtn}
-                    onClick={action.onClick}
-                  >
-                    <span className={styles.heroActionTag}>{action.tag}</span>
-                    <div>
-                      <strong>{action.title}</strong>
-                      <span>{action.detail}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className={styles.heroAside}>
-              <div className={styles.heroInsight}>
-                <span>Leadership access</span>
-                <strong>{isHeadTeacher ? "Full" : "Deputy"}</strong>
-                <p>
-                  Permissions are aligned to the current role for focused
-                  decision-making.
-                </p>
-              </div>
-              <div className={styles.heroList}>
-                {leadershipHighlights.map((item) => (
-                  <div key={item} className={styles.heroListItem}>
-                    <span className={styles.heroListDot} />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
           <div className={styles.metricGrid}>
             <article className={styles.metricCard}>
               <span className={styles.metricLabel}>Visible workspaces</span>
               <strong>{filteredMenuItems.length}</strong>
-              <p>Leadership actions are grouped into clear operational areas.</p>
+              <p>
+                Leadership actions are grouped into clear operational areas.
+              </p>
             </article>
             <article className={styles.metricCard}>
               <span className={styles.metricLabel}>Open alerts</span>
@@ -285,7 +212,9 @@ const DeputyHeadDashboard: React.FC<DeputyHeadDashboardProps> = ({
             </article>
             <article className={styles.metricCard}>
               <span className={styles.metricLabel}>Oversight mode</span>
-              <strong>{isHeadTeacher ? "Whole school" : "Academic support"}</strong>
+              <strong>
+                {isHeadTeacher ? "Whole school" : "Academic support"}
+              </strong>
               <p>Role-specific visibility keeps the dashboard focused.</p>
             </article>
             <article className={styles.metricCard}>
