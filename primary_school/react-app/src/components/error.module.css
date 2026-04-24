@@ -1,0 +1,40 @@
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f8f9fa;
+}
+.container {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+.vibrate {
+  position: absolute;
+  z-index: 100;
+  animation: vibrator 1s linear infinite;
+  border-radius: 50%;
+}
+@keyframes vibrator {
+  0% {
+    width: 50px;
+    outline: 2px solid #f59e0b;
+    height: 50px;
+  }
+  50% {
+    width: 80px;
+    outline: 4px solid #f59e0b;
+    height: 80px;
+  }
+  100% {
+    outline: 6px solid #f59e0b;
+    width: 100px;
+    height: 100px;
+  }
+}
