@@ -1,0 +1,101 @@
+/* components/admin/AdminDashboard.module.css */
+
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --cg: #0b2018;
+  --cgm: #163325;
+  --cgl: rgba(255, 255, 255, 0.06);
+  --gold: #c9963d;
+  --goldL: #f5ead4;
+  --goldP: #faf4e8;
+  --cream: #fdfbf7;
+  --sand: #f0e9dc;
+  --border: #e8dcc8;
+  --borderL: #f0e8d8;
+  --text: #1a1208;
+  --textM: #4a3820;
+  --textMut: #7a6040;
+  --textF: #b8a58a;
+  --white: #ffffff;
+  --sBg: #eaf3de;
+  --sText: #3b6d11;
+  --wBg: #faeeda;
+  --wText: #854f0b;
+  --dBg: #fcebeb;
+  --dText: #a32d2d;
+  --iBg: #e8f0fb;
+  --iText: #1a4a99;
+  --serif: "Cormorant Garamond", serif;
+  --sans: "Nunito", sans-serif;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.anim {
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.scalein {
+  animation: scaleIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Dashboard Layout */
+.dashboard {
+  display: flex;
+  height: 100vh;
+  font-family: var(--sans);
+  background: var(--sand);
+  overflow: hidden;
+}
+
+/* Modal Styles */
+.modalBg {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 32, 24, 0.55);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+}
+
+.modalBox {
+  background: var(--cream);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 24px 60px rgba(11, 32, 24, 0.3);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d0c4a8;
+  border-radius: 3px;
+}
