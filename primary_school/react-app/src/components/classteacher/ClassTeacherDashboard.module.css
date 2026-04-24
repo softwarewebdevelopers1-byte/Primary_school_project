@@ -348,6 +348,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .mainContent.expanded {
@@ -361,6 +362,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   box-shadow: var(--shadow-small);
   position: sticky;
   top: 0;
@@ -381,6 +384,7 @@
 
 .topBarTitle {
   flex: 1;
+  min-width: 220px;
 }
 
 .topBarEyebrow {
@@ -409,6 +413,8 @@
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .dateDisplay {
@@ -442,6 +448,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .topBarTeacher img {
@@ -479,10 +486,12 @@
   margin-bottom: 2rem;
   box-shadow: var(--shadow-medium);
   border: 1px solid var(--border-light);
+  align-items: flex-start;
 }
 
 .heroCopy {
   flex: 2;
+  min-width: 0;
 }
 
 .heroEyebrow {
@@ -556,6 +565,7 @@
 
 .heroAside {
   flex: 1;
+  min-width: 260px;
   background: var(--cream-bg);
   border-radius: 1rem;
   padding: 1.25rem;
@@ -617,7 +627,7 @@
 /* Metric Grid */
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
 }
@@ -674,6 +684,7 @@
 .contentArea {
   padding: 0 2rem 2rem 2rem;
   animation: fadeIn 0.5s ease;
+  min-width: 0;
 }
 
 /* Analytics Styles */
@@ -905,6 +916,22 @@
   }
 }
 
+@media (max-width: 1280px) {
+  .topBar {
+    align-items: flex-start;
+  }
+
+  .topBarActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .heroCard {
+    padding: 1.5rem;
+    gap: 1.5rem;
+  }
+}
+
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
@@ -929,6 +956,10 @@
 
   .topBar {
     padding: 1rem;
+  }
+
+  .topBarActions {
+    gap: 0.75rem;
   }
 
   .dateDisplay {

@@ -19,37 +19,31 @@ const menuItems: Array<{
   id: Tab;
   label: string;
   shortLabel: string;
-  description: string;
 }> = [
   {
     id: "subjects",
-    label: "My subjects",
+    label: "Subjects",
     shortLabel: "SB",
-    description: "Review assigned streams and jump into classroom work.",
   },
   {
     id: "marks",
-    label: "Marks entry",
+    label: "Marks",
     shortLabel: "ME",
-    description: "Capture and revise student marks without extra friction.",
   },
   {
     id: "assessments",
     label: "Assessments",
     shortLabel: "AS",
-    description: "Create tests, monitor status, and keep tasks aligned.",
   },
   {
     id: "progress",
-    label: "Student progress",
+    label: "Progress",
     shortLabel: "PR",
-    description: "Track performance patterns across classes and streams.",
   },
   {
     id: "resources",
     label: "Resources",
     shortLabel: "RS",
-    description: "Organize lesson files and learning materials quickly.",
   },
 ];
 
@@ -76,8 +70,8 @@ const SubjectTeacherSidebar: React.FC<SubjectTeacherSidebarProps> = ({
           <span className={sidebarStyles.logoBadge}>ST</span>
           {!collapsed && (
             <div className={sidebarStyles.logoText}>
-              <span className={sidebarStyles.logoName}>Subject Teacher Hub</span>
-              <span className={sidebarStyles.logoCaption}>Lesson control</span>
+              <span className={sidebarStyles.logoName}>Subject Teacher</span>
+              <span className={sidebarStyles.logoCaption}>Navigation</span>
             </div>
           )}
         </div>
@@ -101,7 +95,7 @@ const SubjectTeacherSidebar: React.FC<SubjectTeacherSidebarProps> = ({
           <div className={sidebarStyles.profileInfo}>
             <p className={sidebarStyles.profileName}>{teacher.name}</p>
             <p className={sidebarStyles.profileRole}>{teacher.subject} Teacher</p>
-            <p className={sidebarStyles.profileMeta}>{teacher.department} Department</p>
+            <p className={sidebarStyles.profileMeta}>{teacher.department}</p>
           </div>
         )}
       </div>
@@ -109,13 +103,13 @@ const SubjectTeacherSidebar: React.FC<SubjectTeacherSidebarProps> = ({
       <div className={sidebarStyles.statsCard}>
         {!collapsed ? (
           <>
-            <p className={sidebarStyles.statsTitle}>Teaching pulse</p>
+            <p className={sidebarStyles.statsTitle}>Teaching summary</p>
             <div className={sidebarStyles.statRow}>
-              <span className={sidebarStyles.statLabel}>Assigned streams</span>
+              <span className={sidebarStyles.statLabel}>Streams</span>
               <strong className={sidebarStyles.statValue}>{subjects.length}</strong>
             </div>
             <div className={sidebarStyles.statRow}>
-              <span className={sidebarStyles.statLabel}>Learners reached</span>
+              <span className={sidebarStyles.statLabel}>Learners</span>
               <strong className={sidebarStyles.statValue}>{totalLearners}</strong>
             </div>
             <div className={sidebarStyles.statRow}>
@@ -143,9 +137,6 @@ const SubjectTeacherSidebar: React.FC<SubjectTeacherSidebarProps> = ({
             {!collapsed && (
               <div className={sidebarStyles.navText}>
                 <span className={sidebarStyles.navLabel}>{item.label}</span>
-                <span className={sidebarStyles.navDescription}>
-                  {item.description}
-                </span>
               </div>
             )}
           </button>
@@ -157,11 +148,7 @@ const SubjectTeacherSidebar: React.FC<SubjectTeacherSidebarProps> = ({
           <>
             <button className={sidebarStyles.footerBtn} type="button">
               <span className={sidebarStyles.footerBtnTag}>02</span>
-              <span className={sidebarStyles.footerText}>Notifications</span>
-            </button>
-            <button className={sidebarStyles.footerBtn} type="button">
-              <span className={sidebarStyles.footerBtnTag}>CFG</span>
-              <span className={sidebarStyles.footerText}>Settings</span>
+              <span className={sidebarStyles.footerText}>Alerts</span>
             </button>
             <button className={sidebarStyles.footerBtn} type="button">
               <span className={sidebarStyles.footerBtnTag}>OUT</span>
@@ -173,9 +160,6 @@ const SubjectTeacherSidebar: React.FC<SubjectTeacherSidebarProps> = ({
             <button className={sidebarStyles.footerBtnIcon} type="button">
               NT
               <span className={sidebarStyles.notificationDot} />
-            </button>
-            <button className={sidebarStyles.footerBtnIcon} type="button">
-              CF
             </button>
             <button className={sidebarStyles.footerBtnIcon} type="button">
               LO

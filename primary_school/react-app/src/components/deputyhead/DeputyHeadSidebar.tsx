@@ -105,7 +105,9 @@ const DeputyHeadSidebar: React.FC<DeputyHeadSidebarProps> = ({
           {!collapsed && (
             <div className={sidebarStyles.logoText}>
               <span className={sidebarStyles.logoName}>Leadership Hub</span>
-              <span className={sidebarStyles.logoCaption}>School operations</span>
+              <span className={sidebarStyles.logoCaption}>
+                School operations
+              </span>
             </div>
           )}
         </div>
@@ -115,7 +117,7 @@ const DeputyHeadSidebar: React.FC<DeputyHeadSidebarProps> = ({
           onClick={onToggleCollapse}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {collapsed ? ">" : "<"}
+          ≡ {/* Hamburger icon for mobile */}
         </button>
       </div>
       <nav className={sidebarStyles.nav}>

@@ -149,37 +149,37 @@ const menuItems: Array<{
 }> = [
   {
     id: "students",
-    label: "Student records",
+    label: "Students",
     shortLabel: "SR",
-    description: "View rosters, contacts, and learner profiles.",
+    description: "View and manage class learners.",
     icon: "ST",
   },
   {
     id: "marks",
-    label: "Marks management",
+    label: "Marks",
     shortLabel: "MM",
-    description: "Capture marks and review class performance quickly.",
+    description: "Enter and review marks.",
     icon: "MK",
   },
   {
     id: "results",
-    label: "Results and reports",
+    label: "Results",
     shortLabel: "RR",
-    description: "Prepare downloadable reports for this class stream.",
+    description: "Generate class reports.",
     icon: "RP",
   },
   {
     id: "analytics",
     label: "Analytics",
     shortLabel: "AN",
-    description: "Track readiness, averages, and class-level patterns.",
+    description: "Check class performance trends.",
     icon: "AN",
   },
   {
     id: "settings",
     label: "Settings",
     shortLabel: "ST",
-    description: "Update class information and reporting preferences.",
+    description: "Update stream details.",
     icon: "CF",
   },
 ];
@@ -232,20 +232,20 @@ const ClassTeacherDashboard: React.FC = () => {
 
   const quickActions = [
     {
-      title: "Review marks",
-      detail: "Open the current grading workflow for this stream.",
+      title: "Marks",
+      detail: "Open grading.",
       icon: "MK",
       onClick: () => handleSelectTab("marks"),
     },
     {
-      title: "Generate reports",
-      detail: "Move straight into result slips and summaries.",
+      title: "Reports",
+      detail: "Prepare results.",
       icon: "RP",
       onClick: () => handleSelectTab("results"),
     },
     {
-      title: "Check analytics",
-      detail: "See class averages and readiness trends at a glance.",
+      title: "Analytics",
+      detail: "View trends.",
       icon: "AN",
       onClick: () => handleSelectTab("analytics"),
     },
@@ -253,8 +253,8 @@ const ClassTeacherDashboard: React.FC = () => {
 
   const focusItems = [
     `${students.length} learners are attached to ${streamInfo.className} ${streamInfo.name}.`,
-    `${subjects.length} subject teachers are contributing to the class plan.`,
-    `${attendanceRate}% active enrollment keeps reporting data clean this term.`,
+    `${subjects.length} subject teachers support this stream.`,
+    `${attendanceRate}% of records are active this term.`,
   ];
 
   const renderContent = () => {
@@ -366,7 +366,9 @@ const ClassTeacherDashboard: React.FC = () => {
               <img src={teacherAvatar} alt="Teacher" />
               <div>
                 <p className={styles.topBarName}>{streamInfo.classTeacher}</p>
-                <p className={styles.topBarRole}>Class Teacher</p>
+                <p className={styles.topBarRole}>
+                  {streamInfo.className} {streamInfo.name}
+                </p>
               </div>
             </div>
           </div>
@@ -377,13 +379,11 @@ const ClassTeacherDashboard: React.FC = () => {
             <div className={styles.heroCopy}>
               <span className={styles.heroEyebrow}>Today's focus</span>
               <h1>
-                Keep {streamInfo.className} {streamInfo.name} organized,
-                supported, and ready for the next reporting cycle.
+                Keep {streamInfo.className} {streamInfo.name} ready for daily
+                class work.
               </h1>
               <p>
-                The dashboard surfaces the most important class actions first,
-                making it easier to move from learner follow-up to marks review
-                and reporting without extra clicks.
+                Quick access to learners, marks, reports, and class progress.
               </p>
               <div className={styles.heroActions}>
                 {quickActions.map((action) => (
@@ -426,9 +426,7 @@ const ClassTeacherDashboard: React.FC = () => {
               <div>
                 <span className={styles.metricLabel}>Students enrolled</span>
                 <strong>{students.length}</strong>
-                <p>
-                  Complete roster visibility for student support and outreach.
-                </p>
+                <p>Current class list.</p>
               </div>
             </article>
             <article className={styles.metricCard}>
@@ -436,9 +434,7 @@ const ClassTeacherDashboard: React.FC = () => {
               <div>
                 <span className={styles.metricLabel}>Subject coverage</span>
                 <strong>{subjects.length}</strong>
-                <p>
-                  All attached subject teachers are visible from one workspace.
-                </p>
+                <p>Assigned subject teachers.</p>
               </div>
             </article>
             <article className={styles.metricCard}>
@@ -446,9 +442,7 @@ const ClassTeacherDashboard: React.FC = () => {
               <div>
                 <span className={styles.metricLabel}>Report readiness</span>
                 <strong>85%</strong>
-                <p>
-                  Most grading workflows are on track ahead of report download.
-                </p>
+                <p>Reports nearly complete.</p>
               </div>
             </article>
             <article className={styles.metricCard}>
@@ -456,9 +450,7 @@ const ClassTeacherDashboard: React.FC = () => {
               <div>
                 <span className={styles.metricLabel}>Family follow-up</span>
                 <strong>6</strong>
-                <p>
-                  Parent communication tasks remain easy to spot and act on.
-                </p>
+                <p>Pending parent follow-up.</p>
               </div>
             </article>
           </div>
