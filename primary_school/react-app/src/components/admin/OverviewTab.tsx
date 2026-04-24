@@ -1,12 +1,12 @@
-// components/admin/OverviewTab.tsx
 import React from "react";
 import styles from "./AdminDashboard.module.css";
-import { Class, Subject, Teacher } from "./types";
+import { Class, Student, Subject, Teacher } from "./types";
 
 interface OverviewTabProps {
   classes: Class[];
   subjects: Subject[];
   teachers: Teacher[];
+  students: Student[];
   onSwitchTab: (tab: string) => void;
   pill: (text: string, color: string) => string;
   avatar: (name: string, size: number) => string;
@@ -27,31 +27,9 @@ const MetricCard: React.FC<{
       borderTop: `3px solid ${accent}`,
     }}
   >
-    <p
-      style={{
-        fontSize: 10,
-        fontWeight: 700,
-        color: "var(--textF)",
-        textTransform: "uppercase",
-        letterSpacing: ".05em",
-        margin: "0 0 5px",
-      }}
-    >
-      {label}
-    </p>
-    <p
-      style={{
-        fontFamily: "var(--serif)",
-        fontSize: "2rem",
-        fontWeight: 600,
-        color: "var(--text)",
-        margin: "0 0 3px",
-        lineHeight: 1,
-      }}
-    >
-      {value}
-    </p>
-    <p style={{ fontSize: 11.5, color: "var(--textF)", margin: 0 }}>{note}</p>
+    <p style={metricLabelStyle}>{label}</p>
+    <p style={metricValueStyle}>{value}</p>
+    <p style={metricNoteStyle}>{note}</p>
   </div>
 );
 
@@ -59,40 +37,42 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   classes,
   subjects,
   teachers,
+  students,
   onSwitchTab,
   pill,
   avatar,
 }) => {
-  const totalStudents = classes.reduce((sum, c) => sum + c.students, 0);
-  const unassignedCT = classes.filter((c) => !c.classTeacherId).length;
-  const assignedCount = classes.reduce(
-    (sum, c) => sum + Object.keys(c.subjectAssignments || {}).length,
-    0,
-  );
-  const activeTeachers = teachers.filter((t) => t.status === "Active").length;
+  const unassignedCT = classes.filter((currentClass) => !currentClass.classTeacherId)
+    .length;
+  const activeTeachers = teachers.filter((teacher) => teacher.status === "Active")
+    .length;
+  const assignedSubjects = subjects.filter((subject) => subject.assignedTeacherId)
+    .length;
+  const classesWithStudents = classes.filter((currentClass) => currentClass.students > 0)
+    .length;
 
   const quickActions = [
     {
       label: "Add a new class",
-      desc: "Create a stream and assign a class teacher.",
+      desc: "Create a class with grade, optional stream, and class teacher.",
       tab: "classes",
       color: "#1a4a99",
     },
     {
+      label: "Enroll a student",
+      desc: "Place a student directly into a selected class.",
+      tab: "students",
+      color: "var(--sText)",
+    },
+    {
       label: "Add a new subject",
-      desc: "Register a subject for schedules.",
+      desc: "Capture subject name, department, and assigned teacher.",
       tab: "subjects",
       color: "var(--gold)",
     },
     {
-      label: "Assign class teacher",
-      desc: "Link a teacher as class teacher.",
-      tab: "classes",
-      color: "var(--sText)",
-    },
-    {
-      label: "Subject assignments",
-      desc: "Allocate subject teachers to classes.",
+      label: "Review class assignments",
+      desc: "Check which teachers are handling each class subject.",
       tab: "assignments",
       color: "var(--wText)",
     },
@@ -103,7 +83,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
           gap: 12,
           marginBottom: 18,
         }}
@@ -111,42 +91,35 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         <MetricCard
           label="Total classes"
           value={classes.length}
-          note="All streams"
+          note={`${classesWithStudents} with enrolled learners`}
           accent="#1a4a99"
         />
         <MetricCard
-          label="Total subjects"
+          label="Students"
+          value={students.length}
+          note="All enrolled students"
+          accent="#4a3820"
+        />
+        <MetricCard
+          label="Subjects"
           value={subjects.length}
-          note="Across school"
+          note={`${assignedSubjects} with assigned teachers`}
         />
         <MetricCard
           label="Teaching staff"
           value={teachers.length}
-          note={`${activeTeachers} active`}
+          note={`${activeTeachers} active teachers`}
           accent="var(--sText)"
         />
         <MetricCard
-          label="Students"
-          value={totalStudents}
-          note="All enrolled"
-          accent="#4a3820"
-        />
-        <MetricCard
-          label="Unassigned"
+          label="Unassigned CT"
           value={unassignedCT}
-          note="Need class teacher"
+          note="Classes needing class teachers"
           accent={unassignedCT > 0 ? "var(--dText)" : "var(--sText)"}
-        />
-        <MetricCard
-          label="Subject slots"
-          value={assignedCount}
-          note="Filled assignments"
-          accent="var(--wText)"
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        {/* Quick Actions */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.05fr .95fr", gap: 14 }}>
         <div
           style={{
             background: "#fff",
@@ -155,36 +128,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             padding: "1.3rem",
           }}
         >
-          <p
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--textMut)",
-              textTransform: "uppercase",
-              letterSpacing: ".06em",
-              margin: "0 0 1rem",
-            }}
-          >
-            Quick actions
-          </p>
+          <p style={sectionLabelStyle}>Quick actions</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {quickActions.map((action) => (
               <button
                 key={action.label}
                 onClick={() => onSwitchTab(action.tab)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "10px 12px",
-                  background: "var(--sand)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  width: "100%",
-                  transition: "box-shadow .18s, transform .18s",
-                }}
+                style={actionButtonStyle}
               >
                 <div
                   style={{
@@ -196,28 +146,11 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                   }}
                 />
                 <div>
-                  <p
-                    style={{
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      color: "var(--text)",
-                      margin: 0,
-                    }}
-                  >
-                    {action.label}
-                  </p>
-                  <p
-                    style={{ fontSize: 11, color: "var(--textMut)", margin: 0 }}
-                  >
-                    {action.desc}
-                  </p>
+                  <p style={actionLabelStyle}>{action.label}</p>
+                  <p style={actionDescStyle}>{action.desc}</p>
                 </div>
                 <svg
-                  style={{
-                    marginLeft: "auto",
-                    color: "var(--textF)",
-                    flexShrink: 0,
-                  }}
+                  style={{ marginLeft: "auto", color: "var(--textF)", flexShrink: 0 }}
                   width="13"
                   height="13"
                   viewBox="0 0 24 24"
@@ -234,7 +167,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
         </div>
 
-        {/* Class Teacher Roster */}
         <div
           style={{
             background: "#fff",
@@ -243,33 +175,26 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             padding: "1.3rem",
           }}
         >
-          <p
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--textMut)",
-              textTransform: "uppercase",
-              letterSpacing: ".06em",
-              margin: "0 0 1rem",
-            }}
-          >
-            Class teacher roster
-          </p>
-          {classes.map((cls) => {
-            const ct = teachers.find((t) => t.id === cls.classTeacherId);
+          <p style={sectionLabelStyle}>Class teacher roster</p>
+          {classes.map((currentClass) => {
+            const classTeacher = teachers.find(
+              (teacher) => teacher.id === currentClass.classTeacherId,
+            );
             return (
               <div
-                key={cls.id}
+                key={currentClass.id}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 9,
-                  marginBottom: 9,
+                  marginBottom: 10,
                 }}
               >
-                {ct ? (
+                {classTeacher ? (
                   <div
-                    dangerouslySetInnerHTML={{ __html: avatar(ct.name, 26) }}
+                    dangerouslySetInnerHTML={{
+                      __html: avatar(classTeacher.name, 26),
+                    }}
                   />
                 ) : (
                   <div
@@ -284,27 +209,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                   />
                 )}
                 <div style={{ flex: 1 }}>
-                  <p
-                    style={{
-                      fontSize: 12.5,
-                      fontWeight: 600,
-                      color: "var(--text)",
-                      margin: 0,
-                    }}
-                  >
-                    {cls.name}
-                  </p>
-                  <p
-                    style={{ fontSize: 11, color: "var(--textMut)", margin: 0 }}
-                  >
-                    {ct ? ct.name : "No class teacher"}
+                  <p style={rosterPrimaryStyle}>{currentClass.name}</p>
+                  <p style={rosterMetaStyle}>
+                    {classTeacher ? classTeacher.name : "No class teacher"}
                   </p>
                 </div>
                 <span
                   dangerouslySetInnerHTML={{
                     __html: pill(
-                      ct ? "Assigned" : "Vacant",
-                      ct ? "green" : "red",
+                      classTeacher ? "Assigned" : "Vacant",
+                      classTeacher ? "green" : "red",
                     ),
                   }}
                 />
@@ -315,4 +229,76 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       </div>
     </div>
   );
+};
+
+const metricLabelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--textF)",
+  textTransform: "uppercase",
+  letterSpacing: ".05em",
+  margin: "0 0 5px",
+};
+
+const metricValueStyle: React.CSSProperties = {
+  fontFamily: "var(--serif)",
+  fontSize: "2rem",
+  fontWeight: 600,
+  color: "var(--text)",
+  margin: "0 0 3px",
+  lineHeight: 1,
+};
+
+const metricNoteStyle: React.CSSProperties = {
+  fontSize: 11.5,
+  color: "var(--textF)",
+  margin: 0,
+};
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--textMut)",
+  textTransform: "uppercase",
+  letterSpacing: ".06em",
+  margin: "0 0 1rem",
+};
+
+const actionButtonStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "10px 12px",
+  background: "var(--sand)",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  cursor: "pointer",
+  textAlign: "left",
+  width: "100%",
+};
+
+const actionLabelStyle: React.CSSProperties = {
+  fontSize: 12.5,
+  fontWeight: 700,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const actionDescStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--textMut)",
+  margin: 0,
+};
+
+const rosterPrimaryStyle: React.CSSProperties = {
+  fontSize: 12.5,
+  fontWeight: 600,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const rosterMetaStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--textMut)",
+  margin: 0,
 };

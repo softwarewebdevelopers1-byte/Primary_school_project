@@ -1,4 +1,3 @@
-// components/admin/ClassesTab.tsx
 import React, { useState } from "react";
 import styles from "./AdminDashboard.module.css";
 import { Class, Teacher, Subject } from "./types";
@@ -30,361 +29,136 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
 }) => {
   const [search, setSearch] = useState("");
 
-  const filteredClasses = classes.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.grade.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredClasses = classes.filter((currentClass) => {
+    const query = search.toLowerCase();
+    return (
+      currentClass.name.toLowerCase().includes(query) ||
+      currentClass.grade.toLowerCase().includes(query) ||
+      (currentClass.stream || "").toLowerCase().includes(query)
+    );
+  });
 
-  const openAddClass = () => {
+  const openClassModal = (classId?: string) => {
+    const currentClass = classId
+      ? classes.find((item) => item.id === classId)
+      : null;
+
     showModal(
       <div>
-        <div
-          style={{
-            padding: "18px 22px 14px",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: "var(--serif)",
-              fontSize: "1.3rem",
-              fontWeight: 600,
-              color: "var(--text)",
-            }}
-          >
-            Add new class
+        <div style={headerStyle}>
+          <h3 style={titleStyle}>
+            {currentClass ? "Update class" : "Add new class"}
           </h3>
-          <button
-            onClick={closeModal}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: "var(--sand)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 700,
-              color: "var(--textMut)",
-            }}
-          >
+          <button onClick={closeModal} style={closeButtonStyle}>
             ×
           </button>
         </div>
+
         <div style={{ padding: "18px 22px 22px" }}>
           <div style={{ marginBottom: "1rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 11.5,
-                fontWeight: 700,
-                color: "var(--textM)",
-                letterSpacing: ".03em",
-                marginBottom: 5,
-              }}
-            >
-              Class name <span style={{ color: "var(--dText)" }}>*</span>
+            <label style={labelStyle}>
+              Grade <span style={{ color: "var(--dText)" }}>*</span>
             </label>
             <input
-              id="clsName"
+              id="classGrade"
               type="text"
-              placeholder="e.g. Grade 7A"
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13.5,
-                color: "var(--text)",
-                background: "var(--cream)",
-              }}
+              defaultValue={currentClass?.grade || ""}
+              placeholder="e.g. 7"
+              style={inputStyle}
             />
           </div>
+
           <div style={{ marginBottom: "1rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 11.5,
-                fontWeight: 700,
-                color: "var(--textM)",
-                letterSpacing: ".03em",
-                marginBottom: 5,
-              }}
-            >
-              Grade / Year <span style={{ color: "var(--dText)" }}>*</span>
-            </label>
+            <label style={labelStyle}>Stream</label>
             <input
-              id="clsGrade"
+              id="classStream"
               type="text"
-              placeholder="e.g. Grade 7"
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13.5,
-                color: "var(--text)",
-                background: "var(--cream)",
-              }}
+              defaultValue={currentClass?.stream || ""}
+              placeholder="e.g. South"
+              style={inputStyle}
             />
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-          >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  color: "var(--textM)",
-                  letterSpacing: ".03em",
-                  marginBottom: 5,
-                }}
-              >
-                Stream
-              </label>
-              <input
-                id="clsStream"
-                type="text"
-                placeholder="e.g. A, B, C"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 8,
-                  fontSize: 13.5,
-                  color: "var(--text)",
-                  background: "var(--cream)",
-                }}
-              />
-            </div>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  color: "var(--textM)",
-                  letterSpacing: ".03em",
-                  marginBottom: 5,
-                }}
-              >
-                Capacity
-              </label>
-              <input
-                id="clsCap"
-                type="number"
-                placeholder="40"
-                defaultValue="40"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 8,
-                  fontSize: 13.5,
-                  color: "var(--text)",
-                  background: "var(--cream)",
-                }}
-              />
-            </div>
+
+          <div>
+            <label style={labelStyle}>Class teacher</label>
+            <select
+              id="classTeacher"
+              defaultValue={currentClass?.classTeacherId || ""}
+              style={inputStyle}
+            >
+              <option value="">No class teacher yet</option>
+              {teachers
+                .filter((teacher) => teacher.status === "Active")
+                .map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name} ({teacher.department})
+                  </option>
+                ))}
+            </select>
           </div>
+
           <div
             style={{
               display: "flex",
               gap: 10,
               justifyContent: "flex-end",
-              marginTop: 6,
+              marginTop: "1.5rem",
             }}
           >
-            <button
-              onClick={closeModal}
-              style={{
-                padding: "8px 16px",
-                background: "var(--sand)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--textM)",
-                cursor: "pointer",
-              }}
-            >
+            <button onClick={closeModal} style={secondaryButtonStyle}>
               Cancel
             </button>
             <button
               onClick={() => {
-                const name = (
-                  document.getElementById("clsName") as HTMLInputElement
-                )?.value;
                 const grade = (
-                  document.getElementById("clsGrade") as HTMLInputElement
-                )?.value;
+                  document.getElementById("classGrade") as HTMLInputElement
+                )?.value.trim();
                 const stream = (
-                  document.getElementById("clsStream") as HTMLInputElement
+                  document.getElementById("classStream") as HTMLInputElement
+                )?.value.trim();
+                const classTeacherId = (
+                  document.getElementById("classTeacher") as HTMLSelectElement
                 )?.value;
-                const capacity = parseInt(
-                  (document.getElementById("clsCap") as HTMLInputElement)
-                    ?.value || "40",
-                );
-                if (!name || !grade) {
-                  alert("Class name and grade are required.");
+
+                if (!grade) {
+                  alert("Grade is required.");
                   return;
                 }
-                const newClass: Class = {
-                  id:
-                    "CL" + Math.random().toString(36).slice(2, 7).toUpperCase(),
-                  name,
-                  grade,
-                  stream,
-                  capacity,
-                  students: 0,
-                  classTeacherId: "",
-                  subjectAssignments: {},
-                };
-                onUpdateClasses([...classes, newClass]);
-                closeModal();
-                onUpdateSidebarStats();
-              }}
-              style={{
-                padding: "8px 16px",
-                background: "var(--gold)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Create class
-            </button>
-          </div>
-        </div>
-      </div>,
-    );
-  };
 
-  const openAssignCT = (classId: string) => {
-    const cls = classes.find((c) => c.id === classId);
-    showModal(
-      <div>
-        <div
-          style={{
-            padding: "18px 22px 14px",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: "var(--serif)",
-              fontSize: "1.3rem",
-              fontWeight: 600,
-              color: "var(--text)",
-            }}
-          >
-            Class teacher · {cls?.name}
-          </h3>
-          <button
-            onClick={closeModal}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: "var(--sand)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 700,
-              color: "var(--textMut)",
-            }}
-          >
-            ×
-          </button>
-        </div>
-        <div style={{ padding: "18px 22px 22px" }}>
-          <p
-            style={{
-              fontSize: 13,
-              color: "var(--textMut)",
-              lineHeight: 1.6,
-              marginBottom: "1.1rem",
-            }}
-          >
-            Select the teacher responsible for pastoral care and admin oversight
-            of <strong style={{ color: "var(--text)" }}>{cls?.name}</strong>.
-          </p>
-          <select
-            id="ctSel"
-            style={{
-              width: "100%",
-              padding: "10px 34px 10px 12px",
-              border: "1.5px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 13,
-              color: "var(--text)",
-              background: "var(--cream)",
-              cursor: "pointer",
-              marginBottom: "1rem",
-            }}
-          >
-            <option value="">— Select teacher —</option>
-            {teachers
-              .filter((t) => t.status === "Active")
-              .map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.department})
-                </option>
-              ))}
-          </select>
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button
-              onClick={closeModal}
-              style={{
-                padding: "8px 16px",
-                background: "var(--sand)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--textM)",
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                const tid = (
-                  document.getElementById("ctSel") as HTMLSelectElement
-                )?.value;
-                if (!tid) return;
-                const updatedClasses = classes.map((c) =>
-                  c.id === classId ? { ...c, classTeacherId: tid } : c,
-                );
+                const name = `Grade ${grade}${stream ? ` ${stream}` : ""}`;
+                const nextClass: Class = currentClass
+                  ? {
+                      ...currentClass,
+                      grade,
+                      stream,
+                      name,
+                      classTeacherId,
+                    }
+                  : {
+                      id:
+                        "CL" +
+                        Math.random().toString(36).slice(2, 7).toUpperCase(),
+                      grade,
+                      stream,
+                      name,
+                      students: 0,
+                      classTeacherId,
+                      subjectAssignments: {},
+                    };
+
+                const updatedClasses = currentClass
+                  ? classes.map((item) =>
+                      item.id === currentClass.id ? nextClass : item,
+                    )
+                  : [...classes, nextClass];
+
                 onUpdateClasses(updatedClasses);
                 closeModal();
                 onUpdateSidebarStats();
               }}
-              style={{
-                padding: "8px 16px",
-                background: "var(--gold)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              style={primaryButtonStyle}
             >
-              Confirm assignment
+              {currentClass ? "Save changes" : "Create class"}
             </button>
           </div>
         </div>
@@ -392,19 +166,23 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     );
   };
 
+  const openAssignCT = (classId: string) => openClassModal(classId);
+
   const confirmRemoveCT = (
     classId: string,
-    ctName: string,
+    teacherName: string,
     className: string,
   ) => {
     showConfirm(
-      `Remove <strong>${ctName}</strong> as class teacher of <strong>${className}</strong>?`,
+      `Remove <strong>${teacherName}</strong> as class teacher of <strong>${className}</strong>?`,
       () => {
-        const updatedClasses = classes.map((c) =>
-          c.id === classId ? { ...c, classTeacherId: "" } : c,
+        onUpdateClasses(
+          classes.map((currentClass) =>
+            currentClass.id === classId
+              ? { ...currentClass, classTeacherId: "" }
+              : currentClass,
+          ),
         );
-        onUpdateClasses(updatedClasses);
-        closeModal();
         onUpdateSidebarStats();
       },
     );
@@ -412,10 +190,9 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
 
   const confirmDeleteClass = (classId: string, className: string) => {
     showConfirm(
-      `Permanently delete <strong>${className}</strong>? All subject assignments will also be removed.`,
+      `Delete <strong>${className}</strong>? Students currently enrolled in this dummy frontend will lose the class link.`,
       () => {
-        onUpdateClasses(classes.filter((c) => c.id !== classId));
-        closeModal();
+        onUpdateClasses(classes.filter((currentClass) => currentClass.id !== classId));
         onUpdateSidebarStats();
       },
       true,
@@ -435,61 +212,17 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
         }}
       >
         <div>
-          <p
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--gold)",
-              textTransform: "uppercase",
-              letterSpacing: ".09em",
-              margin: "0 0 3px",
-            }}
-          >
-            Classes
-          </p>
-          <h2
-            style={{
-              fontFamily: "var(--serif)",
-              fontSize: "1.8rem",
-              fontWeight: 600,
-              color: "var(--text)",
-              margin: 0,
-            }}
-          >
-            Class management
-          </h2>
+          <p style={eyebrowStyle}>Classes</p>
+          <h2 style={pageTitleStyle}>Class management</h2>
         </div>
-        <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 9, alignItems: "center", flexWrap: "wrap" }}>
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search classes…"
-            style={{
-              padding: "8px 13px",
-              border: "1.5px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12.5,
-              color: "var(--text)",
-              background: "var(--cream)",
-              width: 190,
-            }}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by grade or stream"
+            style={{ ...inputStyle, width: 210 }}
           />
-          <button
-            onClick={openAddClass}
-            style={{
-              padding: "8px 15px",
-              background: "var(--gold)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <button onClick={() => openClassModal()} style={primaryButtonStyle}>
             + Add class
           </button>
         </div>
@@ -506,117 +239,52 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--sand)" }}>
-              {[
-                "Class",
-                "Grade",
-                "Students / Cap.",
-                "Class Teacher",
-                "Subjects",
-                "Actions",
-              ].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    padding: "9px 13px",
-                    textAlign: "left",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "var(--textMut)",
-                    letterSpacing: ".06em",
-                    textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
+              {["Class", "Grade", "Students", "Class Teacher", "Subjects", "Actions"].map(
+                (heading) => (
+                  <th key={heading} style={tableHeadingStyle}>
+                    {heading}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
-            {filteredClasses.map((cls) => {
-              const ct = teachers.find((t) => t.id === cls.classTeacherId);
-              const filled = Object.keys(cls.subjectAssignments || {}).length;
+            {filteredClasses.map((currentClass) => {
+              const classTeacher = teachers.find(
+                (teacher) => teacher.id === currentClass.classTeacherId,
+              );
+              const assignedSubjects = Object.keys(
+                currentClass.subjectAssignments || {},
+              ).length;
+
               return (
                 <tr
-                  key={cls.id}
+                  key={currentClass.id}
                   style={{ borderTop: "1px solid var(--borderL)" }}
                 >
                   <td style={{ padding: "10px 13px" }}>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "var(--text)",
-                        margin: 0,
-                      }}
-                    >
-                      {cls.name}
+                    <p style={rowPrimaryTextStyle}>{currentClass.name}</p>
+                    <p style={rowMetaTextStyle}>
+                      {currentClass.stream
+                        ? `Stream ${currentClass.stream}`
+                        : "No stream added"}
                     </p>
-                    {cls.stream && (
-                      <p
-                        style={{
-                          fontSize: 10.5,
-                          color: "var(--textMut)",
-                          margin: 0,
-                        }}
-                      >
-                        Stream {cls.stream}
-                      </p>
-                    )}
                   </td>
-                  <td
-                    style={{
-                      padding: "10px 13px",
-                      fontSize: 12.5,
-                      color: "var(--textM)",
-                    }}
-                  >
-                    {cls.grade}
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 13px",
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: "var(--text)",
-                    }}
-                  >
-                    {cls.students} / {cls.capacity}
+                  <td style={bodyTextStyle}>{currentClass.grade}</td>
+                  <td style={{ ...bodyTextStyle, fontWeight: 700, color: "var(--text)" }}>
+                    {currentClass.students}
                   </td>
                   <td style={{ padding: "10px 13px" }}>
-                    {ct ? (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
+                    {classTeacher ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div
                           dangerouslySetInnerHTML={{
-                            __html: avatar(ct.name, 26),
+                            __html: avatar(classTeacher.name, 26),
                           }}
                         />
                         <div>
-                          <p
-                            style={{
-                              fontSize: 12.5,
-                              fontWeight: 600,
-                              color: "var(--text)",
-                              margin: 0,
-                            }}
-                          >
-                            {ct.name}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 10.5,
-                              color: "var(--textMut)",
-                              margin: 0,
-                            }}
-                          >
-                            {ct.department}
-                          </p>
+                          <p style={rowPrimaryTextStyle}>{classTeacher.name}</p>
+                          <p style={rowMetaTextStyle}>{classTeacher.department}</p>
                         </div>
                       </div>
                     ) : (
@@ -627,104 +295,60 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                       />
                     )}
                   </td>
-                  <td style={{ padding: "10px 13px" }}>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 7 }}
-                    >
-                      <div
-                        style={{
-                          width: 65,
-                          height: 6,
-                          background: "var(--sand)",
-                          borderRadius: 3,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: `${Math.min(100, (filled / Math.max(subjects.length, 1)) * 100)}%`,
-                            height: "100%",
-                            background: "var(--gold)",
-                            borderRadius: 3,
-                          }}
-                        />
-                      </div>
-                      <span style={{ fontSize: 11.5, color: "var(--textMut)" }}>
-                        {filled}/{subjects.length}
-                      </span>
-                    </div>
+                  <td style={bodyTextStyle}>
+                    {assignedSubjects}/{subjects.length}
                   </td>
                   <td style={{ padding: "10px 13px" }}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <button
-                        onClick={() => openAssignCT(cls.id)}
-                        style={{
-                          padding: "3px 11px",
-                          background: "transparent",
-                          border: "1px solid var(--border)",
-                          borderRadius: 20,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: "var(--textMut)",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                        }}
+                        onClick={() => openAssignCT(currentClass.id)}
+                        style={chipButtonStyle}
                       >
-                        {ct ? "Change CT" : "Assign CT"}
+                        {classTeacher ? "Change CT" : "Assign CT"}
                       </button>
-                      {ct && (
+                      <button
+                        onClick={() => openClassModal(currentClass.id)}
+                        style={chipButtonStyle}
+                      >
+                        Edit
+                      </button>
+                      {classTeacher && (
                         <button
                           onClick={() =>
-                            confirmRemoveCT(cls.id, ct.name, cls.name)
+                            confirmRemoveCT(
+                              currentClass.id,
+                              classTeacher.name,
+                              currentClass.name,
+                            )
                           }
                           style={{
-                            padding: "3px 10px",
+                            ...chipButtonStyle,
                             background: "var(--dBg)",
                             border: "none",
-                            borderRadius: 20,
-                            fontSize: 11,
-                            fontWeight: 700,
                             color: "var(--dText)",
-                            cursor: "pointer",
                           }}
                         >
                           Remove CT
                         </button>
                       )}
                       <button
-                        onClick={() => confirmDeleteClass(cls.id, cls.name)}
+                        onClick={() =>
+                          confirmDeleteClass(currentClass.id, currentClass.name)
+                        }
                         style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 6,
+                          ...chipButtonStyle,
                           background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          color: "var(--textF)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          color: "var(--dText)",
                         }}
                       >
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.9"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                        </svg>
+                        Delete
                       </button>
                     </div>
                   </td>
                 </tr>
               );
             })}
+
             {filteredClasses.length === 0 && (
               <tr>
                 <td
@@ -732,7 +356,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                   style={{
                     padding: "2.5rem",
                     textAlign: "center",
-                    fontSize: "1.2rem",
+                    fontSize: "1.1rem",
                     color: "var(--textF)",
                   }}
                 >
@@ -745,4 +369,130 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
       </div>
     </div>
   );
+};
+
+const headerStyle: React.CSSProperties = {
+  padding: "18px 22px 14px",
+  borderBottom: "1px solid var(--border)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const titleStyle: React.CSSProperties = {
+  fontFamily: "var(--serif)",
+  fontSize: "1.3rem",
+  fontWeight: 600,
+  color: "var(--text)",
+};
+
+const closeButtonStyle: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: 7,
+  background: "var(--sand)",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 16,
+  fontWeight: 700,
+  color: "var(--textMut)",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 11.5,
+  fontWeight: 700,
+  color: "var(--textM)",
+  letterSpacing: ".03em",
+  marginBottom: 5,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  border: "1.5px solid var(--border)",
+  borderRadius: 8,
+  fontSize: 13.5,
+  color: "var(--text)",
+  background: "var(--cream)",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  background: "var(--sand)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--textM)",
+  cursor: "pointer",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  background: "var(--gold)",
+  color: "#fff",
+  border: "none",
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--gold)",
+  textTransform: "uppercase",
+  letterSpacing: ".09em",
+  margin: "0 0 3px",
+};
+
+const pageTitleStyle: React.CSSProperties = {
+  fontFamily: "var(--serif)",
+  fontSize: "1.8rem",
+  fontWeight: 600,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const tableHeadingStyle: React.CSSProperties = {
+  padding: "9px 13px",
+  textAlign: "left",
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--textMut)",
+  letterSpacing: ".06em",
+  textTransform: "uppercase",
+};
+
+const rowPrimaryTextStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const rowMetaTextStyle: React.CSSProperties = {
+  fontSize: 10.5,
+  color: "var(--textMut)",
+  margin: 0,
+};
+
+const bodyTextStyle: React.CSSProperties = {
+  padding: "10px 13px",
+  fontSize: 12.5,
+  color: "var(--textM)",
+};
+
+const chipButtonStyle: React.CSSProperties = {
+  padding: "3px 11px",
+  background: "var(--sand)",
+  border: "1px solid var(--border)",
+  borderRadius: 20,
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--textMut)",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
 };

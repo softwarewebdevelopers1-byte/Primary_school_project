@@ -13,20 +13,29 @@ export interface Teacher {
 export interface Subject {
   id: string;
   name: string;
-  code: string;
   department: string;
-  periods: number;
+  assignedTeacherId: string;
 }
 
 export interface Class {
   id: string;
   name: string;
   grade: string;
-  stream: string;
-  capacity: number;
+  stream?: string;
   students: number;
-  classTeacherId: string;
+  classTeacherId?: string;
   subjectAssignments: Record<string, string>;
+}
+
+export interface Student {
+  id: string;
+  admissionNo: string;
+  name: string;
+  gender: string;
+  guardianName: string;
+  guardianPhone: string;
+  classId: string;
+  status?: string;
 }
 
 export interface Assignment {

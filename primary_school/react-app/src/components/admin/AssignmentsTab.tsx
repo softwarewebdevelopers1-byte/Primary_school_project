@@ -1,6 +1,5 @@
-// components/admin/AssignmentsTab.tsx
-import React, { useState } from "react";
-import { Class, Teacher, Subject } from "./types";
+import React, { useMemo, useState } from "react";
+import { Class, Subject, Teacher } from "./types";
 
 interface AssignmentsTabProps {
   classes: Class[];
@@ -19,55 +18,81 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
   avatar,
   pill,
 }) => {
-  const [selectedClassId, setSelectedClassId] = useState(classes[0]?.id || "");
-  const [pendingAssignments, setPendingAssignments] = useState<
-    Record<string, string>
-  >({});
+  const [search, setSearch] = useState("");
 
-  const currentClass = classes.find((c) => c.id === selectedClassId);
-  const ct = teachers.find((t) => t.id === currentClass?.classTeacherId);
-  const filledCount = currentClass
-    ? Object.keys(currentClass.subjectAssignments || {}).length
-    : 0;
+  const teacherLookup = useMemo(
+    () =>
+      teachers.reduce<Record<string, Teacher>>((acc, teacher) => {
+        acc[teacher.id] = teacher;
+        return acc;
+      }, {}),
+    [teachers],
+  );
 
-  const handleAssignmentChange = (subjectId: string, teacherId: string) => {
-    setPendingAssignments((prev) => ({ ...prev, [subjectId]: teacherId }));
-  };
+  const subjectLookup = useMemo(
+    () =>
+      subjects.reduce<Record<string, Subject>>((acc, subject) => {
+        acc[subject.id] = subject;
+        return acc;
+      }, {}),
+    [subjects],
+  );
 
-  const handleClearAssignment = (subjectId: string) => {
-    const newAssignments = { ...currentClass?.subjectAssignments };
-    delete newAssignments[subjectId];
-    const updatedClasses = classes.map((c) =>
-      c.id === selectedClassId
-        ? { ...c, subjectAssignments: newAssignments }
-        : c,
+  const filteredClasses = classes.filter((currentClass) => {
+    const query = search.toLowerCase();
+    if (!query) {
+      return true;
+    }
+
+    const assignmentText = Object.entries(currentClass.subjectAssignments || {})
+      .map(([subjectId, teacherId]) => {
+        const subject = subjectLookup[subjectId];
+        const teacher = teacherLookup[teacherId];
+        return `${subject?.name || ""} ${teacher?.name || ""} ${teacher?.department || ""}`;
+      })
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      currentClass.name.toLowerCase().includes(query) ||
+      currentClass.grade.toLowerCase().includes(query) ||
+      (currentClass.stream || "").toLowerCase().includes(query) ||
+      assignmentText.includes(query)
     );
+  });
+
+  const updateAssignment = (
+    classId: string,
+    subjectId: string,
+    teacherId: string,
+  ) => {
+    const updatedClasses = classes.map((currentClass) => {
+      if (currentClass.id !== classId) {
+        return currentClass;
+      }
+
+      const nextAssignments = { ...(currentClass.subjectAssignments || {}) };
+
+      if (teacherId) {
+        nextAssignments[subjectId] = teacherId;
+      } else {
+        delete nextAssignments[subjectId];
+      }
+
+      return {
+        ...currentClass,
+        subjectAssignments: nextAssignments,
+      };
+    });
+
     onUpdateClasses(updatedClasses);
-    const newPending = { ...pendingAssignments };
-    delete newPending[subjectId];
-    setPendingAssignments(newPending);
   };
 
-  const handleSaveAssignments = () => {
-    const updatedSubjects = {
-      ...currentClass?.subjectAssignments,
-      ...pendingAssignments,
-    };
-    const updatedClasses = classes.map((c) =>
-      c.id === selectedClassId
-        ? { ...c, subjectAssignments: updatedSubjects }
-        : c,
-    );
-    onUpdateClasses(updatedClasses);
-    setPendingAssignments({});
-    alert("Assignments saved successfully!");
-  };
-
-  const handleDiscard = () => {
-    setPendingAssignments({});
-  };
-
-  const hasChanges = Object.keys(pendingAssignments).length > 0;
+  const totalAssignments = classes.reduce(
+    (count, currentClass) =>
+      count + Object.keys(currentClass.subjectAssignments || {}).length,
+    0,
+  );
 
   return (
     <div className="anim">
@@ -82,400 +107,293 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
         }}
       >
         <div>
-          <p
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--gold)",
-              textTransform: "uppercase",
-              letterSpacing: ".09em",
-              margin: "0 0 3px",
-            }}
-          >
-            Assignments
-          </p>
-          <h2
-            style={{
-              fontFamily: "var(--serif)",
-              fontSize: "1.8rem",
-              fontWeight: 600,
-              color: "var(--text)",
-              margin: 0,
-            }}
-          >
-            Subject assignments
-          </h2>
+          <p style={eyebrowStyle}>Assignments</p>
+          <h2 style={pageTitleStyle}>Subject assignments</h2>
         </div>
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search class, subject, or teacher"
+          style={{ ...inputStyle, width: 260 }}
+        />
       </div>
 
       <div
         style={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: 12,
-          marginBottom: 15,
-          flexWrap: "wrap",
-          alignItems: "center",
+          marginBottom: 14,
         }}
       >
-        <select
-          value={selectedClassId}
-          onChange={(e) => {
-            setSelectedClassId(e.target.value);
-            setPendingAssignments({});
-          }}
-          style={{
-            padding: "9px 34px 9px 12px",
-            border: "1.5px solid var(--border)",
-            borderRadius: 8,
-            fontSize: 13,
-            color: "var(--text)",
-            background: "var(--cream)",
-            cursor: "pointer",
-            minWidth: 180,
-          }}
-        >
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <div
-            style={{
-              background: "var(--sand)",
-              borderRadius: 8,
-              padding: "7px 13px",
-              display: "flex",
-              gap: 10,
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontSize: 11.5, color: "var(--textMut)" }}>
-              Class teacher:
-            </span>
-            {ct ? (
-              <>
-                <div
-                  dangerouslySetInnerHTML={{ __html: avatar(ct.name, 22) }}
-                />
-                <span
-                  style={{
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    color: "var(--text)",
-                  }}
-                >
-                  {ct.name}
-                </span>
-              </>
-            ) : (
-              <span
-                dangerouslySetInnerHTML={{ __html: pill("Unassigned", "red") }}
-              />
-            )}
-          </div>
-          <div
-            style={{
-              background: "var(--sand)",
-              borderRadius: 8,
-              padding: "7px 13px",
-            }}
-          >
-            <span style={{ fontSize: 11.5, color: "var(--textMut)" }}>
-              Coverage:{" "}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--serif)",
-                fontSize: 15,
-                fontWeight: 600,
-                color:
-                  filledCount === subjects.length
-                    ? "var(--sText)"
-                    : "var(--wText)",
-              }}
-            >
-              {filledCount}/{subjects.length}
-            </span>
-          </div>
-        </div>
-
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          {hasChanges && (
-            <button
-              onClick={handleDiscard}
-              style={{
-                padding: "8px 14px",
-                background: "var(--sand)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 12.5,
-                fontWeight: 600,
-                color: "var(--textM)",
-                cursor: "pointer",
-              }}
-            >
-              Discard
-            </button>
-          )}
-          <button
-            onClick={handleSaveAssignments}
-            style={{
-              padding: "8px 17px",
-              background: "var(--gold)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: "pointer",
-              minWidth: 130,
-            }}
-          >
-            Save assignments
-          </button>
-        </div>
+        <StatCard label="Classes" value={classes.length} />
+        <StatCard label="Subjects" value={subjects.length} accent="#1a4a99" />
+        <StatCard
+          label="Live assignments"
+          value={totalAssignments}
+          accent="var(--sText)"
+        />
       </div>
 
-      {currentClass && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid var(--border)",
-            borderRadius: 13,
-            overflow: "hidden",
-          }}
-        >
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: 14,
+        }}
+      >
+        {filteredClasses.map((currentClass) => (
           <div
+            key={currentClass.id}
             style={{
-              padding: "10px 15px",
-              background: "var(--cg)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              background: "#fff",
+              border: "1px solid var(--border)",
+              borderRadius: 13,
+              overflow: "hidden",
             }}
           >
-            <p
+            <div
               style={{
-                fontFamily: "var(--serif)",
-                fontSize: "1.1rem",
-                fontWeight: 600,
-                color: "#fdf9f2",
-                margin: 0,
+                padding: "14px 16px",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
               }}
             >
-              {currentClass.name} — Subject Assignments
-            </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "#9eb8aa",
-                margin: 0,
-              }}
-            >
-              {currentClass.students} students · Term 1, 2024
-            </p>
-          </div>
+              <div>
+                <p style={cardTitleStyle}>{currentClass.name}</p>
+                <p style={rowMetaTextStyle}>
+                  {currentClass.stream
+                    ? `Grade ${currentClass.grade} • Stream ${currentClass.stream}`
+                    : `Grade ${currentClass.grade}`}
+                </p>
+              </div>
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: pill(
+                    Object.keys(currentClass.subjectAssignments || {}).length ===
+                      subjects.length
+                      ? "Complete"
+                      : "In progress",
+                    Object.keys(currentClass.subjectAssignments || {}).length ===
+                      subjects.length
+                      ? "green"
+                      : "amber",
+                  ),
+                }}
+              />
+            </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--sand)" }}>
-                {[
-                  "Subject",
-                  "Dept.",
-                  "Periods",
-                  "Assigned teacher",
-                  "Status",
-                  "Clear",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      padding: "9px 13px",
-                      textAlign: "left",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: "var(--textMut)",
-                      letterSpacing: ".06em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+            <div style={{ padding: "14px 16px" }}>
               {subjects.map((subject) => {
-                const currentAssignment =
-                  currentClass.subjectAssignments?.[subject.id];
-                const pendingAssignment = pendingAssignments[subject.id];
                 const assignedTeacherId =
-                  pendingAssignment !== undefined
-                    ? pendingAssignment
-                    : currentAssignment;
-                const assignedTeacher = teachers.find(
-                  (t) => t.id === assignedTeacherId,
-                );
-                const hasChange =
-                  pendingAssignment !== undefined &&
-                  pendingAssignment !== currentAssignment;
+                  currentClass.subjectAssignments?.[subject.id] || "";
+                const assignedTeacher = assignedTeacherId
+                  ? teacherLookup[assignedTeacherId]
+                  : undefined;
 
                 return (
-                  <tr
-                    key={subject.id}
+                  <div
+                    key={`${currentClass.id}-${subject.id}`}
                     style={{
-                      borderTop: "1px solid var(--borderL)",
-                      background: hasChange ? "var(--goldP)" : "transparent",
+                      padding: "10px 0",
+                      borderTop:
+                        subject.id === subjects[0]?.id
+                          ? "none"
+                          : "1px solid var(--borderL)",
                     }}
                   >
-                    <td style={{ padding: "10px 13px" }}>
-                      <p
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 700,
-                          color: "var(--text)",
-                          margin: 0,
-                        }}
-                      >
-                        {subject.name}
-                      </p>
-                      <p
-                        style={{
-                          fontSize: 10.5,
-                          color: "var(--textMut)",
-                          margin: 0,
-                        }}
-                      >
-                        {subject.code}
-                      </p>
-                    </td>
-                    <td
+                    <div
                       style={{
-                        padding: "10px 13px",
-                        fontSize: 12,
-                        color: "var(--textMut)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 8,
                       }}
                     >
-                      {subject.department}
-                    </td>
-                    <td
-                      style={{
-                        padding: "10px 13px",
-                        fontSize: 15,
-                        fontWeight: 600,
-                        color: "var(--text)",
-                      }}
-                    >
-                      {subject.periods}
-                    </td>
-                    <td style={{ padding: "10px 13px", minWidth: 210 }}>
-                      <select
-                        value={assignedTeacherId || ""}
-                        onChange={(e) =>
-                          handleAssignmentChange(subject.id, e.target.value)
-                        }
-                        style={{
-                          width: "100%",
-                          padding: "7px 30px 7px 10px",
-                          border: `1.5px solid ${hasChange ? "var(--gold)" : "var(--border)"}`,
-                          borderRadius: 7,
-                          fontSize: 12.5,
-                          color: assignedTeacherId
-                            ? "var(--text)"
-                            : "var(--textF)",
-                          background: "var(--cream)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <option value="">— Unassigned —</option>
-                        {teachers
-                          .filter((t) => t.status === "Active")
-                          .map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name} ({t.department})
-                            </option>
-                          ))}
-                      </select>
-                      {hasChange && (
-                        <p
-                          style={{
-                            fontSize: 9.5,
-                            color: "var(--gold)",
-                            margin: "2px 0 0",
-                            fontWeight: 700,
-                          }}
-                        >
-                          Unsaved change
-                        </p>
-                      )}
-                    </td>
-                    <td style={{ padding: "10px 13px" }}>
+                      <div>
+                        <p style={rowPrimaryTextStyle}>{subject.name}</p>
+                        <p style={rowMetaTextStyle}>{subject.department}</p>
+                      </div>
                       {assignedTeacher ? (
                         <div
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 7,
+                            gap: 8,
+                            minWidth: 0,
                           }}
                         >
                           <div
                             dangerouslySetInnerHTML={{
-                              __html: avatar(assignedTeacher.name, 22),
+                              __html: avatar(assignedTeacher.name, 26),
                             }}
                           />
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 9px",
-                              borderRadius: 12,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              background: "var(--sBg)",
-                              color: "var(--sText)",
-                            }}
-                          >
-                            Assigned
-                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={rowPrimaryTextStyle}>
+                              {assignedTeacher.name}
+                            </p>
+                            <p style={rowMetaTextStyle}>
+                              {assignedTeacher.department}
+                            </p>
+                          </div>
                         </div>
                       ) : (
                         <span
                           dangerouslySetInnerHTML={{
-                            __html: pill("Vacant", "red"),
+                            __html: pill("Unassigned", "red"),
                           }}
                         />
                       )}
-                    </td>
-                    <td style={{ padding: "10px 13px" }}>
-                      {assignedTeacherId && (
-                        <button
-                          onClick={() => handleClearAssignment(subject.id)}
-                          style={{
-                            width: 25,
-                            height: 25,
-                            borderRadius: 6,
-                            background: "var(--dBg)",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "var(--dText)",
-                          }}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                    </div>
+
+                    <select
+                      value={assignedTeacherId}
+                      onChange={(event) =>
+                        updateAssignment(
+                          currentClass.id,
+                          subject.id,
+                          event.target.value,
+                        )
+                      }
+                      style={inputStyle}
+                    >
+                      <option value="">No teacher assigned</option>
+                      {teachers
+                        .filter(
+                          (teacher) =>
+                            teacher.status === "Active" &&
+                            teacher.department === subject.department,
+                        )
+                        .map((teacher) => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.name}
+                          </option>
+                        ))}
+                      {teachers
+                        .filter(
+                          (teacher) =>
+                            teacher.status === "Active" &&
+                            teacher.department !== subject.department,
+                        )
+                        .map((teacher) => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.name} ({teacher.department})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredClasses.length === 0 && (
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid var(--border)",
+            borderRadius: 13,
+            padding: "2.5rem",
+            textAlign: "center",
+            fontSize: "1.05rem",
+            color: "var(--textF)",
+            marginTop: 8,
+          }}
+        >
+          No classes match this assignment search.
         </div>
       )}
     </div>
   );
+};
+
+const StatCard: React.FC<{
+  label: string;
+  value: number;
+  accent?: string;
+}> = ({ label, value, accent = "var(--gold)" }) => (
+  <div
+    style={{
+      background: "#fff",
+      border: "1px solid var(--border)",
+      borderRadius: 12,
+      padding: "1rem 1.1rem",
+      borderTop: `3px solid ${accent}`,
+    }}
+  >
+    <p style={smallLabelStyle}>{label}</p>
+    <p
+      style={{
+        fontFamily: "var(--serif)",
+        fontSize: "1.9rem",
+        fontWeight: 600,
+        color: "var(--text)",
+        margin: 0,
+      }}
+    >
+      {value}
+    </p>
+  </div>
+);
+
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--gold)",
+  textTransform: "uppercase",
+  letterSpacing: ".09em",
+  margin: "0 0 3px",
+};
+
+const pageTitleStyle: React.CSSProperties = {
+  fontFamily: "var(--serif)",
+  fontSize: "1.8rem",
+  fontWeight: 600,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const cardTitleStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const rowPrimaryTextStyle: React.CSSProperties = {
+  fontSize: 12.5,
+  fontWeight: 700,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const rowMetaTextStyle: React.CSSProperties = {
+  fontSize: 10.5,
+  color: "var(--textMut)",
+  margin: 0,
+};
+
+const smallLabelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--textF)",
+  textTransform: "uppercase",
+  letterSpacing: ".05em",
+  margin: "0 0 5px",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  border: "1.5px solid var(--border)",
+  borderRadius: 8,
+  fontSize: 13.5,
+  color: "var(--text)",
+  background: "var(--cream)",
 };

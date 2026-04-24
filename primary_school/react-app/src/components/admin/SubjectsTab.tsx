@@ -1,12 +1,12 @@
-// components/admin/SubjectsTab.tsx
 import React, { useState } from "react";
-import { Subject } from "./types";
+import { Class, Subject, Teacher } from "./types";
 
 interface SubjectsTabProps {
   subjects: Subject[];
-  classes: any[];
+  classes: Class[];
+  teachers: Teacher[];
   onUpdateSubjects: (subjects: Subject[]) => void;
-  onUpdateClasses: (classes: any[]) => void;
+  onUpdateClasses: (classes: Class[]) => void;
   onUpdateSidebarStats: () => void;
   pill: (text: string, color: string) => string;
   showModal: (content: React.ReactNode) => void;
@@ -21,7 +21,7 @@ const departmentColors: Record<string, string> = {
   Arts: "#a32d2d",
   Sports: "#993556",
   Technology: "#4a6da8",
-  Mathematics: "#C9963D",
+  Mathematics: "#c9963d",
 };
 
 const departmentBg: Record<string, string> = {
@@ -37,6 +37,7 @@ const departmentBg: Record<string, string> = {
 export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   subjects,
   classes,
+  teachers,
   onUpdateSubjects,
   onUpdateClasses,
   onUpdateSidebarStats,
@@ -47,183 +48,65 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
 }) => {
   const [search, setSearch] = useState("");
 
-  const filteredSubjects = subjects.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.code.toLowerCase().includes(search.toLowerCase()) ||
-      s.department.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredSubjects = subjects.filter((subject) => {
+    const query = search.toLowerCase();
+    const assignedTeacher = teachers.find(
+      (teacher) => teacher.id === subject.assignedTeacherId,
+    );
+    return (
+      subject.name.toLowerCase().includes(query) ||
+      subject.department.toLowerCase().includes(query) ||
+      (assignedTeacher?.name || "").toLowerCase().includes(query)
+    );
+  });
 
-  const getUsageCount = (subjectId: string): number => {
-    return classes.reduce((count, c) => {
-      return (
-        count +
-        (c.subjectAssignments && c.subjectAssignments[subjectId] ? 1 : 0)
-      );
-    }, 0);
-  };
+  const getUsageCount = (subjectId: string) =>
+    classes.reduce(
+      (count, currentClass) =>
+        count + (currentClass.subjectAssignments?.[subjectId] ? 1 : 0),
+      0,
+    );
 
-  const openAddSubject = (editId?: string) => {
-    const subject = editId ? subjects.find((s) => s.id === editId) : null;
+  const openSubjectModal = (subjectId?: string) => {
+    const subject = subjectId
+      ? subjects.find((current) => current.id === subjectId)
+      : null;
 
     showModal(
       <div>
-        <div
-          style={{
-            padding: "18px 22px 14px",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: "var(--serif)",
-              fontSize: "1.3rem",
-              fontWeight: 600,
-              color: "var(--text)",
-            }}
-          >
-            {subject ? "Edit subject" : "Add new subject"}
+        <div style={headerStyle}>
+          <h3 style={titleStyle}>
+            {subject ? "Update subject" : "Add new subject"}
           </h3>
-          <button
-            onClick={closeModal}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: "var(--sand)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 700,
-              color: "var(--textMut)",
-            }}
-          >
+          <button onClick={closeModal} style={closeButtonStyle}>
             ×
           </button>
         </div>
+
         <div style={{ padding: "18px 22px 22px" }}>
           <div style={{ marginBottom: "1rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 11.5,
-                fontWeight: 700,
-                color: "var(--textM)",
-                letterSpacing: ".03em",
-                marginBottom: 5,
-              }}
-            >
+            <label style={labelStyle}>
               Subject name <span style={{ color: "var(--dText)" }}>*</span>
             </label>
             <input
-              id="sName"
+              id="subjectName"
               type="text"
               defaultValue={subject?.name || ""}
               placeholder="e.g. Mathematics"
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13.5,
-                color: "var(--text)",
-                background: "var(--cream)",
-              }}
+              style={inputStyle}
             />
           </div>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
-          >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  color: "var(--textM)",
-                  letterSpacing: ".03em",
-                  marginBottom: 5,
-                }}
-              >
-                Subject code
-              </label>
-              <input
-                id="sCode"
-                type="text"
-                defaultValue={subject?.code || ""}
-                placeholder="e.g. MATH"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 8,
-                  fontSize: 13.5,
-                  color: "var(--text)",
-                  background: "var(--cream)",
-                }}
-              />
-            </div>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  color: "var(--textM)",
-                  letterSpacing: ".03em",
-                  marginBottom: 5,
-                }}
-              >
-                Periods/week
-              </label>
-              <input
-                id="sPeriods"
-                type="number"
-                defaultValue={subject?.periods || 4}
-                placeholder="4"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 8,
-                  fontSize: 13.5,
-                  color: "var(--text)",
-                  background: "var(--cream)",
-                }}
-              />
-            </div>
-          </div>
-          <div style={{ marginTop: "1rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: 11.5,
-                fontWeight: 700,
-                color: "var(--textM)",
-                letterSpacing: ".03em",
-                marginBottom: 5,
-              }}
-            >
-              Department
+
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={labelStyle}>
+              Department <span style={{ color: "var(--dText)" }}>*</span>
             </label>
             <select
-              id="sDept"
+              id="subjectDepartment"
               defaultValue={subject?.department || ""}
-              style={{
-                width: "100%",
-                padding: "10px 34px 10px 12px",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13,
-                color: "var(--text)",
-                background: "var(--cream)",
-                cursor: "pointer",
-              }}
+              style={inputStyle}
             >
-              <option value="">— Select department —</option>
+              <option value="">Select department</option>
               {[
                 "Sciences",
                 "Languages",
@@ -232,13 +115,34 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                 "Sports",
                 "Technology",
                 "Mathematics",
-              ].map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
+              ].map((department) => (
+                <option key={department} value={department}>
+                  {department}
                 </option>
               ))}
             </select>
           </div>
+
+          <div>
+            <label style={labelStyle}>
+              Assigned teacher <span style={{ color: "var(--dText)" }}>*</span>
+            </label>
+            <select
+              id="subjectTeacher"
+              defaultValue={subject?.assignedTeacherId || ""}
+              style={inputStyle}
+            >
+              <option value="">Select teacher</option>
+              {teachers
+                .filter((teacher) => teacher.status === "Active")
+                .map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name} ({teacher.department})
+                  </option>
+                ))}
+            </select>
+          </div>
+
           <div
             style={{
               display: "flex",
@@ -247,76 +151,50 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
               marginTop: "1.5rem",
             }}
           >
-            <button
-              onClick={closeModal}
-              style={{
-                padding: "8px 16px",
-                background: "var(--sand)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--textM)",
-                cursor: "pointer",
-              }}
-            >
+            <button onClick={closeModal} style={secondaryButtonStyle}>
               Cancel
             </button>
             <button
               onClick={() => {
                 const name = (
-                  document.getElementById("sName") as HTMLInputElement
-                )?.value;
-                const code = (
-                  document.getElementById("sCode") as HTMLInputElement
-                )?.value.toUpperCase();
+                  document.getElementById("subjectName") as HTMLInputElement
+                )?.value.trim();
                 const department = (
-                  document.getElementById("sDept") as HTMLSelectElement
+                  document.getElementById(
+                    "subjectDepartment",
+                  ) as HTMLSelectElement
                 )?.value;
-                const periods = parseInt(
-                  (document.getElementById("sPeriods") as HTMLInputElement)
-                    ?.value || "4",
-                );
+                const assignedTeacherId = (
+                  document.getElementById("subjectTeacher") as HTMLSelectElement
+                )?.value;
 
-                if (!name) {
-                  alert("Subject name is required.");
+                if (!name || !department || !assignedTeacherId) {
+                  alert("Subject name, department, and teacher are required.");
                   return;
                 }
 
-                if (subject) {
-                  // Edit existing subject
-                  const updatedSubjects = subjects.map((s) =>
-                    s.id === subject.id
-                      ? { ...s, name, code, department, periods }
-                      : s,
-                  );
-                  onUpdateSubjects(updatedSubjects);
-                } else {
-                  // Add new subject
-                  const newSubject: Subject = {
-                    id:
-                      "SUB" +
-                      Math.random().toString(36).slice(2, 7).toUpperCase(),
-                    name,
-                    code: code || name.slice(0, 4).toUpperCase(),
-                    department: department || "General",
-                    periods,
-                  };
-                  onUpdateSubjects([...subjects, newSubject]);
-                }
+                const nextSubject: Subject = subject
+                  ? { ...subject, name, department, assignedTeacherId }
+                  : {
+                      id:
+                        "SUB" +
+                        Math.random().toString(36).slice(2, 7).toUpperCase(),
+                      name,
+                      department,
+                      assignedTeacherId,
+                    };
+
+                const updatedSubjects = subject
+                  ? subjects.map((current) =>
+                      current.id === subject.id ? nextSubject : current,
+                    )
+                  : [...subjects, nextSubject];
+
+                onUpdateSubjects(updatedSubjects);
                 closeModal();
                 onUpdateSidebarStats();
               }}
-              style={{
-                padding: "8px 16px",
-                background: "var(--gold)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              style={primaryButtonStyle}
             >
               {subject ? "Save changes" : "Add subject"}
             </button>
@@ -326,19 +204,20 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
     );
   };
 
-  const confirmDeleteSubject = (id: string, name: string) => {
+  const confirmDeleteSubject = (subjectId: string, name: string) => {
     showConfirm(
-      `Remove "<strong>${name}</strong>" from the subject list? Its class assignments will also be cleared.`,
+      `Delete <strong>${name}</strong> from the subject list? Its class assignments will also be removed.`,
       () => {
-        // Remove subject assignments from all classes
-        const updatedClasses = classes.map((c) => {
-          const newAssignments = { ...c.subjectAssignments };
-          delete newAssignments[id];
-          return { ...c, subjectAssignments: newAssignments };
-        });
-        onUpdateClasses(updatedClasses);
-        onUpdateSubjects(subjects.filter((s) => s.id !== id));
-        closeModal();
+        onUpdateClasses(
+          classes.map((currentClass) => {
+            const nextAssignments = { ...currentClass.subjectAssignments };
+            delete nextAssignments[subjectId];
+            return { ...currentClass, subjectAssignments: nextAssignments };
+          }),
+        );
+        onUpdateSubjects(
+          subjects.filter((subject) => subject.id !== subjectId),
+        );
         onUpdateSidebarStats();
       },
       true,
@@ -358,61 +237,17 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
         }}
       >
         <div>
-          <p
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--gold)",
-              textTransform: "uppercase",
-              letterSpacing: ".09em",
-              margin: "0 0 3px",
-            }}
-          >
-            Subjects
-          </p>
-          <h2
-            style={{
-              fontFamily: "var(--serif)",
-              fontSize: "1.8rem",
-              fontWeight: 600,
-              color: "var(--text)",
-              margin: 0,
-            }}
-          >
-            Subject management
-          </h2>
+          <p style={eyebrowStyle}>Subjects</p>
+          <h2 style={pageTitleStyle}>Subject management</h2>
         </div>
-        <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 9, alignItems: "center", flexWrap: "wrap" }}>
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search subjects…"
-            style={{
-              padding: "8px 13px",
-              border: "1.5px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12.5,
-              color: "var(--text)",
-              background: "var(--cream)",
-              width: 200,
-            }}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search subjects or teacher"
+            style={{ ...inputStyle, width: 220 }}
           />
-          <button
-            onClick={() => openAddSubject()}
-            style={{
-              padding: "8px 15px",
-              background: "var(--gold)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <button onClick={() => openSubjectModal()} style={primaryButtonStyle}>
             + Add subject
           </button>
         </div>
@@ -421,11 +256,14 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
           gap: 13,
         }}
       >
         {filteredSubjects.map((subject) => {
+          const assignedTeacher = teachers.find(
+            (teacher) => teacher.id === subject.assignedTeacherId,
+          );
           const usageCount = getUsageCount(subject.id);
           return (
             <div
@@ -436,17 +274,6 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                 borderRadius: 13,
                 padding: "1.2rem",
                 borderLeft: `4px solid ${departmentColors[subject.department] || "var(--gold)"}`,
-                transition: "box-shadow 0.2s, transform 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform =
-                  "translateY(-2px)";
-                (e.currentTarget as HTMLElement).style.boxShadow =
-                  "0 4px 16px rgba(11,32,24,.09)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "";
-                (e.currentTarget as HTMLElement).style.boxShadow = "";
               }}
             >
               <div
@@ -455,174 +282,75 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                   justifyContent: "space-between",
                   alignItems: "flex-start",
                   marginBottom: 10,
+                  gap: 10,
                 }}
               >
                 <div>
-                  <h3
+                  <h3 style={cardTitleStyle}>{subject.name}</h3>
+                  <span
                     style={{
-                      fontFamily: "var(--serif)",
-                      fontSize: "1.2rem",
-                      fontWeight: 600,
-                      color: "var(--text)",
-                      margin: "0 0 4px",
+                      padding: "2px 8px",
+                      borderRadius: 9,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      background:
+                        departmentBg[subject.department] || "var(--goldL)",
+                      color:
+                        departmentColors[subject.department] || "var(--gold)",
                     }}
                   >
-                    {subject.name}
-                  </h3>
-                  <div
-                    style={{ display: "flex", gap: 6, alignItems: "center" }}
-                  >
-                    <span
-                      style={{
-                        padding: "2px 8px",
-                        borderRadius: 9,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        background:
-                          departmentBg[subject.department] || "var(--goldL)",
-                        color:
-                          departmentColors[subject.department] || "var(--gold)",
-                      }}
-                    >
-                      {subject.department || "General"}
-                    </span>
-                    <span style={{ fontSize: 11, color: "var(--textF)" }}>
-                      Code:{" "}
-                      <strong style={{ color: "var(--textM)" }}>
-                        {subject.code}
-                      </strong>
-                    </span>
-                  </div>
+                    {subject.department}
+                  </span>
                 </div>
+
                 <div style={{ display: "flex", gap: 5 }}>
                   <button
-                    onClick={() => openAddSubject(subject.id)}
-                    style={{
-                      width: 27,
-                      height: 27,
-                      borderRadius: 7,
-                      background: "var(--sand)",
-                      border: "1px solid var(--border)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "var(--textMut)",
-                    }}
+                    onClick={() => openSubjectModal(subject.id)}
+                    style={iconButtonStyle}
                   >
-                    <svg
-                      width="11"
-                      height="11"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
+                    Edit
                   </button>
                   <button
-                    onClick={() =>
-                      confirmDeleteSubject(subject.id, subject.name)
-                    }
+                    onClick={() => confirmDeleteSubject(subject.id, subject.name)}
                     style={{
-                      width: 27,
-                      height: 27,
-                      borderRadius: 7,
+                      ...iconButtonStyle,
                       background: "var(--dBg)",
-                      border: "none",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
                       color: "var(--dText)",
+                      border: "none",
                     }}
                   >
-                    <svg
-                      width="11"
-                      height="11"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                    </svg>
+                    Delete
                   </button>
                 </div>
               </div>
+
+              <div
+                style={{
+                  background: "var(--sand)",
+                  borderRadius: 10,
+                  padding: "9px 10px",
+                  marginBottom: 10,
+                }}
+              >
+                <p style={smallLabelStyle}>Assigned teacher</p>
+                <p style={cardValueStyle}>{assignedTeacher?.name || "Not assigned"}</p>
+              </div>
+
               <div style={{ display: "flex", gap: 9 }}>
-                <div
-                  style={{
-                    flex: 1,
-                    background: "var(--sand)",
-                    borderRadius: 7,
-                    padding: "7px 9px",
-                    textAlign: "center",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 9.5,
-                      fontWeight: 700,
-                      color: "var(--textF)",
-                      textTransform: "uppercase",
-                      letterSpacing: ".04em",
-                      margin: "0 0 1px",
-                    }}
-                  >
-                    Periods/wk
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: "var(--serif)",
-                      fontSize: "1.5rem",
-                      fontWeight: 600,
-                      color: "var(--text)",
-                      margin: 0,
-                    }}
-                  >
-                    {subject.periods}
-                  </p>
+                <div style={miniMetricStyle}>
+                  <p style={smallLabelStyle}>Classes</p>
+                  <p style={cardValueStyle}>{usageCount}</p>
                 </div>
-                <div
-                  style={{
-                    flex: 1,
-                    background: "var(--sand)",
-                    borderRadius: 7,
-                    padding: "7px 9px",
-                    textAlign: "center",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 9.5,
-                      fontWeight: 700,
-                      color: "var(--textF)",
-                      textTransform: "uppercase",
-                      letterSpacing: ".04em",
-                      margin: "0 0 1px",
+                <div style={miniMetricStyle}>
+                  <p style={smallLabelStyle}>Status</p>
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: pill(
+                        assignedTeacher ? "Ready" : "Pending",
+                        assignedTeacher ? "green" : "amber",
+                      ),
                     }}
-                  >
-                    Classes
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: "var(--serif)",
-                      fontSize: "1.5rem",
-                      fontWeight: 600,
-                      color: usageCount > 0 ? "var(--sText)" : "var(--textF)",
-                      margin: 0,
-                    }}
-                  >
-                    {usageCount}
-                  </p>
+                  />
                 </div>
               </div>
             </div>
@@ -631,4 +359,131 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
       </div>
     </div>
   );
+};
+
+const headerStyle: React.CSSProperties = {
+  padding: "18px 22px 14px",
+  borderBottom: "1px solid var(--border)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const titleStyle: React.CSSProperties = {
+  fontFamily: "var(--serif)",
+  fontSize: "1.3rem",
+  fontWeight: 600,
+  color: "var(--text)",
+};
+
+const closeButtonStyle: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: 7,
+  background: "var(--sand)",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 16,
+  fontWeight: 700,
+  color: "var(--textMut)",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 11.5,
+  fontWeight: 700,
+  color: "var(--textM)",
+  letterSpacing: ".03em",
+  marginBottom: 5,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  border: "1.5px solid var(--border)",
+  borderRadius: 8,
+  fontSize: 13.5,
+  color: "var(--text)",
+  background: "var(--cream)",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  background: "var(--gold)",
+  color: "#fff",
+  border: "none",
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  background: "var(--sand)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--textM)",
+  cursor: "pointer",
+};
+
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: "var(--gold)",
+  textTransform: "uppercase",
+  letterSpacing: ".09em",
+  margin: "0 0 3px",
+};
+
+const pageTitleStyle: React.CSSProperties = {
+  fontFamily: "var(--serif)",
+  fontSize: "1.8rem",
+  fontWeight: 600,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const cardTitleStyle: React.CSSProperties = {
+  fontFamily: "var(--serif)",
+  fontSize: "1.2rem",
+  fontWeight: 600,
+  color: "var(--text)",
+  margin: "0 0 6px",
+};
+
+const iconButtonStyle: React.CSSProperties = {
+  padding: "4px 10px",
+  borderRadius: 20,
+  background: "var(--sand)",
+  border: "1px solid var(--border)",
+  cursor: "pointer",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--textMut)",
+};
+
+const smallLabelStyle: React.CSSProperties = {
+  fontSize: 9.5,
+  fontWeight: 700,
+  color: "var(--textF)",
+  textTransform: "uppercase",
+  letterSpacing: ".04em",
+  margin: "0 0 4px",
+};
+
+const cardValueStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "var(--text)",
+  margin: 0,
+};
+
+const miniMetricStyle: React.CSSProperties = {
+  flex: 1,
+  background: "var(--sand)",
+  borderRadius: 10,
+  padding: "9px 10px",
 };

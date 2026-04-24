@@ -1,5 +1,6 @@
 // components/classteacher/ClassTeacherDashboard.tsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { GlobalStyles } from "./shared/GlobalStyles";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -9,6 +10,7 @@ import { MarksManagement } from "./MarksManagement";
 import { ResultsReports } from "./ResultsReports";
 import { Analytics } from "./Analytics";
 import { Settings } from "./Settings";
+import { SubjectAssignments } from "./SubjectAssignments";
 import { students, streamInfo, subjects } from "./shared/data";
 import { avg } from "./shared/helpers";
 import {
@@ -17,6 +19,7 @@ import {
   FileIcon,
   BarIcon,
   SettIcon,
+  HomeIcon,
 } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
 
@@ -32,6 +35,12 @@ const NAV = [
     label: "Marks management",
     desc: "Capture marks and review class performance.",
     Icon: MarkIcon,
+  },
+  {
+    id: "assignments",
+    label: "Subject assignments",
+    desc: "See subjects and the assigned teachers.",
+    Icon: HomeIcon,
   },
   {
     id: "results",
@@ -54,6 +63,7 @@ const NAV = [
 ];
 
 export default function ClassTeacherDashboard() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("students");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -79,6 +89,9 @@ export default function ClassTeacherDashboard() {
   const classAvg = Math.round(
     students.reduce((acc, s) => acc + avg(s.marks), 0) / students.length,
   );
+  const teachesSubjects = subjects.some(
+    (subject) => subject.teacher === streamInfo.classTeacher,
+  );
 
   const handleSelectTab = (t: string) => {
     setTab(t);
@@ -100,6 +113,13 @@ export default function ClassTeacherDashboard() {
         return <StudentRecords onViewStudent={setSelectedStudent} />;
       case "marks":
         return <MarksManagement />;
+      case "assignments":
+        return (
+          <SubjectAssignments
+            canSwitchToSubjectDashboard={teachesSubjects}
+            onSwitchToSubjectDashboard={() => navigate("/subjectTeacher")}
+          />
+        );
       case "results":
         return <ResultsReports />;
       case "analytics":
@@ -254,6 +274,7 @@ export default function ClassTeacherDashboard() {
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {[
+                    { label: "Subject assignments", tab: "assignments" },
                     { label: "Review marks", tab: "marks" },
                     { label: "Download results", tab: "results" },
                     { label: "Analytics", tab: "analytics" },
@@ -278,6 +299,26 @@ export default function ClassTeacherDashboard() {
                       {label}
                     </button>
                   ))}
+                  {teachesSubjects && (
+                    <button
+                      onClick={() => navigate("/subjectTeacher")}
+                      style={{
+                        padding: "9px 16px",
+                        background: C.gold,
+                        border: `1px solid ${C.gold}`,
+                        borderRadius: 9,
+                        fontFamily: FONT.sans,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: "#fff",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        transition: "background 0.18s",
+                      }}
+                    >
+                      Subject dashboard
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

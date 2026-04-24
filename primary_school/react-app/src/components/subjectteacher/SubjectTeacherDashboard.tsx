@@ -9,6 +9,7 @@ import { AssessmentsTab } from "./AssessmentsTab";
 import { ProgressTab } from "./ProgressTab";
 import { ResourcesTab } from "./ResourcesTab";
 import { Subject, Student, Assessment, Resource, MarksData } from "./types";
+import { streamInfo } from "../classteacher/shared/data";
 
 // Mock Data
 const SUBJECTS: Subject[] = [
@@ -271,13 +272,14 @@ const SubjectTeacherDashboard: React.FC = () => {
   );
   const [pushedStudents, setPushedStudents] = useState<Set<string>>(new Set());
 
-  const teacherName = "Mr. Moses Kariuki";
+  const teacherName = streamInfo.classTeacher;
   const teacherInitials = initials(teacherName);
   const teacherAvatarColor = avatarColor(teacherName);
   const streamsCount = SUBJECTS.length;
   const totalStudents = SUBJECTS.reduce((sum, s) => sum + s.students, 0);
   const department = "Sciences";
   const currentStudents = STUDENTS_MAP[activeSubjectId] || [];
+  const canSwitchToClassDashboard = teacherName === streamInfo.classTeacher;
 
   const handleMarkUpdate = (
     subjectId: string,
@@ -405,6 +407,7 @@ const SubjectTeacherDashboard: React.FC = () => {
           teacherInitials={teacherInitials}
           teacherAvatarColor={teacherAvatarColor}
           role="Subject Teacher"
+          canSwitchToClassDashboard={canSwitchToClassDashboard}
         />
         <div className={styles.contentArea}>{renderContent()}</div>
       </div>

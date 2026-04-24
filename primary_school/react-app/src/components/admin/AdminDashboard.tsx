@@ -1,400 +1,245 @@
-// components/admin/AdminDashboard.tsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import styles from "./AdminDashboard.module.css";
-import { Sidebar } from "./Sidebar";
-import { TopBar } from "./TopBar";
-import { OverviewTab } from "./OverviewTab";
-import { ClassesTab } from "./ClassesTab";
-import { SubjectsTab } from "./SubjectsTab";
 import { AssignmentsTab } from "./AssignmentsTab";
+import { ClassesTab } from "./ClassesTab";
+import { OverviewTab } from "./OverviewTab";
+import { Sidebar } from "./Sidebar";
+import { StudentsTab } from "./StudentsTab";
+import { SubjectsTab } from "./SubjectsTab";
 import { TeachersTab } from "./TeachersTab";
-import { Teacher, Subject, Class } from "./types";
+import { TopBar } from "./TopBar";
+import { Class, NavItem, Student, Subject, Teacher } from "./types";
 
-// Mock Data
 const initialTeachers: Teacher[] = [
   {
-    id: "T1",
-    name: "Peter Otieno",
-    email: "peter@school.com",
-    phone: "+254712345678",
-    status: "Active",
-    department: "Sciences",
-  },
-  {
-    id: "T2",
-    name: "Jane Wanjiku",
-    email: "jane@school.com",
-    phone: "+254723456789",
-    status: "Active",
-    department: "Languages",
-  },
-  {
-    id: "T3",
-    name: "James Kamau",
-    email: "james@school.com",
-    phone: "+254734567890",
-    status: "Active",
-    department: "Languages",
-  },
-  {
-    id: "T4",
-    name: "Mary Achieng",
-    email: "mary@school.com",
-    phone: "+254745678901",
-    status: "Active",
-    department: "Sciences",
-  },
-  {
-    id: "T5",
-    name: "John Mwangi",
-    email: "john@school.com",
-    phone: "+254756789012",
-    status: "Active",
-    department: "Humanities",
-  },
-  {
-    id: "T6",
+    id: "T001",
     name: "Grace Njeri",
-    email: "grace@school.com",
-    phone: "+254767890123",
+    email: "grace.njeri@greenfield.ac.ke",
+    phone: "+254 711 203 111",
+    status: "Active",
+    department: "Languages",
+    joinDate: "2024-01-08",
+  },
+  {
+    id: "T002",
+    name: "Samuel Otieno",
+    email: "samuel.otieno@greenfield.ac.ke",
+    phone: "+254 722 884 521",
+    status: "Active",
+    department: "Mathematics",
+    joinDate: "2023-05-14",
+  },
+  {
+    id: "T003",
+    name: "Faith Achieng",
+    email: "faith.achieng@greenfield.ac.ke",
+    phone: "+254 733 415 002",
+    status: "Active",
+    department: "Sciences",
+    joinDate: "2022-09-01",
+  },
+  {
+    id: "T004",
+    name: "David Mwangi",
+    email: "david.mwangi@greenfield.ac.ke",
+    phone: "+254 700 552 118",
     status: "Active",
     department: "Humanities",
-  },
-  {
-    id: "T7",
-    name: "David Odhiambo",
-    email: "david@school.com",
-    phone: "+254778901234",
-    status: "Active",
-    department: "Sciences",
-  },
-  {
-    id: "T8",
-    name: "Agnes Muthoni",
-    email: "agnes@school.com",
-    phone: "+254789012345",
-    status: "On Leave",
-    department: "Languages",
-  },
-];
-
-const initialSubjects: Subject[] = [
-  {
-    id: "SUB1",
-    name: "Mathematics",
-    code: "MATH",
-    department: "Sciences",
-    periods: 6,
-  },
-  {
-    id: "SUB2",
-    name: "English",
-    code: "ENG",
-    department: "Languages",
-    periods: 5,
-  },
-  {
-    id: "SUB3",
-    name: "Kiswahili",
-    code: "KSW",
-    department: "Languages",
-    periods: 5,
-  },
-  {
-    id: "SUB4",
-    name: "Science",
-    code: "SCI",
-    department: "Sciences",
-    periods: 5,
-  },
-  {
-    id: "SUB5",
-    name: "Social Studies",
-    code: "SST",
-    department: "Humanities",
-    periods: 4,
-  },
-  {
-    id: "SUB6",
-    name: "CRE",
-    code: "CRE",
-    department: "Humanities",
-    periods: 3,
-  },
-  {
-    id: "SUB7",
-    name: "Art & Craft",
-    code: "ART",
-    department: "Arts",
-    periods: 3,
-  },
-  {
-    id: "SUB8",
-    name: "Physical Ed.",
-    code: "PE",
-    department: "Sports",
-    periods: 4,
+    joinDate: "2021-02-11",
   },
 ];
 
 const initialClasses: Class[] = [
   {
-    id: "CL1",
-    name: "Grade 7A",
-    grade: "Grade 7",
-    stream: "A",
-    capacity: 40,
-    students: 35,
-    classTeacherId: "T1",
+    id: "CL001",
+    name: "Grade 7 South",
+    grade: "7",
+    stream: "South",
+    students: 0,
+    classTeacherId: "T002",
     subjectAssignments: {
-      SUB1: "T1",
-      SUB2: "T2",
-      SUB3: "T3",
-      SUB4: "T4",
-      SUB5: "T5",
-      SUB6: "T6",
+      SUB001: "T002",
+      SUB002: "T003",
+      SUB003: "T001",
     },
   },
   {
-    id: "CL2",
-    name: "Grade 7B",
-    grade: "Grade 7",
-    stream: "B",
-    capacity: 40,
-    students: 34,
-    classTeacherId: "T3",
+    id: "CL002",
+    name: "Grade 8",
+    grade: "8",
+    students: 0,
+    classTeacherId: "T004",
     subjectAssignments: {
-      SUB1: "T1",
-      SUB2: "T8",
-      SUB3: "T3",
-      SUB4: "T4",
-      SUB5: "T5",
+      SUB001: "T002",
+      SUB004: "T004",
     },
   },
   {
-    id: "CL3",
-    name: "Grade 8A",
-    grade: "Grade 8",
-    stream: "A",
-    capacity: 40,
-    students: 33,
-    classTeacherId: "T5",
+    id: "CL003",
+    name: "Grade 9 North",
+    grade: "9",
+    stream: "North",
+    students: 0,
+    classTeacherId: "",
     subjectAssignments: {
-      SUB1: "T7",
-      SUB2: "T2",
-      SUB3: "T3",
-      SUB4: "T4",
-      SUB5: "T5",
-      SUB6: "T6",
-      SUB7: "T6",
-    },
-  },
-  {
-    id: "CL4",
-    name: "Grade 8B",
-    grade: "Grade 8",
-    stream: "B",
-    capacity: 40,
-    students: 32,
-    classTeacherId: "T2",
-    subjectAssignments: {
-      SUB1: "T1",
-      SUB2: "T2",
-      SUB3: "T3",
-      SUB4: "T7",
-      SUB5: "T5",
-    },
-  },
-  {
-    id: "CL5",
-    name: "Grade 9A",
-    grade: "Grade 9",
-    stream: "A",
-    capacity: 40,
-    students: 30,
-    classTeacherId: "T4",
-    subjectAssignments: {
-      SUB1: "T1",
-      SUB2: "T2",
-      SUB3: "T3",
-      SUB4: "T4",
-      SUB5: "T5",
-      SUB6: "T6",
-    },
-  },
-  {
-    id: "CL6",
-    name: "Grade 9B",
-    grade: "Grade 9",
-    stream: "B",
-    capacity: 40,
-    students: 29,
-    classTeacherId: "T6",
-    subjectAssignments: {
-      SUB1: "T7",
-      SUB2: "T2",
-      SUB3: "T3",
-      SUB4: "T4",
-      SUB5: "T5",
-      SUB6: "T6",
-      SUB8: "T7",
+      SUB002: "T003",
+      SUB003: "T001",
     },
   },
 ];
 
-// Helper Functions
-const initials = (name: string): string => {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-};
-
-const avatarColors = [
-  "#1D9E75",
-  "#BA7517",
-  "#993C1D",
-  "#185FA5",
-  "#3B6D11",
-  "#993556",
-  "#4A6DA8",
-  "#7A4E12",
-];
-const avatarColor = (name: string): string => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
-  return avatarColors[hash % avatarColors.length];
-};
-
-const avatar = (name: string, size: number = 30): string => {
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${avatarColor(name)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${Math.round(size * 0.32)}px;color:#fff;flex-shrink:0">${initials(name)}</div>`;
-};
-
-const pill = (text: string, color: string = "gold"): string => {
-  const colorMap: Record<string, [string, string]> = {
-    gold: ["#f5ead4", "#C9963D"],
-    green: ["#eaf3de", "#3b6d11"],
-    red: ["#fcebeb", "#a32d2d"],
-    amber: ["#faeeda", "#854f0b"],
-    gray: ["#f0e9dc", "#7a6040"],
-    blue: ["#e8f0fb", "#1a4a99"],
-  };
-  const [bg, textColor] = colorMap[color] || colorMap.gold;
-  return `<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${bg};color:${textColor}">${text}</span>`;
-};
-
-const navItems = [
+const initialSubjects: Subject[] = [
   {
-    id: "overview",
-    label: "Overview",
-    svg: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+    id: "SUB001",
+    name: "Mathematics",
+    department: "Mathematics",
+    assignedTeacherId: "T002",
   },
   {
-    id: "classes",
-    label: "Classes",
-    svg: '<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>',
+    id: "SUB002",
+    name: "Integrated Science",
+    department: "Sciences",
+    assignedTeacherId: "T003",
   },
   {
-    id: "subjects",
-    label: "Subjects",
-    svg: '<path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>',
+    id: "SUB003",
+    name: "English",
+    department: "Languages",
+    assignedTeacherId: "T001",
   },
   {
-    id: "assignments",
-    label: "Assignments",
-    svg: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>',
-  },
-  {
-    id: "teachers",
-    label: "Teacher directory",
-    svg: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',
+    id: "SUB004",
+    name: "Social Studies",
+    department: "Humanities",
+    assignedTeacherId: "T004",
   },
 ];
+
+const initialStudents: Student[] = [
+  {
+    id: "STU001",
+    admissionNo: "ADM-7001",
+    name: "Amina Wanjiru",
+    gender: "Female",
+    guardianName: "Mary Wanjiru",
+    guardianPhone: "+254 711 100 001",
+    classId: "CL001",
+    status: "Active",
+  },
+  {
+    id: "STU002",
+    admissionNo: "ADM-7002",
+    name: "Brian Kiptoo",
+    gender: "Male",
+    guardianName: "Esther Kiptoo",
+    guardianPhone: "+254 711 100 002",
+    classId: "CL001",
+    status: "Active",
+  },
+  {
+    id: "STU003",
+    admissionNo: "ADM-8001",
+    name: "Mercy Achieng",
+    gender: "Female",
+    guardianName: "Rose Achieng",
+    guardianPhone: "+254 711 100 003",
+    classId: "CL002",
+    status: "Active",
+  },
+  {
+    id: "STU004",
+    admissionNo: "ADM-9001",
+    name: "Kevin Mwangi",
+    gender: "Male",
+    guardianName: "Joseph Mwangi",
+    guardianPhone: "+254 711 100 004",
+    classId: "CL003",
+    status: "Pending",
+  },
+];
+
+const navItems: NavItem[] = [
+  { id: "overview", label: "Overview", svg: "<path d='M3 13h8V3H3v10z'/><path d='M13 21h8V11h-8v10z'/><path d='M13 3h8v6h-8V3z'/><path d='M3 17h8v4H3v-4z'/>" },
+  { id: "classes", label: "Classes", svg: "<path d='M4 19.5V8.5a2 2 0 0 1 1.2-1.83l6-2.67a2 2 0 0 1 1.6 0l6 2.67A2 2 0 0 1 20 8.5v11'/><path d='M8 10h8'/><path d='M8 14h8'/><path d='M10 19.5v-3h4v3'/>" },
+  { id: "students", label: "Students", svg: "<path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>" },
+  { id: "subjects", label: "Subjects", svg: "<path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/>" },
+  { id: "teachers", label: "Teachers", svg: "<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>" },
+  { id: "assignments", label: "Assignments", svg: "<path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'/>" },
+];
+
+const syncClassCounts = (classes: Class[], students: Student[]) =>
+  classes.map((currentClass) => ({
+    ...currentClass,
+    students: students.filter((student) => student.classId === currentClass.id)
+      .length,
+  }));
+
+const teacherInitials = "AU";
+const teacherAvatarColor = "#c9963d";
 
 const AdminDashboard: React.FC = () => {
-  const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [teachers, setTeachers] = useState(initialTeachers);
-  const [subjects, setSubjects] = useState(initialSubjects);
-  const [classes, setClasses] = useState(initialClasses);
-  const [modalContent, setModalContent] = useState<React.ReactNode>(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
+  const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
+  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [classes, setClasses] = useState<Class[]>(
+    syncClassCounts(initialClasses, initialStudents),
+  );
+  const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
 
-  const unassignedCount = classes.filter((c) => !c.classTeacherId).length;
-  const assignedCT = classes.filter((c) => c.classTeacherId).length;
-  const totalClasses = classes.length;
+  const updateClassesWithCounts = (nextClasses: Class[]) => {
+    setClasses(syncClassCounts(nextClasses, students));
+  };
 
-  const showModal = (content: React.ReactNode) => setModalContent(content);
+  const updateStudentsAndCounts = (nextStudents: Student[]) => {
+    setStudents(nextStudents);
+    setClasses((currentClasses) => syncClassCounts(currentClasses, nextStudents));
+  };
+
+  const updateSidebarStats = () => {
+    setClasses((currentClasses) => syncClassCounts(currentClasses, students));
+  };
+
   const closeModal = () => setModalContent(null);
+  const showModal = (content: React.ReactNode) => setModalContent(content);
 
   const showConfirm = (
-    msg: string,
+    message: string,
     onOk: () => void,
-    danger: boolean = true,
+    danger = false,
   ) => {
     showModal(
-      <div>
+      <div className={styles.scalein}>
         <div
           style={{
-            padding: "18px 22px 14px",
+            padding: "20px 22px 16px",
             borderBottom: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
           }}
         >
           <h3
             style={{
+              margin: 0,
               fontFamily: "var(--serif)",
-              fontSize: "1.2rem",
-              fontWeight: 600,
+              fontSize: "1.25rem",
               color: "var(--text)",
             }}
           >
-            Confirm {danger ? "removal" : "action"}
+            Confirm action
           </h3>
-          <button
-            onClick={closeModal}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: "var(--sand)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 700,
-              color: "var(--textMut)",
-            }}
-          >
-            ×
-          </button>
         </div>
         <div style={{ padding: "18px 22px 22px" }}>
           <p
             style={{
-              fontSize: 13.5,
-              color: "var(--textM)",
-              lineHeight: 1.65,
-              marginBottom: "1.3rem",
+              margin: "0 0 16px",
+              fontSize: 13,
+              color: "var(--textMut)",
+              lineHeight: 1.6,
             }}
-            dangerouslySetInnerHTML={{ __html: msg }}
+            dangerouslySetInnerHTML={{ __html: message }}
           />
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button
-              onClick={closeModal}
-              style={{
-                padding: "8px 16px",
-                background: "var(--sand)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--textM)",
-                cursor: "pointer",
-              }}
-            >
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button onClick={closeModal} style={secondaryButtonStyle}>
               Cancel
             </button>
             <button
@@ -403,17 +248,11 @@ const AdminDashboard: React.FC = () => {
                 closeModal();
               }}
               style={{
-                padding: "8px 16px",
+                ...primaryButtonStyle,
                 background: danger ? "var(--dText)" : "var(--gold)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
               }}
             >
-              {danger ? "Remove" : "Confirm"}
+              Confirm
             </button>
           </div>
         </div>
@@ -421,79 +260,131 @@ const AdminDashboard: React.FC = () => {
     );
   };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case "overview":
-        return (
-          <OverviewTab
-            classes={classes}
-            subjects={subjects}
-            teachers={teachers}
-            onSwitchTab={setActiveTab}
-            pill={pill}
-            avatar={avatar}
-          />
-        );
-      case "classes":
-        return (
-          <ClassesTab
-            classes={classes}
-            teachers={teachers}
-            subjects={subjects}
-            onUpdateClasses={setClasses}
-            onUpdateSidebarStats={() => {}}
-            pill={pill}
-            avatar={avatar}
-            showModal={showModal}
-            closeModal={closeModal}
-            showConfirm={showConfirm}
-          />
-        );
-      case "subjects":
-        return (
-          <SubjectsTab
-            subjects={subjects}
-            classes={classes}
-            onUpdateSubjects={setSubjects}
-            onUpdateClasses={setClasses}
-            onUpdateSidebarStats={() => {}}
-            pill={pill}
-            showModal={showModal}
-            closeModal={closeModal}
-            showConfirm={showConfirm}
-          />
-        );
-      case "assignments":
-        return (
-          <AssignmentsTab
-            classes={classes}
-            teachers={teachers}
-            subjects={subjects}
-            onUpdateClasses={setClasses}
-            avatar={avatar}
-            pill={pill}
-          />
-        );
-      case "teachers":
-        return (
-          <TeachersTab
-            teachers={teachers}
-            classes={classes}
-            onUpdateTeachers={setTeachers}
-            onUpdateSidebarStats={() => {}}
-            avatar={avatar}
-            pill={pill}
-            showModal={showModal}
-            closeModal={closeModal}
-          />
-        );
-      default:
-        return null;
-    }
+  const unassignedCount = classes.filter((currentClass) => !currentClass.classTeacherId).length;
+  const assignedCT = classes.filter((currentClass) => currentClass.classTeacherId).length;
+  const tabTitle = useMemo(() => {
+    const titles: Record<string, string> = {
+      overview: "School overview",
+      classes: "Class management",
+      students: "Student management",
+      subjects: "Subject management",
+      teachers: "Teacher directory",
+      assignments: "Subject assignments",
+    };
+    return titles[activeTab] || "Admin dashboard";
+  }, [activeTab]);
+
+  const pill = (text: string, color: string) => {
+    const palette: Record<string, { bg: string; text: string }> = {
+      green: { bg: "var(--sBg)", text: "var(--sText)" },
+      amber: { bg: "var(--wBg)", text: "var(--wText)" },
+      red: { bg: "var(--dBg)", text: "var(--dText)" },
+      blue: { bg: "var(--iBg)", text: "var(--iText)" },
+      gray: { bg: "var(--sand)", text: "var(--textMut)" },
+    };
+    const colors = palette[color] || palette.gray;
+    return `<span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:${colors.bg};color:${colors.text};">${text}</span>`;
   };
 
-  const teacherInitials = initials("Admin User");
-  const teacherAvatarColor = avatarColor("Admin User");
+  const avatar = (name: string, size: number) => {
+    const initials = name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+    return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#163325;color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.max(
+      10,
+      size / 2.4,
+    )}px;font-weight:700;">${initials}</div>`;
+  };
+
+  const sharedProps = {
+    closeModal,
+    showModal,
+    showConfirm,
+    onUpdateSidebarStats: updateSidebarStats,
+    pill,
+    avatar,
+  };
+
+  const renderActiveTab = () => {
+    if (activeTab === "classes") {
+      return (
+        <ClassesTab
+          classes={classes}
+          teachers={teachers}
+          subjects={subjects}
+          onUpdateClasses={updateClassesWithCounts}
+          {...sharedProps}
+        />
+      );
+    }
+
+    if (activeTab === "students") {
+      return (
+        <StudentsTab
+          students={students}
+          classes={classes}
+          onUpdateStudents={updateStudentsAndCounts}
+          {...sharedProps}
+        />
+      );
+    }
+
+    if (activeTab === "subjects") {
+      return (
+        <SubjectsTab
+          subjects={subjects}
+          classes={classes}
+          teachers={teachers}
+          onUpdateSubjects={setSubjects}
+          onUpdateClasses={updateClassesWithCounts}
+          {...sharedProps}
+        />
+      );
+    }
+
+    if (activeTab === "teachers") {
+      return (
+        <TeachersTab
+          teachers={teachers}
+          classes={classes}
+          onUpdateTeachers={setTeachers}
+          onUpdateSidebarStats={updateSidebarStats}
+          avatar={avatar}
+          pill={pill}
+          showModal={showModal}
+          closeModal={closeModal}
+        />
+      );
+    }
+
+    if (activeTab === "assignments") {
+      return (
+        <AssignmentsTab
+          classes={classes}
+          teachers={teachers}
+          subjects={subjects}
+          onUpdateClasses={updateClassesWithCounts}
+          avatar={avatar}
+          pill={pill}
+        />
+      );
+    }
+
+    return (
+      <OverviewTab
+        classes={classes}
+        subjects={subjects}
+        teachers={teachers}
+        students={students}
+        onSwitchTab={setActiveTab}
+        pill={pill}
+        avatar={avatar}
+      />
+    );
+  };
 
   return (
     <div className={styles.dashboard}>
@@ -505,184 +396,69 @@ const AdminDashboard: React.FC = () => {
         subjectsCount={subjects.length}
         teachersCount={teachers.length}
         assignedCT={assignedCT}
-        totalClasses={totalClasses}
+        totalClasses={classes.length}
         unassignedCount={unassignedCount}
-        onToggleCollapse={() => setCollapsed(!collapsed)}
+        onToggleCollapse={() => setCollapsed((current) => !current)}
         onSelectTab={setActiveTab}
         teacherInitials={teacherInitials}
         teacherAvatarColor={teacherAvatarColor}
       />
 
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          minWidth: 0,
-        }}
-      >
+      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <TopBar
-          title={navItems.find((n) => n.id === activeTab)?.label || "Overview"}
+          title={tabTitle}
           unassignedCount={unassignedCount}
           onSwitchTab={setActiveTab}
           teacherInitials={teacherInitials}
           teacherAvatarColor={teacherAvatarColor}
         />
 
-        {/* Hero Area - only on overview */}
-        {activeTab === "overview" && (
-          <div
-            style={{
-              background: "var(--cg)",
-              padding: "16px 20px",
-              flexShrink: 0,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <svg
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                opacity: 0.05,
-                pointerEvents: "none",
-              }}
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <defs>
-                <pattern
-                  id="ag"
-                  width="40"
-                  height="40"
-                  patternUnits="userSpaceOnUse"
-                >
-                  <path
-                    d="M 40 0 L 0 0 0 40"
-                    fill="none"
-                    stroke="#c9963d"
-                    strokeWidth=".8"
-                  />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#ag)" />
-            </svg>
-            <div
-              style={{
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: 10,
-              }}
-            >
-              <div>
-                <p
-                  style={{
-                    fontSize: 9.5,
-                    fontWeight: 700,
-                    color: "var(--gold)",
-                    textTransform: "uppercase",
-                    letterSpacing: ".09em",
-                    margin: "0 0 3px",
-                  }}
-                >
-                  Administration
-                </p>
-                <h1
-                  style={{
-                    fontFamily: "var(--serif)",
-                    fontSize: "1.4rem",
-                    fontWeight: 600,
-                    color: "#fdf9f2",
-                    margin: "0 0 3px",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Manage your school's structure from one place.
-                </h1>
-                <p style={{ fontSize: 12, color: "#9eb8aa", margin: 0 }}>
-                  {classes.length} classes · {subjects.length} subjects ·{" "}
-                  {teachers.filter((t) => t.status === "Active").length} active
-                  teachers
-                </p>
-              </div>
-              <div style={{ display: "flex", gap: 7 }}>
-                <button
-                  onClick={() => setActiveTab("classes")}
-                  style={{
-                    padding: "7px 13px",
-                    background: "rgba(201,150,61,.15)",
-                    border: "1px solid rgba(201,150,61,.3)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#e8dcc8",
-                    cursor: "pointer",
-                  }}
-                >
-                  Add class
-                </button>
-                <button
-                  onClick={() => setActiveTab("subjects")}
-                  style={{
-                    padding: "7px 13px",
-                    background: "rgba(201,150,61,.15)",
-                    border: "1px solid rgba(201,150,61,.3)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#e8dcc8",
-                    cursor: "pointer",
-                  }}
-                >
-                  Add subject
-                </button>
-                <button
-                  onClick={() => setActiveTab("assignments")}
-                  style={{
-                    padding: "7px 13px",
-                    background: "rgba(201,150,61,.15)",
-                    border: "1px solid rgba(201,150,61,.3)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#e8dcc8",
-                    cursor: "pointer",
-                  }}
-                >
-                  Assignments
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Content Area */}
         <div
-          style={{ flex: 1, overflowY: "auto", padding: "18px 20px" }}
-          className={styles.contentArea}
-        >
-          {renderContent()}
-        </div>
-      </div>
-
-      {/* Modal Container */}
-      {modalContent && (
-        <div
-          className={styles.modalBg}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeModal();
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "18px 20px 24px",
+            background: "linear-gradient(180deg, #fdfbf7 0%, #f7f0e3 100%)",
           }}
         >
-          <div className={styles.modalBox}>{modalContent}</div>
+          {renderActiveTab()}
+        </div>
+      </main>
+
+      {modalContent && (
+        <div className={styles.modalBg} onClick={closeModal}>
+          <div
+            className={`${styles.modalBox} ${styles.scalein}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {modalContent}
+          </div>
         </div>
       )}
     </div>
   );
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  background: "var(--sand)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--textM)",
+  cursor: "pointer",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  padding: "8px 16px",
+  background: "var(--gold)",
+  color: "#fff",
+  border: "none",
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
 };
 
 export default AdminDashboard;
