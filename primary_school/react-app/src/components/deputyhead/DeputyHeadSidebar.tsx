@@ -83,7 +83,6 @@ const DeputyHeadSidebar: React.FC<DeputyHeadSidebarProps> = ({
   activeTab,
   collapsed,
   mobileOpen,
-  user,
   userRole,
   onSelectTab,
   onToggleCollapse,
@@ -119,50 +118,6 @@ const DeputyHeadSidebar: React.FC<DeputyHeadSidebarProps> = ({
           {collapsed ? ">" : "<"}
         </button>
       </div>
-
-      <div className={sidebarStyles.profileCard}>
-        <img
-          className={sidebarStyles.profileAvatar}
-          src={user.avatar}
-          alt={user.name}
-        />
-        {!collapsed && (
-          <div className={sidebarStyles.profileInfo}>
-            <p className={sidebarStyles.profileName}>{user.name}</p>
-            <p className={sidebarStyles.profileRole}>
-              {userRole === "headteacher" ? "Head Teacher" : "Deputy Head"}
-            </p>
-            <p className={sidebarStyles.profileMeta}>{user.email}</p>
-          </div>
-        )}
-      </div>
-
-      <div className={sidebarStyles.statsCard}>
-        {!collapsed ? (
-          <>
-            <p className={sidebarStyles.statsTitle}>Leadership pulse</p>
-            <div className={sidebarStyles.statRow}>
-              <span className={sidebarStyles.statLabel}>Access level</span>
-              <strong className={sidebarStyles.statValue}>
-                {userRole === "headteacher" ? "Full" : "Deputy"}
-              </strong>
-            </div>
-            <div className={sidebarStyles.statRow}>
-              <span className={sidebarStyles.statLabel}>Visible workspaces</span>
-              <strong className={sidebarStyles.statValue}>
-                {visibleMenuItems.length}
-              </strong>
-            </div>
-            <div className={sidebarStyles.statRow}>
-              <span className={sidebarStyles.statLabel}>Open alerts</span>
-              <strong className={sidebarStyles.statValue}>3</strong>
-            </div>
-          </>
-        ) : (
-          <span className={sidebarStyles.statChip}>ADM</span>
-        )}
-      </div>
-
       <nav className={sidebarStyles.nav}>
         {visibleMenuItems.map((item) => (
           <button
