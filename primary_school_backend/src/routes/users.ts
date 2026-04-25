@@ -15,6 +15,58 @@ import { SubjectModel, AssignmentModel } from "../models/school.model.js";
 
 const router = Router();
 
+// POST login
+router.post("/login", async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const user: any = await userModel.findOne({ 
+      $or: [{ email }, { ADM: email }] // Support email or Admission No (for students)
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Extract all roles
+    const roles = [];
+    if (user.__t === rolesMapped.ST) {
+      roles.push("student");
+    } else {
+      if (user.roles?.role1) roles.push(user.roles.role1);
+      if (user.roles?.role2) roles.push(user.roles.role2);
+      if (user.roles?.role3) roles.push(user.roles.role3);
+      
+      // Fallback to discriminator name if roles object is empty (legacy)
+      if (roles.length === 0 && user.__t) {
+        roles.push(user.__t);
+      }
+    }
+
+    res.json({
+      id: user._id,
+      name: user.teachersName || user.studentsName,
+      email: user.email || user.ADM,
+      roles,
+      primaryRole: roles[0],
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.teachersName || user.studentsName)}&background=random&color=fff`,
+      classGrade: user.class,
+      classStream: user.classStream,
+      subjects: user.subjects ? [user.subjects.subject1, user.subjects.subject2].filter(Boolean) : [],
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET all users (staff and students) + subjects and assignments
 router.get("/", async (req: Request, res: Response) => {
   try {
@@ -77,6 +129,32 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
+  try {
+    const { grade, stream } = req.params;
+    const students = await userModel.find({ 
+      __t: rolesMapped.ST, 
+      class: grade, 
+      classStream: stream 
+    } as any);
+    
+    const mapped = students.map((s: any) => ({
+      id: s._id,
+      name: s.studentsName,
+      admissionNumber: s.ADM,
+      gender: s.gender,
+      parentName: s.guardianName,
+      parentPhone: s.guardianPhone,
+      status: s.status,
+      marks: [] // Placeholder
+    }));
+    
+    res.json(mapped);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // POST a new user
 router.post("/", async (req: Request, res: Response) => {
   try {
@@ -99,6 +177,7 @@ router.post("/", async (req: Request, res: Response) => {
       });
     } else {
       const hashedPassword = await bcrypt.hash("staff123", 10);
+      const rolesArray = Array.isArray(req.body.roles) ? req.body.roles : [req.body.role].filter(Boolean);
       const staffData = {
         teachersName: req.body.name,
         email: req.body.email,
@@ -112,16 +191,21 @@ router.post("/", async (req: Request, res: Response) => {
           subject2: req.body.subjects?.[1] || null,
         },
         roles: {
-          role1: role
+          role1: rolesArray[0] || null,
+          role2: rolesArray[1] || null,
+          role3: rolesArray[2] || null,
         },
         password: hashedPassword,
       };
 
-      if (role === rolesMapped.ADM) newUser = await adminModel.create(staffData);
-      else if (role === rolesMapped.CT) newUser = await classTeacherModel.create(staffData);
-      else if (role === rolesMapped.SJ) newUser = await subjectTeacher.create(staffData);
-      else if (role === rolesMapped.DT) newUser = await deputyModel.create(staffData);
-      else if (role === rolesMapped.HT) newUser = await headTeacherModel.create(staffData);
+      // Determine primary discriminator based on first role
+      const primaryRole = rolesArray[0] || rolesMapped.SJ;
+
+      if (primaryRole === rolesMapped.ADM) newUser = await adminModel.create(staffData);
+      else if (primaryRole === rolesMapped.CT) newUser = await classTeacherModel.create(staffData);
+      else if (primaryRole === rolesMapped.SJ) newUser = await subjectTeacher.create(staffData);
+      else if (primaryRole === rolesMapped.DT) newUser = await deputyModel.create(staffData);
+      else if (primaryRole === rolesMapped.HT) newUser = await headTeacherModel.create(staffData);
       else throw new Error("Invalid role provided");
     }
 
@@ -150,6 +234,7 @@ router.put("/:id", async (req: Request, res: Response) => {
         status: req.body.status,
       };
     } else {
+      const rolesArray = Array.isArray(req.body.roles) ? req.body.roles : [req.body.role].filter(Boolean);
       updateData = {
         teachersName: req.body.name,
         email: req.body.email,
@@ -163,6 +248,14 @@ router.put("/:id", async (req: Request, res: Response) => {
           subject2: req.body.subjects?.[1] || null,
         },
       };
+      
+      if (rolesArray.length > 0) {
+        updateData.roles = {
+          role1: rolesArray[0] || null,
+          role2: rolesArray[1] || null,
+          role3: rolesArray[2] || null,
+        };
+      }
     }
 
     const updatedUser = await userModel.findByIdAndUpdate(id, updateData, { new: true });

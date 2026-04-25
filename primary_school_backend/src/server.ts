@@ -5,6 +5,7 @@ import dbConnection from "./database/db.js";
 import { newStudent } from "./data/seed.js";
 import userRoutes from "./routes/users.js";
 import schoolRoutes from "./routes/school.js";
+import marksRoutes from "./routes/marks.js";
 
 let app = express();
 

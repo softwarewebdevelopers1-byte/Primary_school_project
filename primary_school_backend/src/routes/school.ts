@@ -58,6 +58,16 @@ router.get("/assignments", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const assignments = await AssignmentModel.find({ teacherId: id } as any).populate("subjectId");
+    res.json(assignments);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.post("/assignments", async (req: Request, res: Response) => {
   try {
     const { subjectId, teacherId, classGrade, classStream } = req.body;
