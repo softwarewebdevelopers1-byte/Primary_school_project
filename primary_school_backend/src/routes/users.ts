@@ -1,17 +1,8 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
 import bcrypt from "bcrypt";
-import {
-  userModel,
-  studentModel,
-  adminModel,
-  classTeacherModel,
-  subjectTeacher,
-  deputyModel,
-  headTeacherModel,
-  rolesMapped,
-} from "../models/user.model.js";
-import { SubjectModel, AssignmentModel } from "../models/school.model.js";
+import { userModel, studentModel, adminModel, classTeacherModel, subjectTeacher, deputyModel, headTeacherModel, rolesMapped } from "../models/user.model.js";
+import { SubjectModel, AssignmentModel, MarkModel } from "../models/school.model.js";
 
 const router = Router();
 
@@ -138,16 +129,46 @@ router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
       classStream: stream 
     } as any);
     
-    const mapped = students.map((s: any) => ({
-      id: s._id,
-      name: s.studentsName,
-      admissionNumber: s.ADM,
-      gender: s.gender,
-      parentName: s.guardianName,
-      parentPhone: s.guardianPhone,
-      status: s.status,
-      marks: [] // Placeholder
-    }));
+    // Fetch all marks for these students in this class
+    const studentIds = students.map(s => s._id);
+    const allMarks = await MarkModel.find({
+      studentId: { $in: studentIds },
+      classGrade: grade,
+      classStream: stream,
+      term: 1, // Default to term 1 for now
+      year: 2024
+    } as any);
+
+    const mapped = students.map((s: any) => {
+      // Create a marks object: { subjectId: score }
+      // We prioritize finalScore, then cat/exam average
+      const studentMarks: Record<string, number> = {};
+      
+      allMarks.filter(m => m.studentId.toString() === s._id.toString()).forEach(m => {
+        if (m.finalScore !== null) {
+          studentMarks[m.subjectId.toString()] = m.finalScore;
+        } else {
+          // Fallback to calculated average of cat1, cat2, exam if finalScore is missing
+          const components = [m.cat1, m.cat2, m.exam].filter(v => v !== null) as number[];
+          if (components.length > 0) {
+            // This is a simple fallback, might need adjustment based on weighting
+            const avg = components.reduce((a, b) => a + b, 0) / components.length;
+            studentMarks[m.subjectId.toString()] = Math.round(avg);
+          }
+        }
+      });
+
+      return {
+        id: s._id,
+        name: s.studentsName,
+        admissionNumber: s.ADM,
+        gender: s.gender,
+        parentName: s.guardianName,
+        parentPhone: s.guardianPhone,
+        status: s.status,
+        marks: studentMarks
+      };
+    });
     
     res.json(mapped);
   } catch (error: any) {

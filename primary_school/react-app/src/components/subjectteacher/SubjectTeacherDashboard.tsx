@@ -62,7 +62,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         grade: `Grade ${a.classGrade}${a.classStream}`,
         classGrade: a.classGrade,
         classStream: a.classStream,
-        students: 0,
+        students: a.studentCount || 0,
         avg: 0,
         pushed: false,
         term: 1,

@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Response, Request } from "express";
 import mongoose from "mongoose";
 import { SubjectModel, AssignmentModel } from "../models/school.model.js";
+import { studentModel, rolesMapped } from "../models/user.model.js";
 
 const router = Router();
 
@@ -62,7 +63,21 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const assignments = await AssignmentModel.find({ teacherId: id } as any).populate("subjectId");
-    res.json(assignments);
+    
+    // Add student count to each assignment
+    const enrichedAssignments = await Promise.all(assignments.map(async (a: any) => {
+      const studentCount = await studentModel.countDocuments({
+        class: a.classGrade,
+        classStream: a.classStream
+      } as any);
+      
+      return {
+        ...a.toObject(),
+        studentCount
+      };
+    }));
+
+    res.json(enrichedAssignments);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
