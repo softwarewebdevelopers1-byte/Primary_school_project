@@ -13,6 +13,7 @@ interface SidebarProps {
   unassignedCount: number;
   onToggleCollapse: () => void;
   onSelectTab: (tabId: string) => void;
+  onLogout: () => void;
   teacherInitials: string;
   teacherAvatarColor: string;
 }
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   unassignedCount,
   onToggleCollapse,
   onSelectTab,
+  onLogout,
   teacherInitials,
   teacherAvatarColor,
 }) => {
@@ -516,6 +518,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
         <button
+          onClick={onLogout}
           style={{
             flex: 1,
             display: "flex",

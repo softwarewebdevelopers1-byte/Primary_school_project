@@ -87,8 +87,8 @@ const SubjectTeacherDashboard: React.FC = () => {
     try {
       const data: any[] = await api.get("/marks", {
         subjectId: currentSubject.id,
-        classGrade: (currentSubject as any).classGrade,
-        classStream: (currentSubject as any).classStream,
+        classGrade: currentSubject.classGrade,
+        classStream: currentSubject.classStream,
         term: 1,
         year: 2024
       });
@@ -143,16 +143,19 @@ const SubjectTeacherDashboard: React.FC = () => {
     const currentSubject = subjects.find(s => s.id === subjectId);
     if (!currentSubject) return;
 
-    const data = students.map(s => ({
-      studentId: s.id,
-      ...marksData[subjectId][s.id]
+    const subjectMarks = marksData[subjectId];
+    if (!subjectMarks) return;
+
+    const data = Object.entries(subjectMarks).map(([studentId, marks]) => ({
+      studentId,
+      ...marks
     }));
 
     try {
       await api.post("/marks/save", {
         subjectId,
-        classGrade: (currentSubject as any).classGrade,
-        classStream: (currentSubject as any).classStream,
+        classGrade: currentSubject.classGrade,
+        classStream: currentSubject.classStream,
         term: 1,
         year: 2024,
         marksData: data
@@ -206,6 +209,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         streamsCount={subjects.length}
         totalStudents={students.length}
         department={user?.department || "General"}
+        onLogout={handleLogout}
       />
 
       <div className={styles.mainContent}>

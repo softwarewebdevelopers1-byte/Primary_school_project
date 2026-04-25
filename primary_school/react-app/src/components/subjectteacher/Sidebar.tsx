@@ -13,6 +13,7 @@ interface SidebarProps {
   streamsCount: number;
   totalStudents: number;
   department: string;
+  onLogout: () => void;
 }
 
 const navItems = [
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   streamsCount,
   totalStudents,
   department,
+  onLogout,
 }) => {
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`}>
@@ -135,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </svg>
           {!collapsed && <span>Alerts</span>}
         </button>
-        <button className={styles.footBtn}>
+        <button className={styles.footBtn} onClick={onLogout}>
           <svg
             width="13"
             height="13"

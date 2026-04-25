@@ -22,6 +22,7 @@ interface SidebarProps {
   onRoleToggle: (role: "deputy" | "headteacher") => void; // Fixed type
   userName: string;
   userRole: string;
+  onLogout: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRoleToggle,
   userName,
   userRole,
+  onLogout,
 }) => {
   const activeTeachers = TEACHERS.filter((t) => t.status === "Active").length;
   const openConcerns = CONCERNS.filter((c) => c.status === "Open").length;
@@ -431,6 +433,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
         <button
           className="dh-sbtn"
+          onClick={onLogout}
           style={{
             flex: 1,
             display: "flex",

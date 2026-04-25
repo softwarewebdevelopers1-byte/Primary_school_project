@@ -9,6 +9,8 @@ export interface Subject {
   pushed: boolean;
   term: number;
   lastAssess: string;
+  classGrade: string;
+  classStream: string;
 }
 
 export interface Student {

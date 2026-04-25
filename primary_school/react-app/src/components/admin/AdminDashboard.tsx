@@ -589,6 +589,7 @@ const AdminDashboard: React.FC = () => {
         unassignedCount={unassignedCount}
         onToggleCollapse={() => setCollapsed((current) => !current)}
         onSelectTab={setActiveTab}
+        onLogout={handleLogout}
         teacherInitials={teacherInitials}
         teacherAvatarColor={teacherAvatarColor}
       />

@@ -27,6 +27,7 @@ newStudent();
 
 app.use("/api/users", userRoutes);
 app.use("/api/school", schoolRoutes);
+app.use("/api/marks", marksRoutes);
 
 app.listen(DotEnvFile.DEVPort, (): void => {
   console.log("server started at port", DotEnvFile.DEVPort);

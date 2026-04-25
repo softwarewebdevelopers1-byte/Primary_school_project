@@ -135,6 +135,7 @@ export default function DeputyHeadDashboard({
           onRoleToggle={handleRoleToggle}
           userName={user.name}
           userRole={user.role}
+          onLogout={handleLogout}
         />
 
         <div

@@ -206,6 +206,7 @@ export default function ClassTeacherDashboard() {
           }}
           onSelectTab={handleSelectTab}
           classAvg={classAvg}
+          user={user}
           onLogout={handleLogout}
         />
 

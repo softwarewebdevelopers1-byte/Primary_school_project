@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
 import { MarkModel } from "../models/school.model.js";
-import { userModel, rolesMapped } from "../models/user.model.js";
+import { userModel, rolesMapped, studentModel } from "../models/user.model.js";
 
 const router = Router();
 
@@ -20,11 +20,10 @@ router.get("/", async (req: Request, res: Response) => {
 
     const [marks, students] = await Promise.all([
       MarkModel.find(query),
-      userModel.find({ 
-        __t: rolesMapped.ST, 
-        class: classGrade, 
-        classStream 
-      } as any)
+      studentModel.find({ 
+        class: classGrade as string,
+        classStream: { $in: [classStream as string, "", null] }
+      })
     ]);
 
     // Merge marks with student list to ensure every student is present
