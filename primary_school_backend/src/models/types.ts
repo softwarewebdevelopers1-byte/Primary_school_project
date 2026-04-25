@@ -1,12 +1,16 @@
-// for discriminator
 export interface user {
   status: string;
-  class: string;
-  classStream: string;
+  class: string | null;
+  classStream: string | null;
 }
+
 export interface teachers {
   password: string;
   teachersName: string;
+  email: string;
+  phone: string;
+  department: string;
+  joinDate: string;
   roles: {
     role1: string;
     role2: string;
@@ -18,10 +22,14 @@ export interface teachers {
     subject2: string;
   };
 }
-// discriminators interfaces
+
 export interface student {
   password: string;
   studentsName: string;
   role: string;
   ADM: string;
+  guardianName: string;
+  guardianPhone: string;
+  gender: string;
+  joinDate: string;
 }

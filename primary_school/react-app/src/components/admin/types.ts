@@ -7,6 +7,12 @@ export interface Teacher {
   phone: string;
   status: string;
   department: string;
+  role: string;
+  roleLabel: string;
+  teacherNumber?: string;
+  classGrade?: string;
+  classStream?: string;
+  subjects?: string[];
   joinDate?: string;
 }
 
@@ -14,7 +20,6 @@ export interface Subject {
   id: string;
   name: string;
   department: string;
-  assignedTeacherId: string;
 }
 
 export interface Class {
@@ -38,9 +43,56 @@ export interface Student {
   status?: string;
 }
 
-export interface Assignment {
+export interface ApiTeacher {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: string;
+  department: string;
+  role: string;
+  roleLabel: string;
+  teacherNumber?: string;
+  classGrade?: string;
+  classStream?: string;
+  subjects?: string[];
+  joinDate?: string;
+}
+
+export interface ApiStudent {
+  id: string;
+  admissionNo: string;
+  name: string;
+  gender: string;
+  guardianName: string;
+  guardianPhone: string;
+  status?: string;
+  classGrade: string;
+  classStream?: string;
+  joinDate?: string;
+}
+
+export interface ApiAssignment {
+  id: string;
   subjectId: string;
   teacherId: string;
+  classGrade: string;
+  classStream: string;
+}
+
+export interface UsersDashboardResponse {
+  staff: ApiTeacher[];
+  students: ApiStudent[];
+  subjects: Subject[];
+  assignments: ApiAssignment[];
+}
+
+export interface Assignment {
+  id: string;
+  subjectId: string;
+  teacherId: string;
+  classGrade: string;
+  classStream: string;
 }
 
 export interface NavItem {

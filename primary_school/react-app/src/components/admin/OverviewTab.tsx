@@ -7,6 +7,7 @@ interface OverviewTabProps {
   subjects: Subject[];
   teachers: Teacher[];
   students: Student[];
+  assignments: any[];
   onSwitchTab: (tab: string) => void;
   pill: (text: string, color: string) => string;
   avatar: (name: string, size: number) => string;
@@ -38,6 +39,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   subjects,
   teachers,
   students,
+  assignments,
   onSwitchTab,
   pill,
   avatar,
@@ -46,35 +48,34 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     .length;
   const activeTeachers = teachers.filter((teacher) => teacher.status === "Active")
     .length;
-  const assignedSubjects = subjects.filter((subject) => subject.assignedTeacherId)
-    .length;
+  const assignedSubjectsCount = new Set(assignments.map(a => a.subjectId)).size;
   const classesWithStudents = classes.filter((currentClass) => currentClass.students > 0)
     .length;
 
   const quickActions = [
     {
-      label: "Add a new class",
-      desc: "Create a class with grade, optional stream, and class teacher.",
+      label: "Review live classes",
+      desc: "See classes generated from enrolled learners and class-teacher assignments.",
       tab: "classes",
       color: "#1a4a99",
     },
     {
       label: "Enroll a student",
-      desc: "Place a student directly into a selected class.",
+      desc: "Create a real student record and place the learner in a grade and stream.",
       tab: "students",
       color: "var(--sText)",
     },
     {
-      label: "Add a new subject",
-      desc: "Capture subject name, department, and assigned teacher.",
-      tab: "subjects",
+      label: "Manage staff roles",
+      desc: "Add admins, head teachers, deputy teachers, class teachers, and subject teachers.",
+      tab: "teachers",
       color: "var(--gold)",
     },
     {
-      label: "Review class assignments",
-      desc: "Check which teachers are handling each class subject.",
-      tab: "assignments",
-      color: "var(--wText)",
+      label: "Review live subjects",
+      desc: "Track subject ownership pulled from saved staff subject assignments.",
+      tab: "subjects",
+      color: "var(--gold)",
     },
   ];
 
@@ -103,7 +104,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         <MetricCard
           label="Subjects"
           value={subjects.length}
-          note={`${assignedSubjects} with assigned teachers`}
+          note={`${assignedSubjectsCount} with assigned teachers`}
         />
         <MetricCard
           label="Teaching staff"

@@ -8,7 +8,7 @@ type rolesRecords = Record<roles, string>;
 //
 export let rolesMapped: rolesRecords = {
   CT: "classteacher",
-  SJ: "subjecteacher",
+  SJ: "subjectteacher",
   DT: "deputyteacher",
   HT: "headteacher",
   ST: "student",
@@ -20,6 +20,7 @@ const UserSchema = new Schema<user>({
   status: {
     type: String,
     enum: ["active", "inactive"],
+    default: "active",
   },
   class: {
     type: String,
@@ -36,6 +37,22 @@ const teachersSchema = new Schema<teachers>({
     default: "staff123",
   },
   teachersName: String,
+  email: {
+    type: String,
+    default: "",
+  },
+  phone: {
+    type: String,
+    default: "",
+  },
+  department: {
+    type: String,
+    default: "General",
+  },
+  joinDate: {
+    type: String,
+    default: () => new Date().toISOString().slice(0, 10),
+  },
   roles: {
     role1: {
       type: String,
@@ -77,8 +94,24 @@ const studentSchema = new Schema<student>({
   studentsName: String,
   role: String,
   ADM: String,
+  guardianName: {
+    type: String,
+    default: "",
+  },
+  guardianPhone: {
+    type: String,
+    default: "",
+  },
+  gender: {
+    type: String,
+    default: "",
+  },
+  joinDate: {
+    type: String,
+    default: () => new Date().toISOString().slice(0, 10),
+  },
 });
-const userModel =
+export const userModel =
   (mongoose.models.users as Model<user>) ||
   mongoose.model<user>("users", UserSchema);
 
