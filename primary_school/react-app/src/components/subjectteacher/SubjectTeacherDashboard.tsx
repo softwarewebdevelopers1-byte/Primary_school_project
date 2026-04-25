@@ -56,12 +56,13 @@ const SubjectTeacherDashboard: React.FC = () => {
       setLoading(true);
       const data: any[] = await api.get(`/school/assignments/teacher/${user.id}`);
       const mapped: Subject[] = data.map((a: any) => ({
-        id: a.subjectId._id,
+        id: a._id, // Use assignment ID
+        subjectId: a.subjectId._id,
         name: a.subjectId.name,
         grade: `Grade ${a.classGrade}${a.classStream}`,
         classGrade: a.classGrade,
         classStream: a.classStream,
-        students: 0, // Will be updated
+        students: 0,
         avg: 0,
         pushed: false,
         term: 1,
@@ -69,6 +70,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       }));
       setSubjects(mapped);
       if (mapped.length > 0) setActiveSubjectId(mapped[0].id);
+
     } catch (err) {
       console.error("Failed to load assignments", err);
     } finally {
@@ -85,13 +87,20 @@ const SubjectTeacherDashboard: React.FC = () => {
     if (!currentSubject) return;
 
     try {
+      // Ensure we send params in a way that matches what the backend expects
       const data: any[] = await api.get("/marks", {
-        subjectId: currentSubject.id,
+        subjectId: currentSubject.subjectId, // Use the actual subject ID
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
         term: 1,
         year: 2024
       });
+
+      if (!Array.isArray(data)) {
+        console.error("Unexpected response from /marks:", data);
+        setStudents([]);
+        return;
+      }
 
       const mappedStudents: Student[] = data.map(item => ({
         id: item.studentId,
@@ -114,6 +123,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       }));
     } catch (err) {
       console.error("Failed to load students and marks", err);
+      setStudents([]);
     }
   }, [activeSubjectId, subjects]);
 
@@ -139,11 +149,11 @@ const SubjectTeacherDashboard: React.FC = () => {
     });
   };
 
-  const handleSaveMarks = async (subjectId: string) => {
-    const currentSubject = subjects.find(s => s.id === subjectId);
+  const handleSaveMarks = async (assignmentId: string) => {
+    const currentSubject = subjects.find(s => s.id === assignmentId);
     if (!currentSubject) return;
 
-    const subjectMarks = marksData[subjectId];
+    const subjectMarks = marksData[assignmentId];
     if (!subjectMarks) return;
 
     const data = Object.entries(subjectMarks).map(([studentId, marks]) => ({
@@ -153,7 +163,7 @@ const SubjectTeacherDashboard: React.FC = () => {
 
     try {
       await api.post("/marks/save", {
-        subjectId,
+        subjectId: currentSubject.subjectId, // Use subject ID
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
         term: 1,
@@ -165,6 +175,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       alert("Failed to save marks.");
     }
   };
+
 
   const handlePushMarks = (subjectId: string) => {
     setPushedSubjects((prev) => new Set(prev).add(subjectId));

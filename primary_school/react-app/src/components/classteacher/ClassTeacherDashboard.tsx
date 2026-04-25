@@ -67,7 +67,8 @@ export default function ClassTeacherDashboard() {
         api.get("/users") // Get assignments and staff names
       ]);
       setStudents(studentsData);
-      setSubjects(subjectsData);
+      setSubjects(subjectsData.map((s: any) => ({ ...s, id: s._id })));
+
       
       // Filter assignments for THIS class
       const classAssignments = (staffData.assignments || []).filter(

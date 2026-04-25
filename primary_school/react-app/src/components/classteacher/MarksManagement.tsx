@@ -79,14 +79,17 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
     if (students.length === 0 || subjects.length === 0) return;
     
     setMarks(prev => {
-      // If we already have marks and they match current students, don't reset
-      if (Object.keys(prev).length > 0) return prev;
-
-      const m: Record<string, Record<string, number>> = {};
+      // If we already have marks for these students, don't reset completely
+      // but ensure we have entries for all students/subjects
+      const m: Record<string, Record<string, number>> = { ...prev };
       students.forEach((s) => {
-        m[s.id] = {};
+        if (!m[s.id]) m[s.id] = {};
         subjects.forEach(sub => {
-          m[s.id][sub.id] = (s.marks && s.marks[sub.id]) || 0;
+          // If the student already has marks for this subject from the backend (if we were to fetch them)
+          // or if they were already in state, keep them. Otherwise default to 0.
+          if (m[s.id][sub.id] === undefined) {
+             m[s.id][sub.id] = (s.marks && s.marks[sub.id]) || 0;
+          }
         });
       });
       return m;
@@ -120,6 +123,10 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         marksData: [] as any[]
       };
 
+      if (!payload.classGrade) {
+        throw new Error("Class grade not found in user profile.");
+      }
+
       Object.entries(marks).forEach(([studentId, studentMarks]) => {
         Object.entries(studentMarks).forEach(([subjectId, finalScore]) => {
           payload.marksData.push({
@@ -130,6 +137,10 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         });
       });
 
+      if (payload.marksData.length === 0) {
+        throw new Error("No marks to save.");
+      }
+
       await api.post("/marks/summary-save", payload);
       setMsg({ text: "Marks saved successfully!", type: "success" });
     } catch (err: any) {
@@ -139,6 +150,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
       setSaving(false);
     }
   };
+
 
   if (students.length === 0) {
     return <div style={{ padding: 40, textAlign: "center", color: C.textMuted }}>No students found in this class.</div>;
