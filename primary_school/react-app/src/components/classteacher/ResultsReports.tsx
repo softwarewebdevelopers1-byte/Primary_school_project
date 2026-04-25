@@ -3,6 +3,11 @@ import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
 
+interface ResultsReportsProps {
+  students: any[];
+  subjects: any[];
+}
+
 const SectionHeader: React.FC<{
   eyebrow: string;
   title: string;
@@ -49,11 +54,11 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-export const ResultsReports: React.FC = () => {
+export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjects }) => {
   const reports = [
     {
       title: "Full class report",
-      desc: "Complete results for all 5 students across all subjects, with grades and averages.",
+      desc: `Complete results for all ${students.length} students across all subjects, with grades and averages.`,
       tag: "XLSX / PDF",
     },
     {
@@ -78,7 +83,7 @@ export const ResultsReports: React.FC = () => {
       <SectionHeader
         eyebrow="Reports"
         title="Results & reports"
-        sub="Download result slips and class summaries for Term 1, 2024."
+        sub={`Download result slips and class summaries for Term 1, 2024.`}
       />
       <div
         style={{

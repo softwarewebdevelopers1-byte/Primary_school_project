@@ -159,6 +159,13 @@ router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
 router.post("/", async (req: Request, res: Response) => {
   try {
     const { role } = req.body;
+    if (role !== rolesMapped.ST) {
+      const existing = await userModel.findOne({ email: req.body.email });
+      if (existing) {
+        return res.status(400).json({ message: "Staff with this email already exists." });
+      }
+    }
+
     let newUser;
 
     if (role === rolesMapped.ST) {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import styles from "./LoginPage.module.css";
+import { api } from "../../lib/api";
 
 // Mock user database
 const mockUsers = [
@@ -203,47 +204,37 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setError("");
     setLoading(true);
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const response = await api.post("/users/login", { email, password });
+      const user: any = response;
+      console.log(response)
 
-    const user = mockUsers.find(
-      (u) => u.email === email && u.password === password,
-    );
+      // Store user data in localStorage
+      localStorage.setItem(
+        "user",
+        JSON.stringify(user),
+      );
 
-    if (!user) {
-      setError("Invalid email or password. Please try again.");
+      if (onLogin) {
+        onLogin(user);
+      } else {
+        const primaryRole = user.primaryRole;
+        const paths: Record<string, string> = {
+          superadmin: "/admin",
+          admin: "/admin",
+          headteacher: "/headteacher",
+          deputyteacher: "/deputyHead",
+          classteacher: "/classTeacher",
+          subjectteacher: "/subjectTeacher",
+          student: "/students",
+        };
+        window.location.href = paths[primaryRole] || "/dashboard";
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Invalid email or password. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Store user data in localStorage
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        ...(user.subject && { subject: user.subject }),
-        ...(user.class && { class: user.class }),
-      }),
-    );
-
-    if (onLogin) {
-      onLogin(user);
-    } else {
-      const paths: Record<string, string> = {
-        superadmin: "/superadmin/dashboard",
-        admin: "/admin/dashboard",
-        headteacher: "/headteacher/dashboard",
-        deputy: "/deputy/dashboard",
-        classteacher: "/classteacher/dashboard",
-        teacher: "/teacher/dashboard",
-      };
-      window.location.href = paths[user.role] || "/dashboard";
-    }
-    setLoading(false);
   };
 
   const handleDemoLogin = (role: string) => {

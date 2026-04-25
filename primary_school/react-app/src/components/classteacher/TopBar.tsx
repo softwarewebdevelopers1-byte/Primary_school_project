@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
-import { streamInfo, subjects } from "./shared/data";
+import { streamInfo } from "./shared/data";
 import { DashboardTheme } from "../../lib/useDashboardTheme";
 
 interface TopBarProps {
@@ -21,9 +21,14 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleTheme,
 }) => {
   const navigate = useNavigate();
-  const teachesSubjects = subjects.some(
-    (subject) => subject.teacher === streamInfo.classTeacher,
-  );
+  const [user] = useState(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const isSubjectTeacher = user?.roles?.includes("subjectteacher");
+  const hasSubjectAssignments = user?.subjects?.length > 0;
+  const teachesSubjects = isSubjectTeacher && hasSubjectAssignments;
 
   return (
     <header
@@ -149,7 +154,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Avatar name={streamInfo.classTeacher} size={34} />
+          <Avatar name={user?.name || "Teacher"} size={34} />
           <div>
             <p
               style={{
@@ -160,7 +165,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 margin: 0,
               }}
             >
-              {streamInfo.classTeacher}
+              {user?.name}
             </p>
             <p
               style={{

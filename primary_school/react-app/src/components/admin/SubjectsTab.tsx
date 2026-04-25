@@ -225,7 +225,6 @@ const SubjectFormModal: React.FC<{
 interface SubjectsTabProps {
   subjects: Subject[];
   classes: Class[];
-  teachers: Teacher[];
   onSaveSubject: (name: string, department: string, subjectId?: string) => Promise<void>;
   onDeleteSubject: (subjectId: string) => Promise<void>;
   pill: (text: string, color: string) => string;
@@ -237,7 +236,6 @@ interface SubjectsTabProps {
 export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   subjects,
   classes,
-  teachers,
   onSaveSubject,
   onDeleteSubject,
   pill,

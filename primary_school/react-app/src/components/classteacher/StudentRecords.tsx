@@ -1,12 +1,13 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { students, streamInfo } from "./shared/data";
 import { avg, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
 interface StudentRecordsProps {
+  students: any[];
   onViewStudent: (student: any) => void;
+  classInfo: string;
 }
 
 const StatusPill: React.FC<{ status: string }> = ({ status }) => (
@@ -19,8 +20,8 @@ const StatusPill: React.FC<{ status: string }> = ({ status }) => (
       fontWeight: 600,
       fontFamily: FONT.sans,
       letterSpacing: "0.03em",
-      background: status === "Active" ? C.successBg : C.dangerBg,
-      color: status === "Active" ? C.successText : C.dangerText,
+      background: status === "Active" || status === "active" ? C.successBg : C.dangerBg,
+      color: status === "Active" || status === "active" ? C.successText : C.dangerText,
     }}
   >
     {status}
@@ -87,13 +88,15 @@ const SectionHeader: React.FC<{
 );
 
 export const StudentRecords: React.FC<StudentRecordsProps> = ({
+  students,
   onViewStudent,
+  classInfo
 }) => {
   const [search, setSearch] = useState("");
   const filtered = students.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.admissionNumber.includes(search),
+      (s.admissionNo && s.admissionNo.includes(search)),
   );
 
   return (
@@ -101,7 +104,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
       <SectionHeader
         eyebrow="Roster"
         title="Student records"
-        sub={`${streamInfo.className} ${streamInfo.name} · ${students.length} learners enrolled`}
+        sub={`${classInfo} · ${students.length} learners enrolled`}
         action={
           <div style={{ display: "flex", gap: 10 }}>
             <input
@@ -166,7 +169,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
           </thead>
           <tbody>
             {filtered.map((s) => {
-              const a = avg(s.marks);
+              const a = s.marks ? avg(s.marks) : 0;
               return (
                 <tr
                   key={s.id}
@@ -202,7 +205,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                       color: C.textMuted,
                     }}
                   >
-                    {s.admissionNumber}
+                    {s.admissionNo}
                   </td>
                   <td
                     style={{

@@ -7,7 +7,7 @@ export interface Teacher {
   phone: string;
   status: string;
   department: string;
-  role: string;
+  roles: string[];
   roleLabel: string;
   teacherNumber?: string;
   classGrade?: string;
@@ -50,7 +50,7 @@ export interface ApiTeacher {
   phone: string;
   status: string;
   department: string;
-  role: string;
+  roles: string[];
   roleLabel: string;
   teacherNumber?: string;
   classGrade?: string;

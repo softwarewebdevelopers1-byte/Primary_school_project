@@ -1,9 +1,15 @@
 // components/classteacher/Analytics.tsx
 import React from "react";
-import { students, subjects, streamInfo } from "./shared/data";
 import { avg, grade, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
+
+interface AnalyticsProps {
+  students: any[];
+  subjects: any[];
+  classGrade: string;
+  classStream: string;
+}
 
 const MetricCard: React.FC<{
   label: string;
@@ -107,27 +113,37 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-export const Analytics: React.FC = () => {
+export const Analytics: React.FC<AnalyticsProps> = ({ students, subjects, classGrade, classStream }) => {
+  if (students.length === 0) {
+    return <div style={{ padding: 40, textAlign: "center", color: C.textMuted }}>No analytics data available.</div>;
+  }
+
   const subjectAvgs = subjects.map((s) => {
-    const marks = students.map((st) => st.marks[s.id] || 0);
+    const marks = students.map((st) => st.marks?.[s.id] || 0);
+    const sum = marks.reduce((a, b) => a + b, 0);
     return {
       ...s,
-      avg: Math.round(marks.reduce((a, b) => a + b, 0) / marks.length),
+      avg: marks.length > 0 ? Math.round(sum / marks.length) : 0,
     };
   });
+
   const studentAvgs = students
-    .map((s) => ({ ...s, avg: avg(s.marks) }))
+    .map((s) => ({ ...s, avg: avg(s.marks || {}) }))
     .sort((a, b) => b.avg - a.avg);
+
   const classAvg = Math.round(
     studentAvgs.reduce((a, s) => a + s.avg, 0) / studentAvgs.length,
   );
+
+  const bestSubject = [...subjectAvgs].sort((a, b) => b.avg - a.avg)[0];
+  const passRate = Math.round((students.filter(s => avg(s.marks || {}) >= 50).length / students.length) * 100);
 
   return (
     <div className="ct-anim">
       <SectionHeader
         eyebrow="Insights"
         title="Performance analytics"
-        sub={`${streamInfo.className} ${streamInfo.name} · Term ${streamInfo.term}, ${streamInfo.academicYear}`}
+        sub={`Grade ${classGrade}${classStream} · Academic Year 2024`}
       />
 
       {/* Metrics row */}
@@ -142,7 +158,7 @@ export const Analytics: React.FC = () => {
         <MetricCard
           label="Class average"
           value={`${classAvg}%`}
-          note="Across all 5 subjects"
+          note={`Across ${subjects.length} subjects`}
           color={gradeColor(classAvg)}
         />
         <MetricCard
@@ -153,15 +169,13 @@ export const Analytics: React.FC = () => {
         />
         <MetricCard
           label="Best subject"
-          value={
-            subjectAvgs.sort((a, b) => b.avg - a.avg)[0]?.name.split(" ")[0]
-          }
-          note={subjectAvgs[0]?.avg + "% avg"}
+          value={bestSubject?.name.split(" ")[0] || "N/A"}
+          note={bestSubject ? `${bestSubject.avg}% avg` : "N/A"}
           color={C.gold}
         />
         <MetricCard
           label="Pass rate"
-          value="80%"
+          value={`${passRate}%`}
           note="Students above 50%"
           color={C.warnText}
         />
@@ -191,61 +205,54 @@ export const Analytics: React.FC = () => {
             Subject averages
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {subjects.map((s) => {
-              const a = Math.round(
-                students
-                  .map((st) => st.marks[s.id] || 0)
-                  .reduce((x, y) => x + y, 0) / students.length,
-              );
-              return (
-                <div key={s.id}>
-                  <div
+            {subjectAvgs.map((s) => (
+              <div key={s.id}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 5,
+                  }}
+                >
+                  <span
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: 5,
+                      fontFamily: FONT.sans,
+                      fontSize: 13,
+                      color: C.textMid,
                     }}
                   >
-                    <span
-                      style={{
-                        fontFamily: FONT.sans,
-                        fontSize: 13,
-                        color: C.textMid,
-                      }}
-                    >
-                      {s.name}
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: FONT.serif,
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: gradeColor(a),
-                      }}
-                    >
-                      {a}%
-                    </span>
-                  </div>
-                  <div
+                    {s.name}
+                  </span>
+                  <span
                     style={{
-                      height: 9,
-                      background: C.sand,
-                      borderRadius: 5,
-                      overflow: "hidden",
+                      fontFamily: FONT.serif,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: gradeColor(s.avg),
                     }}
                   >
-                    <div
-                      style={{
-                        width: `${a}%`,
-                        height: "100%",
-                        background: gradeColor(a),
-                        borderRadius: 5,
-                      }}
-                    />
-                  </div>
+                    {s.avg}%
+                  </span>
                 </div>
-              );
-            })}
+                <div
+                  style={{
+                    height: 9,
+                    background: C.sand,
+                    borderRadius: 5,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${s.avg}%`,
+                      height: "100%",
+                      background: gradeColor(s.avg),
+                      borderRadius: 5,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -269,10 +276,10 @@ export const Analytics: React.FC = () => {
               margin: "0 0 1.2rem",
             }}
           >
-            Student ranking
+            Student ranking (Top 10)
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {studentAvgs.map((s, i) => (
+            {studentAvgs.slice(0, 10).map((s, i) => (
               <div
                 key={s.id}
                 style={{ display: "flex", alignItems: "center", gap: 12 }}

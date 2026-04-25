@@ -1,9 +1,13 @@
 // components/classteacher/MarksManagement.tsx
-import React, { useState } from "react";
-import { students, subjects } from "./shared/data";
+import React, { useState, useEffect } from "react";
 import { avg, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
+
+interface MarksManagementProps {
+  students: any[];
+  subjects: any[];
+}
 
 const SectionHeader: React.FC<{
   eyebrow: string;
@@ -64,21 +68,40 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-export const MarksManagement: React.FC = () => {
-  const [marks, setMarks] = useState(() => {
+export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects }) => {
+  const [marks, setMarks] = useState<Record<string, Record<string, number>>>({});
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
     const m: Record<string, Record<string, number>> = {};
     students.forEach((s) => {
-      m[s.id] = { ...s.marks };
+      m[s.id] = { ...(s.marks || {}) };
+      // Initialize missing subjects with 0
+      subjects.forEach(sub => {
+        if (m[s.id][sub.id] === undefined) m[s.id][sub.id] = 0;
+      });
     });
-    return m;
-  });
-  const [saved, setSaved] = useState(false);
+    setMarks(m);
+  }, [students, subjects]);
 
   const update = (sid: string, subid: string, val: string) => {
     const n = Math.max(0, Math.min(100, Number(val) || 0));
     setMarks((prev) => ({ ...prev, [sid]: { ...prev[sid], [subid]: n } }));
     setSaved(false);
   };
+
+  const handleSave = async () => {
+    setSaving(true);
+    // In a real app, you would POST to /api/marks/bulk
+    await new Promise(resolve => setTimeout(resolve, 800));
+    setSaving(false);
+    setSaved(true);
+  };
+
+  if (students.length === 0) {
+    return <div style={{ padding: 40, textAlign: "center", color: C.textMuted }}>No students found in this class.</div>;
+  }
 
   return (
     <div className="ct-anim">
@@ -89,7 +112,8 @@ export const MarksManagement: React.FC = () => {
         action={
           <button
             className="ct-primarybtn"
-            onClick={() => setSaved(true)}
+            onClick={handleSave}
+            disabled={saving}
             style={{
               display: "flex",
               alignItems: "center",
@@ -104,9 +128,10 @@ export const MarksManagement: React.FC = () => {
               fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.22s",
+              opacity: saving ? 0.7 : 1
             }}
           >
-            {saved ? "✓ Saved" : "Save changes"}
+            {saving ? "Saving..." : saved ? "✓ Saved" : "Save changes"}
           </button>
         }
       />
@@ -172,7 +197,8 @@ export const MarksManagement: React.FC = () => {
           </thead>
           <tbody>
             {students.map((s) => {
-              const a = avg(marks[s.id]);
+              const currentMarks = marks[s.id] || {};
+              const a = avg(currentMarks);
               return (
                 <tr
                   key={s.id}
@@ -204,7 +230,7 @@ export const MarksManagement: React.FC = () => {
                         type="number"
                         min={0}
                         max={100}
-                        value={marks[s.id][sub.id]}
+                        value={currentMarks[sub.id] || 0}
                         onChange={(e) => update(s.id, sub.id, e.target.value)}
                         className="ct-input"
                         style={{
@@ -215,7 +241,7 @@ export const MarksManagement: React.FC = () => {
                           fontFamily: FONT.sans,
                           fontSize: 13.5,
                           fontWeight: 600,
-                          color: gradeColor(marks[s.id][sub.id]),
+                          color: gradeColor(currentMarks[sub.id] || 0),
                           textAlign: "center",
                           background: C.cream,
                           transition: "all 0.2s",

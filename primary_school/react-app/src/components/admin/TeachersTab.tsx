@@ -146,7 +146,7 @@ const StaffFormModal: React.FC<{
   classes: Class[];
   onClose: () => void;
   onSave: (payload: {
-    role: string;
+    roles: string[];
     name: string;
     email: string;
     phone: string;
@@ -157,7 +157,7 @@ const StaffFormModal: React.FC<{
     subjects?: string[];
   }) => Promise<void>;
 }> = ({ teacher, classes, onClose, onSave }) => {
-  const [role, setRole] = useState(teacher?.role || "subjectteacher");
+  const [role, setRole] = useState<string[]>(teacher?.roles || ["subjectteacher"]);
   const [name, setName] = useState(teacher?.name || "");
   const [email, setEmail] = useState(teacher?.email || "");
   const [phone, setPhone] = useState(teacher?.phone || "");
@@ -179,14 +179,27 @@ const StaffFormModal: React.FC<{
 
       <div style={{ padding: "18px 22px 22px" }}>
         <div style={{ marginBottom: "1rem" }}>
-          <label style={labelStyle}>Role</label>
-          <select value={role} onChange={(event) => setRole(event.target.value)} style={inputStyle}>
+          <label style={labelStyle}>Roles (Select up to 3)</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", padding: "8px", background: "var(--sand)", borderRadius: "8px" }}>
             {roleOptions.map((option) => (
-              <option key={option.value} value={option.value}>
+              <label key={option.value} style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "12.5px", color: "var(--textM)" }}>
+                <input
+                  type="checkbox"
+                  checked={Array.isArray(role) ? role.includes(option.value) : role === option.value}
+                  onChange={(e) => {
+                    const currentRoles = Array.isArray(role) ? [...role] : [role];
+                    if (e.target.checked) {
+                      if (currentRoles.length < 3) setRole([...currentRoles, option.value]);
+                      else alert("Maximum 3 roles allowed");
+                    } else {
+                      setRole(currentRoles.filter(r => r !== option.value));
+                    }
+                  }}
+                />
                 {option.label}
-              </option>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
 
         <div style={{ marginBottom: "1rem" }}>
@@ -228,7 +241,7 @@ const StaffFormModal: React.FC<{
           </datalist>
         </div>
 
-        {role === "classteacher" && (
+        {role.includes("classteacher") && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: "1rem" }}>
             <div>
               <label style={labelStyle}>Class grade</label>
@@ -261,7 +274,7 @@ const StaffFormModal: React.FC<{
           </div>
         )}
 
-        {role === "subjectteacher" && (
+        {role.includes("subjectteacher") && (
           <div style={{ marginTop: "1rem" }}>
             <label style={labelStyle}>Subjects</label>
             <input
@@ -287,7 +300,7 @@ const StaffFormModal: React.FC<{
               setSaving(true);
               try {
                 await onSave({
-                  role,
+                  roles: role,
                   name: name.trim(),
                   email: email.trim(),
                   phone: phone.trim(),
@@ -320,7 +333,7 @@ interface TeachersTabProps {
   classes: Class[];
   onSaveTeacher: (
     payload: {
-      role: string;
+      roles: string[];
       name: string;
       email: string;
       phone: string;

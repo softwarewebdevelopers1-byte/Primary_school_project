@@ -118,7 +118,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               {teacherName}
             </p>
             <p style={{ fontSize: "10px", color: "var(--textMut)", margin: 0 }}>
-              Mathematics
+              Subject Expert
             </p>
           </div>
         </div>

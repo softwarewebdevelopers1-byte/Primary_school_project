@@ -242,7 +242,7 @@ const AdminDashboard: React.FC = () => {
 
   const saveTeacher = async (
     payload: {
-      role: string;
+      roles: string[];
       name: string;
       email: string;
       phone: string;
@@ -513,7 +513,6 @@ const AdminDashboard: React.FC = () => {
         <SubjectsTab
           subjects={subjects}
           classes={classes}
-          teachers={teachers}
           onSaveSubject={saveSubject}
           onDeleteSubject={deleteSubject}
           pill={pill}

@@ -36,7 +36,17 @@ const request = async <T>(
 };
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, params?: Record<string, any>) => {
+    let url = path;
+    if (params) {
+      const query = Object.entries(params)
+        .filter(([_, v]) => v !== undefined && v !== null)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join("&");
+      if (query) url += (url.includes("?") ? "&" : "?") + query;
+    }
+    return request<T>(url);
+  },
   post: <T>(path: string, body: unknown) =>
     request<T>(path, {
       method: "POST",

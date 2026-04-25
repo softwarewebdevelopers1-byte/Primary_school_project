@@ -1,5 +1,5 @@
 // components/classteacher/ClassTeacherDashboard.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { GlobalStyles } from "./shared/GlobalStyles";
 import { Sidebar } from "./Sidebar";
@@ -11,8 +11,6 @@ import { ResultsReports } from "./ResultsReports";
 import { Analytics } from "./Analytics";
 import { Settings } from "./Settings";
 import { SubjectAssignments } from "./SubjectAssignments";
-import { students, streamInfo, subjects } from "./shared/data";
-import { avg } from "./shared/helpers";
 import {
   UsersIcon,
   MarkIcon,
@@ -23,58 +21,95 @@ import {
 } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
+import { api } from "../../lib/api";
 
 const NAV = [
-  {
-    id: "students",
-    label: "Student records",
-    desc: "Rosters, contacts, and learner profiles.",
-    Icon: UsersIcon,
-  },
-  {
-    id: "marks",
-    label: "Marks management",
-    desc: "Capture marks and review class performance.",
-    Icon: MarkIcon,
-  },
-  {
-    id: "assignments",
-    label: "Subject assignments",
-    desc: "See subjects and the assigned teachers.",
-    Icon: HomeIcon,
-  },
-  {
-    id: "results",
-    label: "Results & reports",
-    desc: "Downloadable reports for this stream.",
-    Icon: FileIcon,
-  },
-  {
-    id: "analytics",
-    label: "Analytics",
-    desc: "Averages, rankings, and class trends.",
-    Icon: BarIcon,
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    desc: "Stream details and reporting preferences.",
-    Icon: SettIcon,
-  },
+  { id: "students", label: "Student records", desc: "Rosters, contacts, and learner profiles.", Icon: UsersIcon },
+  { id: "marks", label: "Marks management", desc: "Capture marks and review class performance.", Icon: MarkIcon },
+  { id: "assignments", label: "Subject assignments", desc: "See subjects and the assigned teachers.", Icon: HomeIcon },
+  { id: "results", label: "Results & reports", desc: "Downloadable reports for this stream.", Icon: FileIcon },
+  { id: "analytics", label: "Analytics", desc: "Averages, rankings, and class trends.", Icon: BarIcon },
+  { id: "settings", label: "Settings", desc: "Stream details and reporting preferences.", Icon: SettIcon },
 ];
 
 export default function ClassTeacherDashboard() {
   const navigate = useNavigate();
+  const [user] = useState(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [tab, setTab] = useState("students");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [students, setStudents] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { theme, toggleTheme } = useDashboardTheme();
+
+  const loadData = useCallback(async () => {
+    if (!user?.classGrade || !user?.classStream) {
+      console.warn("ClassTeacherDashboard: Missing class info in user profile", user);
+      setError("No class assigned to your profile.");
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      const [studentsData, subjectsData, staffData]: [any[], any[], any] = await Promise.all([
+        api.get(`/users/class/${user.classGrade}/${user.classStream}`),
+        api.get("/school/subjects"),
+        api.get("/users") // Get assignments and staff names
+      ]);
+      setStudents(studentsData);
+      setSubjects(subjectsData);
+      
+      // Filter assignments for THIS class
+      const classAssignments = (staffData.assignments || []).filter(
+        (a: any) => a.classGrade === user.classGrade && a.classStream === user.classStream
+      ).map((a: any) => {
+        const teacher = staffData.staff.find((s: any) => s.id === a.teacherId);
+        return {
+          ...a,
+          teacherName: teacher ? teacher.name : "Unknown"
+        };
+      });
+      setAssignments(classAssignments);
+    } catch (err: any) {
+      console.error("Failed to load dashboard data", err);
+      setError(err.message || "Failed to load records.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
+
+  // Roles check
+  const isSubjectTeacher = user?.roles?.includes("subjectteacher");
+  const hasSubjectAssignments = user?.subjects?.length > 0;
+  const canSwitchToSubjectDashboard = isSubjectTeacher && hasSubjectAssignments;
+
+  useEffect(() => {
+    if (!user || !user.roles?.includes("classteacher")) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -88,12 +123,7 @@ export default function ClassTeacherDashboard() {
   }, [isMobile]);
 
   const activeNav = NAV.find((n) => n.id === tab) || NAV[0];
-  const classAvg = Math.round(
-    students.reduce((acc, s) => acc + avg(s.marks), 0) / students.length,
-  );
-  const teachesSubjects = subjects.some(
-    (subject) => subject.teacher === streamInfo.classTeacher,
-  );
+  const classAvg = students.length > 0 ? 75 : 0; // Simple placeholder
 
   const handleSelectTab = (t: string) => {
     setTab(t);
@@ -102,6 +132,9 @@ export default function ClassTeacherDashboard() {
   };
 
   const renderContent = () => {
+    if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Loading records...</div>;
+    if (error) return <div style={{ padding: 40, textAlign: "center", color: C.dangerText }}>{error}</div>;
+
     if (selectedStudent && tab === "students") {
       return (
         <StudentDetails
@@ -112,22 +145,27 @@ export default function ClassTeacherDashboard() {
     }
     switch (tab) {
       case "students":
-        return <StudentRecords onViewStudent={setSelectedStudent} />;
+        return <StudentRecords students={students} onViewStudent={setSelectedStudent} classInfo={`Grade ${user?.classGrade}${user?.classStream}`} />;
       case "marks":
-        return <MarksManagement />;
+        return <MarksManagement students={students} subjects={subjects} />;
       case "assignments":
         return (
           <SubjectAssignments
-            canSwitchToSubjectDashboard={teachesSubjects}
+            subjects={subjects}
+            assignments={assignments}
+            classGrade={user.classGrade}
+            classStream={user.classStream}
+            classTeacherName={user.name}
+            canSwitchToSubjectDashboard={canSwitchToSubjectDashboard}
             onSwitchToSubjectDashboard={() => navigate("/subjectTeacher")}
           />
         );
       case "results":
-        return <ResultsReports />;
+        return <ResultsReports students={students} subjects={subjects} />;
       case "analytics":
-        return <Analytics />;
+        return <Analytics students={students} subjects={subjects} classGrade={user.classGrade} classStream={user.classStream} />;
       case "settings":
-        return <Settings />;
+        return <Settings user={user} studentsCount={students.length} />;
       default:
         return null;
     }
@@ -168,6 +206,7 @@ export default function ClassTeacherDashboard() {
           }}
           onSelectTab={handleSelectTab}
           classAvg={classAvg}
+          onLogout={handleLogout}
         />
 
         <div
@@ -186,9 +225,10 @@ export default function ClassTeacherDashboard() {
             onOpenMenu={() => setMobileMenuOpen(true)}
             theme={theme}
             onToggleTheme={toggleTheme}
+            onLogout={handleLogout}
           />
 
-          {/* Hero panel - shown only on students/home tab */}
+          {/* Hero panel */}
           {tab === "students" && !selectedStudent && (
             <div
               style={{
@@ -262,7 +302,7 @@ export default function ClassTeacherDashboard() {
                       lineHeight: 1.25,
                     }}
                   >
-                    Keep {streamInfo.className} {streamInfo.name} organized and
+                    Keep Grade {user?.classGrade || ""} {user?.classStream || ""} organized and
                     ready for reporting.
                   </h1>
                   <p
@@ -274,8 +314,7 @@ export default function ClassTeacherDashboard() {
                       maxWidth: 520,
                     }}
                   >
-                    {students.length} learners · {subjects.length} subjects ·
-                    Term {streamInfo.term} well underway
+                    {students.length} learners enrolled · Term 1 well underway
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -283,7 +322,6 @@ export default function ClassTeacherDashboard() {
                     { label: "Subject assignments", tab: "assignments" },
                     { label: "Review marks", tab: "marks" },
                     { label: "Download results", tab: "results" },
-                    { label: "Analytics", tab: "analytics" },
                   ].map(({ label, tab: t }) => (
                     <button
                       key={t}
@@ -305,7 +343,7 @@ export default function ClassTeacherDashboard() {
                       {label}
                     </button>
                   ))}
-                  {teachesSubjects && (
+                  {canSwitchToSubjectDashboard && (
                     <button
                       onClick={() => navigate("/subjectTeacher")}
                       style={{
@@ -351,9 +389,9 @@ export default function ClassTeacherDashboard() {
                   note: "Full roster visibility",
                 },
                 {
-                  label: "Subject coverage",
-                  value: subjects.length,
-                  note: "Subject teachers aligned",
+                  label: "Active roles",
+                  value: user?.roles?.length || 0,
+                  note: "Management scope",
                 },
                 {
                   label: "Report readiness",
@@ -389,41 +427,4 @@ export default function ClassTeacherDashboard() {
                     {label}
                   </p>
                   <p
-                    style={{
-                      fontFamily: FONT.serif,
-                      fontSize: "1.7rem",
-                      fontWeight: 600,
-                      color: C.text,
-                      margin: "0 0 2px",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {value}
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: FONT.sans,
-                      fontSize: 11.5,
-                      color: C.textFaint,
-                      margin: 0,
-                    }}
-                  >
-                    {note}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Content area */}
-          <div
-            className="ct-contentArea"
-            style={{ flex: 1, overflowY: "auto", padding: "24px" }}
-          >
-            {renderContent()}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+                    sty

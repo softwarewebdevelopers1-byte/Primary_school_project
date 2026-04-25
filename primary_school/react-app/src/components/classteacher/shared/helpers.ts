@@ -1,6 +1,7 @@
 // components/classteacher/shared/helpers.ts
 export const avg = (marks: Record<string, number>): number => {
   const vals = Object.values(marks);
+  if (vals.length === 0) return 0;
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 };
 
