@@ -1,4 +1,6 @@
+// components/students/StudentDashboard.tsx
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import styles from "./StudentDashboard.module.css";
 import StudentPortfolio from "./StudentPortfolio";
 import LearningMaterials from "./LearningMaterials";
@@ -181,64 +183,6 @@ const initialAssessments: Assessment[] = [
       },
     ],
   },
-  {
-    id: "AS002",
-    title: "Science Quick Quiz",
-    subject: "Science",
-    teacher: "Mrs. Wanjiku",
-    dueDate: "2026-04-15T14:30:00",
-    totalMarks: 20,
-    obtainedMarks: 18,
-    status: "graded",
-    instructions: "Short responses are enough for each item.",
-    attemptsAllowed: 1,
-    questions: [
-      {
-        id: "AS002-Q1",
-        text: "What gas do plants release during photosynthesis?",
-        type: "short-answer",
-        marks: 10,
-        studentAnswer: "Oxygen",
-        feedback: "Correct and clearly stated.",
-      },
-      {
-        id: "AS002-Q2",
-        text: "Why is sunlight important to plants?",
-        type: "short-answer",
-        marks: 10,
-        studentAnswer: "It gives energy for making food.",
-        feedback: "Good answer. Mention chlorophyll next time for full detail.",
-      },
-    ],
-  },
-  {
-    id: "AS003",
-    title: "English Reading Reflection",
-    subject: "English",
-    teacher: "Mr. Kamau",
-    dueDate: "2026-04-19T18:00:00",
-    totalMarks: 25,
-    status: "submitted",
-    instructions: "Reflect on the text using complete sentences.",
-    attemptsAllowed: 1,
-    submittedAt: "2026-04-19T16:42:00",
-    questions: [
-      {
-        id: "AS003-Q1",
-        text: "What lesson did the main character learn?",
-        type: "essay",
-        marks: 15,
-        studentAnswer: "The character learned that honesty helps build trust.",
-      },
-      {
-        id: "AS003-Q2",
-        text: "Which scene was the turning point in the story?",
-        type: "short-answer",
-        marks: 10,
-        studentAnswer: "When the missing book was returned to the library.",
-      },
-    ],
-  },
 ];
 
 const initialQuestions: QuestionTask[] = [
@@ -256,57 +200,6 @@ const initialQuestions: QuestionTask[] = [
       { id: "QT001-Q1", text: "Solve: 5x - 8 = 17", marks: 10 },
       { id: "QT001-Q2", text: "Write one real-life example of an equation.", marks: 10 },
       { id: "QT001-Q3", text: "What is the value of x in x/4 = 3?", marks: 10 },
-    ],
-  },
-  {
-    id: "QT002",
-    title: "Science Vocabulary Check",
-    subject: "Science",
-    teacher: "Mrs. Wanjiku",
-    deadline: "2026-04-18T22:00:00",
-    totalMarks: 15,
-    obtainedMarks: 13,
-    status: "graded",
-    penalty: 0,
-    instructions: "Use one sentence per answer.",
-    submittedAt: "2026-04-18T17:20:00",
-    questions: [
-      {
-        id: "QT002-Q1",
-        text: "Define chlorophyll.",
-        marks: 15,
-        studentAnswer: "It is the green substance in plants that helps make food.",
-        teacherFeedback: "Strong answer.",
-      },
-    ],
-  },
-  {
-    id: "QT003",
-    title: "English Vocabulary Builder",
-    subject: "English",
-    teacher: "Mr. Kamau",
-    deadline: "2026-04-17T21:00:00",
-    totalMarks: 20,
-    obtainedMarks: 15,
-    status: "late",
-    penalty: 5,
-    instructions: "Use the new words in clear sentences.",
-    submittedAt: "2026-04-18T08:10:00",
-    questions: [
-      {
-        id: "QT003-Q1",
-        text: 'Use the word "perseverance" in a sentence.',
-        marks: 10,
-        studentAnswer: "Perseverance helped Amina finish the race.",
-        teacherFeedback: "Nice use of context.",
-      },
-      {
-        id: "QT003-Q2",
-        text: 'Define the word "curious".',
-        marks: 10,
-        studentAnswer: "Wanting to know more about something.",
-        teacherFeedback: "Accurate definition.",
-      },
     ],
   },
 ];
@@ -513,56 +406,12 @@ function AppOverview({
           </div>
         </section>
       </div>
-
-      <div className={styles.overviewGrid}>
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span className={styles.eyebrow}>Class feedback</span>
-              <h3>Teacher highlights</h3>
-            </div>
-          </div>
-          <div className={styles.commentList}>
-            {portfolio.teacherComments.map((comment) => (
-              <article key={comment} className={styles.commentCard}>
-                <strong>Teacher note</strong>
-                <p>{comment}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span className={styles.eyebrow}>Subject mastery</span>
-              <h3>Progress by class</h3>
-            </div>
-          </div>
-          <div className={styles.masteryList}>
-            {portfolio.subjectProgress.map((item) => (
-              <div key={item.subject} className={styles.masteryItem}>
-                <div className={styles.masteryHeader}>
-                  <div>
-                    <strong>{item.subject}</strong>
-                    <p>{item.teacher}</p>
-                  </div>
-                  <span>{item.mastery}%</span>
-                </div>
-                <div className={styles.progressTrack}>
-                  <div className={styles.progressBarAlt} style={{ width: `${item.mastery}%` }} />
-                </div>
-                <p className={styles.masteryTarget}>Target: {item.target}%</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
     </section>
   );
 }
 
 function StudentDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [materials, setMaterials] = useState(initialMaterials);
   const [assessments, setAssessments] = useState(initialAssessments);
@@ -591,83 +440,9 @@ function StudentDashboard() {
     assessments.filter((item) => item.status === "pending").length +
     questions.filter((item) => item.status === "pending").length;
 
-  const toggleSavedMaterial = (materialId: string) => {
-    setMaterials((current) =>
-      current.map((item) =>
-        item.id === materialId ? { ...item, saved: !item.saved } : item,
-      ),
-    );
-  };
-
-  const markMaterialComplete = (materialId: string) => {
-    setMaterials((current) =>
-      current.map((item) =>
-        item.id === materialId
-          ? { ...item, completed: !item.completed, isNew: false }
-          : item,
-      ),
-    );
-  };
-
-  const registerDownload = (materialId: string) => {
-    setMaterials((current) =>
-      current.map((item) =>
-        item.id === materialId
-          ? { ...item, downloads: item.downloads + 1, isNew: false }
-          : item,
-      ),
-    );
-  };
-
-  const submitAssessment = (assessmentId: string, answers: Record<string, string>) => {
-    setAssessments((current) =>
-      current.map((item) => {
-        if (item.id !== assessmentId) {
-          return item;
-        }
-
-        const answeredQuestions = item.questions.map((question) => ({
-          ...question,
-          studentAnswer: answers[question.id] ?? question.studentAnswer,
-        }));
-
-        return {
-          ...item,
-          status: "submitted",
-          submittedAt: new Date().toISOString(),
-          questions: answeredQuestions,
-        };
-      }),
-    );
-  };
-
-  const submitQuestionTask = (taskId: string, answers: Record<string, string>) => {
-    setQuestions((current) =>
-      current.map((item) => {
-        if (item.id !== taskId) {
-          return item;
-        }
-
-        const isLate = new Date(item.deadline).getTime() < Date.now();
-        const answeredQuestions = item.questions.map((question) => ({
-          ...question,
-          studentAnswer: answers[question.id] ?? question.studentAnswer,
-        }));
-
-        const rawScore = Math.round(item.totalMarks * 0.88);
-        const penaltyMarks = isLate
-          ? Math.round((item.totalMarks * item.penalty) / 100)
-          : 0;
-
-        return {
-          ...item,
-          status: isLate ? "late" : "submitted",
-          submittedAt: new Date().toISOString(),
-          obtainedMarks: Math.max(0, rawScore - penaltyMarks),
-          questions: answeredQuestions,
-        };
-      }),
-    );
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
   };
 
   const navItems: Tab[] = ["dashboard", "materials", "assessments", "questions", "portfolio"];
@@ -688,7 +463,21 @@ function StudentDashboard() {
             <p>
               {student.class} • {student.grade}
             </p>
-            <span>{pendingCount} pending items</span>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontSize: 11,
+                color: "#f97316",
+                fontWeight: 700,
+                cursor: "pointer",
+                textDecoration: "underline"
+              }}
+            >
+              Log out
+            </button>
           </div>
         </div>
       </header>
@@ -722,9 +511,9 @@ function StudentDashboard() {
           <LearningMaterials
             studentId={student.id}
             materials={materials}
-            onToggleSaved={toggleSavedMaterial}
-            onToggleComplete={markMaterialComplete}
-            onDownload={registerDownload}
+            onToggleSaved={() => {}}
+            onToggleComplete={() => {}}
+            onDownload={() => {}}
           />
         )}
 
@@ -732,7 +521,7 @@ function StudentDashboard() {
           <Assessments
             studentId={student.id}
             assessments={assessments}
-            onSubmitAssessment={submitAssessment}
+            onSubmitAssessment={() => {}}
           />
         )}
 
@@ -740,7 +529,7 @@ function StudentDashboard() {
           <Questions
             studentId={student.id}
             questions={questions}
-            onSubmitQuestionTask={submitQuestionTask}
+            onSubmitQuestionTask={() => {}}
           />
         )}
 

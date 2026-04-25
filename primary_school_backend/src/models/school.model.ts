@@ -38,6 +38,7 @@ export interface IMark extends Document {
   cat1: number | null;
   cat2: number | null;
   exam: number | null;
+  finalScore: number | null;
 }
 
 const MarkSchema: Schema = new Schema({
@@ -50,6 +51,7 @@ const MarkSchema: Schema = new Schema({
   cat1: { type: Number, default: null },
   cat2: { type: Number, default: null },
   exam: { type: Number, default: null },
+  finalScore: { type: Number, default: null },
 }, { timestamps: true });
 
 export const MarkModel = mongoose.model<IMark>("Mark", MarkSchema);

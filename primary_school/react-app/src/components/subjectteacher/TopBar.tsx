@@ -13,6 +13,7 @@ interface TopBarProps {
   canSwitchToClassDashboard?: boolean;
   theme: DashboardTheme;
   onToggleTheme: () => void;
+  onLogout: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -24,6 +25,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   canSwitchToClassDashboard = false,
   theme,
   onToggleTheme,
+  onLogout,
 }) => {
   const navigate = useNavigate();
   const date = new Date().toLocaleDateString("en-GB", {
@@ -77,7 +79,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             whiteSpace: "nowrap",
           }}
         >
-          {theme === "dark" ? "Light mode" : "Dark mode"}
+          {theme === "dark" ? "Light" : "Dark"}
         </button>
         <div style={{ textAlign: "right" }}>
           <p style={{ fontSize: "10px", color: "var(--textF)", margin: 0 }}>
@@ -117,9 +119,21 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               {teacherName}
             </p>
-            <p style={{ fontSize: "10px", color: "var(--textMut)", margin: 0 }}>
-              Subject Expert
-            </p>
+            <button
+              onClick={onLogout}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontSize: "10px",
+                color: "var(--dText)",
+                fontWeight: 700,
+                cursor: "pointer",
+                textDecoration: "underline"
+              }}
+            >
+              Log out
+            </button>
           </div>
         </div>
       </div>

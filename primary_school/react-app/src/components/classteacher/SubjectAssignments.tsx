@@ -1,24 +1,41 @@
+// components/classteacher/SubjectAssignments.tsx
 import React from "react";
 import { C, FONT } from "./shared/constants";
-import { streamInfo, subjects } from "./shared/data";
 
 interface SubjectAssignmentsProps {
+  subjects: any[];
+  assignments: any[];
+  classGrade: string;
+  classStream: string;
+  classTeacherName: string;
   onSwitchToSubjectDashboard: () => void;
   canSwitchToSubjectDashboard: boolean;
 }
 
 export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
+  subjects,
+  assignments,
+  classGrade,
+  classStream,
+  classTeacherName,
   onSwitchToSubjectDashboard,
   canSwitchToSubjectDashboard,
 }) => {
-  const classTeacherSubjects = subjects.filter(
-    (subject) => subject.teacher === streamInfo.classTeacher,
-  );
-  const supportingTeachers = new Set(
-    subjects
-      .map((subject) => subject.teacher)
-      .filter((teacher) => teacher !== streamInfo.classTeacher),
-  );
+  const subjectsWithTeachers = subjects.map(sub => {
+    const assignment = assignments.find(a => a.subjectId === sub.id || a.subjectId._id === sub.id);
+    return {
+      ...sub,
+      assignedTeacher: assignment ? assignment.teacherName : "Not assigned",
+      isClassTeacher: assignment ? assignment.teacherName === classTeacherName : false
+    };
+  });
+
+  const myTeachingLoad = subjectsWithTeachers.filter(s => s.isClassTeacher).length;
+  const supportingTeachersCount = new Set(
+    subjectsWithTeachers
+      .filter(s => s.assignedTeacher !== "Not assigned" && !s.isClassTeacher)
+      .map(s => s.assignedTeacher)
+  ).size;
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -58,8 +75,7 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
               margin: "0 0 6px",
             }}
           >
-            Assigned teachers for each subject in {streamInfo.className}{" "}
-            {streamInfo.name}
+            Assigned teachers for Grade {classGrade}{classStream}
           </h2>
           <p
             style={{
@@ -106,17 +122,17 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
         <MetricCard
           label="Total subjects"
           value={subjects.length}
-          note="Coverage in this stream"
+          note="Full curriculum coverage"
         />
         <MetricCard
           label="My teaching load"
-          value={classTeacherSubjects.length}
-          note="Subjects taught by class teacher"
+          value={myTeachingLoad}
+          note="Subjects handled personally"
         />
         <MetricCard
           label="Supporting teachers"
-          value={supportingTeachers.size}
-          note="Other teachers on the stream"
+          value={supportingTeachersCount}
+          note="Other staff on this stream"
         />
       </section>
 
@@ -165,7 +181,7 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: C.cream }}>
-                {["Subject", "Code", "Assigned teacher", "Average", "Pass rate"].map(
+                {["Subject", "Department", "Assigned teacher"].map(
                   (heading) => (
                     <th
                       key={heading}
@@ -187,10 +203,7 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
               </tr>
             </thead>
             <tbody>
-              {subjects.map((subject) => {
-                const isClassTeacherSubject =
-                  subject.teacher === streamInfo.classTeacher;
-
+              {subjectsWithTeachers.map((subject) => {
                 return (
                   <tr
                     key={subject.id}
@@ -199,36 +212,34 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
                     <td style={cellStyle}>
                       <p style={primaryTextStyle}>{subject.name}</p>
                       <p style={secondaryTextStyle}>
-                        {isClassTeacherSubject
-                          ? "Also taught by class teacher"
-                          : "Handled by subject teacher"}
+                        {subject.isClassTeacher
+                          ? "Taught by class teacher"
+                          : "Taught by supporting staff"}
                       </p>
                     </td>
-                    <td style={cellStyle}>{subject.code}</td>
+                    <td style={cellStyle}>{subject.department || "Academic"}</td>
                     <td style={cellStyle}>
                       <span
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 8,
-                          padding: "5px 10px",
-                          borderRadius: 999,
-                          background: isClassTeacherSubject
+                          padding: "5px 12px",
+                          borderRadius: 20,
+                          background: subject.isClassTeacher
                             ? C.successBg
-                            : C.goldPale,
-                          color: isClassTeacherSubject
+                            : subject.assignedTeacher === "Not assigned" ? C.dangerBg : C.goldPale,
+                          color: subject.isClassTeacher
                             ? C.successText
-                            : C.textMid,
+                            : subject.assignedTeacher === "Not assigned" ? C.dangerText : C.textMid,
                           fontFamily: FONT.sans,
-                          fontSize: 12.5,
+                          fontSize: 12,
                           fontWeight: 700,
                         }}
                       >
-                        {subject.teacher}
+                        {subject.assignedTeacher}
                       </span>
                     </td>
-                    <td style={cellStyle}>{subject.avg ?? "-"}%</td>
-                    <td style={cellStyle}>{subject.pass ?? "-"}%</td>
                   </tr>
                 );
               })}

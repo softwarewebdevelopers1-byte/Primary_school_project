@@ -9,7 +9,6 @@ import {
   ChevronRight,
 } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { streamInfo } from "./shared/data";
 import { NavItem } from "./types";
 
 interface SidebarProps {
@@ -21,6 +20,8 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   onSelectTab: (tabId: string) => void;
   classAvg: number;
+  user: any;
+  onLogout: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -32,6 +33,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
   onSelectTab,
   classAvg,
+  user,
+  onLogout,
 }) => {
   return (
     <aside
@@ -137,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           borderBottom: `1px solid rgba(255,255,255,0.07)`,
         }}
       >
-        <Avatar name={streamInfo.classTeacher} size={36} />
+        <Avatar name={user?.name || "User"} size={36} />
         {!collapsed && (
           <div style={{ overflow: "hidden" }}>
             <p
@@ -152,7 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 textOverflow: "ellipsis",
               }}
             >
-              {streamInfo.classTeacher}
+              {user?.name}
             </p>
             <p
               style={{
@@ -162,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 margin: 0,
               }}
             >
-              Class Teacher · {streamInfo.className} {streamInfo.name}
+              Class Teacher · Grade {user?.classGrade}{user?.classStream}
             </p>
           </div>
         )}
@@ -184,9 +187,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
           >
             {[
-              ["Year", streamInfo.academicYear],
-              ["Term", `T${streamInfo.term}`],
-              ["Students", streamInfo.totalStudents],
+              ["Year", "2024"],
+              ["Term", "T1"],
+              ["Status", "Active"],
             ].map(([k, v]) => (
               <div
                 key={k}
@@ -401,6 +404,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
         <button
+          onClick={onLogout}
           style={{
             display: "flex",
             alignItems: "center",

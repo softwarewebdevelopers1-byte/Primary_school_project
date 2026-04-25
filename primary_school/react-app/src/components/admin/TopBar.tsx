@@ -10,6 +10,7 @@ interface TopBarProps {
   teacherAvatarColor: string;
   theme: DashboardTheme;
   onToggleTheme: () => void;
+  onLogout: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -20,6 +21,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   teacherAvatarColor,
   theme,
   onToggleTheme,
+  onLogout,
 }) => {
   const date = new Date().toLocaleDateString("en-GB", {
     weekday: "short",
@@ -122,7 +124,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             whiteSpace: "nowrap",
           }}
         >
-          {theme === "dark" ? "Light mode" : "Dark mode"}
+          {theme === "dark" ? "Light" : "Dark"}
         </button>
         <p style={{ fontSize: 11.5, color: "var(--textF)", margin: 0 }}>
           {date}
@@ -155,9 +157,21 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               Admin User
             </p>
-            <p style={{ fontSize: 10, color: "var(--textMut)", margin: 0 }}>
-              Administrator
-            </p>
+            <button
+              onClick={onLogout}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontSize: 10,
+                color: "var(--dText)",
+                fontWeight: 700,
+                cursor: "pointer",
+                textDecoration: "underline"
+              }}
+            >
+              Log out
+            </button>
           </div>
         </div>
       </div>

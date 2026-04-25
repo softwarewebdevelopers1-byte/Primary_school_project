@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { avg, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
+import { api } from "../../lib/api";
 
 interface MarksManagementProps {
   students: any[];
@@ -71,32 +72,72 @@ const SectionHeader: React.FC<{
 export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects }) => {
   const [marks, setMarks] = useState<Record<string, Record<string, number>>>({});
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
 
+  // Initialize marks state once when students/subjects are loaded
   useEffect(() => {
-    const m: Record<string, Record<string, number>> = {};
-    students.forEach((s) => {
-      m[s.id] = { ...(s.marks || {}) };
-      // Initialize missing subjects with 0
-      subjects.forEach(sub => {
-        if (m[s.id][sub.id] === undefined) m[s.id][sub.id] = 0;
+    if (students.length === 0 || subjects.length === 0) return;
+    
+    setMarks(prev => {
+      // If we already have marks and they match current students, don't reset
+      if (Object.keys(prev).length > 0) return prev;
+
+      const m: Record<string, Record<string, number>> = {};
+      students.forEach((s) => {
+        m[s.id] = {};
+        subjects.forEach(sub => {
+          m[s.id][sub.id] = (s.marks && s.marks[sub.id]) || 0;
+        });
       });
+      return m;
     });
-    setMarks(m);
   }, [students, subjects]);
 
   const update = (sid: string, subid: string, val: string) => {
     const n = Math.max(0, Math.min(100, Number(val) || 0));
-    setMarks((prev) => ({ ...prev, [sid]: { ...prev[sid], [subid]: n } }));
-    setSaved(false);
+    setMarks((prev) => ({
+      ...prev,
+      [sid]: {
+        ...(prev[sid] || {}),
+        [subid]: n
+      }
+    }));
+    if (msg) setMsg(null);
   };
 
   const handleSave = async () => {
+    if (students.length === 0) return;
     setSaving(true);
-    // In a real app, you would POST to /api/marks/bulk
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setSaving(false);
-    setSaved(true);
+    setMsg(null);
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      
+      const payload = {
+        classGrade: user.classGrade,
+        classStream: user.classStream,
+        term: 1, // Default to term 1 for now
+        year: 2024,
+        marksData: [] as any[]
+      };
+
+      Object.entries(marks).forEach(([studentId, studentMarks]) => {
+        Object.entries(studentMarks).forEach(([subjectId, finalScore]) => {
+          payload.marksData.push({
+            studentId,
+            subjectId,
+            finalScore
+          });
+        });
+      });
+
+      await api.post("/marks/summary-save", payload);
+      setMsg({ text: "Marks saved successfully!", type: "success" });
+    } catch (err: any) {
+      console.error("Save failed", err);
+      setMsg({ text: "Failed to save marks: " + (err.message || "Unknown error"), type: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (students.length === 0) {
@@ -110,29 +151,40 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         title="Marks management"
         sub="Edit marks per subject. Values are clamped to 0–100."
         action={
-          <button
-            className="ct-primarybtn"
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 20px",
-              background: C.gold,
-              color: "#fff",
-              border: "none",
-              borderRadius: 9,
-              fontFamily: FONT.sans,
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.22s",
-              opacity: saving ? 0.7 : 1
-            }}
-          >
-            {saving ? "Saving..." : saved ? "✓ Saved" : "Save changes"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {msg && (
+              <span style={{ 
+                fontSize: 13, 
+                fontWeight: 600, 
+                color: msg.type === "success" ? C.successText : C.dangerText 
+              }}>
+                {msg.text}
+              </span>
+            )}
+            <button
+              className="ct-primarybtn"
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 20px",
+                background: C.gold,
+                color: "#fff",
+                border: "none",
+                borderRadius: 9,
+                fontFamily: FONT.sans,
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.22s",
+                opacity: saving ? 0.7 : 1
+              }}
+            >
+              {saving ? "Saving..." : "Save changes"}
+            </button>
+          </div>
         }
       />
       <div

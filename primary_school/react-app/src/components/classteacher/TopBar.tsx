@@ -1,8 +1,8 @@
+// components/classteacher/TopBar.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
-import { streamInfo } from "./shared/data";
 import { DashboardTheme } from "../../lib/useDashboardTheme";
 
 interface TopBarProps {
@@ -11,6 +11,7 @@ interface TopBarProps {
   onOpenMenu: () => void;
   theme: DashboardTheme;
   onToggleTheme: () => void;
+  onLogout: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -19,6 +20,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenMenu,
   theme,
   onToggleTheme,
+  onLogout,
 }) => {
   const navigate = useNavigate();
   const [user] = useState(() => {
@@ -53,6 +55,16 @@ export const TopBar: React.FC<TopBarProps> = ({
             className="ct-menuBtn"
             onClick={onOpenMenu}
             aria-label="Open navigation menu"
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: `1px solid ${C.border}`,
+              background: C.sand,
+              fontFamily: FONT.sans,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
           >
             Menu
           </button>
@@ -107,7 +119,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               whiteSpace: "nowrap",
             }}
           >
-            Switch to Subject Dashboard
+            Subject Dashboard
           </button>
         )}
         <button
@@ -126,7 +138,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             whiteSpace: "nowrap",
           }}
         >
-          {theme === "dark" ? "Light mode" : "Dark mode"}
+          {theme === "dark" ? "Light" : "Dark"}
         </button>
 
         <div style={{ textAlign: "right" }}>
@@ -138,7 +150,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               margin: 0,
             }}
           >
-            Current term
+            Term 1
           </p>
           <p
             style={{
@@ -149,7 +161,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               margin: 0,
             }}
           >
-            Term {streamInfo.term}, {streamInfo.academicYear}
+            2024 Academic Year
           </p>
         </div>
 
@@ -167,16 +179,22 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               {user?.name}
             </p>
-            <p
+            <button
+              onClick={onLogout}
               style={{
+                background: "none",
+                border: "none",
+                padding: 0,
                 fontFamily: FONT.sans,
                 fontSize: 11,
-                color: C.textMuted,
-                margin: 0,
+                color: C.dangerText,
+                fontWeight: 600,
+                cursor: "pointer",
+                textDecoration: "underline"
               }}
             >
-              Class Teacher
-            </p>
+              Log out
+            </button>
           </div>
         </div>
       </div>

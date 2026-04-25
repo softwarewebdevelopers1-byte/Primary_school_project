@@ -60,6 +60,11 @@ export default function DeputyHeadDashboard({
     year: "numeric",
   });
 
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  };
+
   const handleRoleToggle = (role: UserRoleType) => {
     setRoleToggle(role);
     setTab("overview");
@@ -151,6 +156,7 @@ export default function DeputyHeadDashboard({
             onOpenMenu={() => setMobileMenuOpen(true)}
             theme={theme}
             onToggleTheme={toggleTheme}
+            onLogout={handleLogout}
           />
 
           {/* Hero — only on overview */}

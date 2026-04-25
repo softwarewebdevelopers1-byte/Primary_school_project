@@ -427,4 +427,41 @@ export default function ClassTeacherDashboard() {
                     {label}
                   </p>
                   <p
-                    sty
+                    style={{
+                      fontFamily: FONT.serif,
+                      fontSize: "1.7rem",
+                      fontWeight: 600,
+                      color: C.text,
+                      margin: "0 0 2px",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {value}
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: FONT.sans,
+                      fontSize: 11.5,
+                      color: C.textFaint,
+                      margin: 0,
+                    }}
+                  >
+                    {note}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Content area */}
+          <div
+            className="ct-contentArea"
+            style={{ flex: 1, overflowY: "auto", padding: "24px" }}
+          >
+            {renderContent()}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

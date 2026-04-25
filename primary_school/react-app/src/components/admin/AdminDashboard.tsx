@@ -168,6 +168,11 @@ const AdminDashboard: React.FC = () => {
   const [error, setError] = useState("");
   const { theme, toggleTheme } = useDashboardTheme();
 
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  };
+
   const classes = useMemo(
     () => deriveClasses(students, teachers, subjects, assignments),
     [students, teachers, subjects, assignments],
@@ -597,6 +602,7 @@ const AdminDashboard: React.FC = () => {
           teacherAvatarColor={teacherAvatarColor}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onLogout={handleLogout}
         />
 
         <div

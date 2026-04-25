@@ -1,7 +1,11 @@
 // components/classteacher/Settings.tsx
 import React, { useState } from "react";
-import { streamInfo } from "./shared/data";
 import { C, FONT } from "./shared/constants";
+
+interface SettingsProps {
+  user: any;
+  studentsCount: number;
+}
 
 const SectionHeader: React.FC<{
   eyebrow: string;
@@ -49,20 +53,21 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-export const Settings: React.FC = () => {
+export const Settings: React.FC<SettingsProps> = ({ user, studentsCount }) => {
   const [form, setForm] = useState({
-    name: streamInfo.name,
-    className: streamInfo.className,
-    classTeacher: streamInfo.classTeacher,
-    academicYear: streamInfo.academicYear,
-    term: streamInfo.term,
+    name: user?.classStream || "",
+    className: `Grade ${user?.classGrade || ""}`,
+    classTeacher: user?.name || "",
+    academicYear: "2024",
+    term: "1",
   });
   const [saved, setSaved] = useState(false);
 
-  const Field: React.FC<{ label: string; k: string; type?: string }> = ({
+  const Field: React.FC<{ label: string; k: string; type?: string; disabled?: boolean }> = ({
     label,
     k,
     type = "text",
+    disabled = false,
   }) => (
     <div style={{ marginBottom: "1.2rem" }}>
       <label
@@ -80,6 +85,7 @@ export const Settings: React.FC = () => {
       </label>
       <input
         type={type}
+        disabled={disabled}
         className="ct-input"
         value={(form as any)[k]}
         onChange={(e) => {
@@ -93,9 +99,10 @@ export const Settings: React.FC = () => {
           borderRadius: 9,
           fontFamily: FONT.sans,
           fontSize: 14,
-          color: C.text,
-          background: C.cream,
+          color: disabled ? C.textMuted : C.text,
+          background: disabled ? C.sand : C.cream,
           transition: "all 0.2s",
+          cursor: disabled ? "not-allowed" : "text"
         }}
       />
     </div>
@@ -131,11 +138,14 @@ export const Settings: React.FC = () => {
           >
             Stream information
           </p>
-          <Field label="Stream name" k="name" />
-          <Field label="Class name" k="className" />
-          <Field label="Class teacher" k="classTeacher" />
+          <Field label="Stream name" k="name" disabled />
+          <Field label="Class name" k="className" disabled />
+          <Field label="Class teacher" k="classTeacher" disabled />
           <Field label="Academic year" k="academicYear" />
           <Field label="Term" k="term" type="number" />
+          <p style={{ fontSize: 12, color: C.textFaint, marginBottom: "1rem" }}>
+            Note: Some fields are locked by administration.
+          </p>
           <button
             className="ct-primarybtn"
             onClick={() => setSaved(true)}
@@ -161,8 +171,8 @@ export const Settings: React.FC = () => {
         </div>
         <div
           style={{
-            background: C.dangerBg,
-            border: `1px solid #fecaca`,
+            background: C.white,
+            border: `1px solid ${C.border}`,
             borderRadius: 14,
             padding: "1.4rem",
           }}
@@ -172,42 +182,20 @@ export const Settings: React.FC = () => {
               fontFamily: FONT.sans,
               fontSize: 12,
               fontWeight: 700,
-              color: C.dangerText,
+              color: C.textMid,
               margin: "0 0 6px",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
             }}
           >
-            Danger zone
+            Class statistics
           </p>
-          <p
-            style={{
-              fontFamily: FONT.sans,
-              fontSize: 13,
-              color: C.dangerText,
-              margin: "0 0 12px",
-              lineHeight: 1.5,
-              opacity: 0.85,
-            }}
-          >
-            Resetting class data is irreversible. All marks and student
-            assignments will be cleared.
+          <p style={{ fontFamily: FONT.sans, fontSize: 13, color: C.textMuted, margin: 0 }}>
+            Total Learners: <strong>{studentsCount}</strong>
           </p>
-          <button
-            style={{
-              padding: "9px 18px",
-              background: "transparent",
-              border: `1.5px solid ${C.dangerText}`,
-              borderRadius: 9,
-              fontFamily: FONT.sans,
-              fontSize: 13,
-              fontWeight: 600,
-              color: C.dangerText,
-              cursor: "pointer",
-            }}
-          >
-            Reset class data
-          </button>
+          <p style={{ fontFamily: FONT.sans, fontSize: 13, color: C.textMuted, margin: "4px 0 0" }}>
+            Status: <span style={{ color: C.successText, fontWeight: 600 }}>Active</span>
+          </p>
         </div>
       </div>
     </div>

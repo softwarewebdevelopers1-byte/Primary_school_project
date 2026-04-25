@@ -13,6 +13,7 @@ interface TopBarProps {
   onOpenMenu: () => void;
   theme: DashboardTheme;
   onToggleTheme: () => void;
+  onLogout: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -24,6 +25,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenMenu,
   theme,
   onToggleTheme,
+  onLogout,
 }) => (
   <header
     className="dh-topBar"
@@ -46,6 +48,16 @@ export const TopBar: React.FC<TopBarProps> = ({
           className="dh-menuBtn"
           onClick={onOpenMenu}
           aria-label="Open navigation menu"
+          style={{
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: `1px solid ${C.border}`,
+            background: C.sand,
+            fontFamily: F.sans,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer"
+          }}
         >
           Menu
         </button>
@@ -98,7 +110,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           whiteSpace: "nowrap",
         }}
       >
-        {theme === "dark" ? "Light mode" : "Dark mode"}
+        {theme === "dark" ? "Light" : "Dark"}
       </button>
       <p
         style={{
@@ -148,16 +160,22 @@ export const TopBar: React.FC<TopBarProps> = ({
           >
             {userName}
           </p>
-          <p
+          <button
+            onClick={onLogout}
             style={{
+              background: "none",
+              border: "none",
+              padding: 0,
               fontFamily: F.sans,
               fontSize: 10.5,
-              color: C.textMuted,
-              margin: 0,
+              color: C.dangerText,
+              fontWeight: 700,
+              cursor: "pointer",
+              textDecoration: "underline"
             }}
           >
-            {userRole}
-          </p>
+            Log out
+          </button>
         </div>
       </div>
     </div>

@@ -42,6 +42,11 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { theme, toggleTheme } = useDashboardTheme();
 
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  };
+
   const loadAssignments = useCallback(async () => {
     if (!user?.id) {
       setLoading(false);
@@ -213,6 +218,7 @@ const SubjectTeacherDashboard: React.FC = () => {
           canSwitchToClassDashboard={canSwitchToClassDashboard}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onLogout={handleLogout}
         />
         <div className={styles.contentArea}>{renderContent()}</div>
       </div>

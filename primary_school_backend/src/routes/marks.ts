@@ -85,4 +85,39 @@ router.post("/save", async (req: Request, res: Response) => {
   }
 });
 
+// POST save summary marks (finalScore) from Class Teacher
+router.post("/summary-save", async (req: Request, res: Response) => {
+  try {
+    const { classGrade, classStream, term, year, marksData } = req.body;
+    
+    if (!classGrade || !classStream || !term || !year || !Array.isArray(marksData)) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const operations = marksData.map((item: any) => ({
+      updateOne: {
+        filter: { 
+          studentId: item.studentId, 
+          subjectId: item.subjectId, 
+          classGrade, 
+          classStream, 
+          term, 
+          year 
+        },
+        update: { 
+          $set: { 
+            finalScore: item.finalScore
+          } 
+        },
+        upsert: true
+      }
+    }));
+
+    await MarkModel.bulkWrite(operations);
+    res.json({ message: "Summary marks saved successfully" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
