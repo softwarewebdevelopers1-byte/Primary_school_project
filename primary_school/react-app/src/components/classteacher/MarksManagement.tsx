@@ -1,336 +1,167 @@
 // components/classteacher/MarksManagement.tsx
-import React, { useState, useEffect } from "react";
-import { avg, gradeColor } from "./shared/helpers";
-import { Avatar } from "./shared/Avatar";
+import React, { useState, useEffect, useCallback } from "react";
 import { C, FONT } from "./shared/constants";
 import { api } from "../../lib/api";
+import { MarksEntry } from "../shared/MarksEntry";
+import { avatar } from "../../lib/dashboardHelpers";
+import { MarksData, Subject, Student } from "../subjectteacher/types";
 
 interface MarksManagementProps {
   students: any[];
   subjects: any[];
 }
 
-const SectionHeader: React.FC<{
-  eyebrow: string;
-  title: string;
-  sub?: string;
-  action?: React.ReactNode;
-}> = ({ eyebrow, title, sub, action }) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      marginBottom: "1.6rem",
-      flexWrap: "wrap",
-      gap: "12px",
-    }}
-  >
-    <div>
-      <p
-        style={{
-          fontFamily: FONT.sans,
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.09em",
-          textTransform: "uppercase",
-          color: C.gold,
-          margin: "0 0 5px",
-        }}
-      >
-        {eyebrow}
-      </p>
-      <h2
-        style={{
-          fontFamily: FONT.serif,
-          fontSize: "1.9rem",
-          fontWeight: 600,
-          color: C.text,
-          margin: "0 0 4px",
-          letterSpacing: "-0.01em",
-        }}
-      >
-        {title}
-      </h2>
-      {sub && (
-        <p
-          style={{
-            fontFamily: FONT.sans,
-            fontSize: 13,
-            color: C.textMuted,
-            margin: 0,
-          }}
-        >
-          {sub}
-        </p>
-      )}
-    </div>
-    {action}
-  </div>
-);
-
 export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects }) => {
-  const [marks, setMarks] = useState<Record<string, Record<string, number>>>({});
-  const [saving, setSaving] = useState(false);
+  const [activeSubjectId, setActiveSubjectId] = useState("");
+  const [marksData, setMarksData] = useState<MarksData>({});
+  const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
 
-  // Initialize marks state once when students/subjects are loaded
   useEffect(() => {
-    if (students.length === 0 || subjects.length === 0) return;
-    
-    setMarks(prev => {
-      // If we already have marks for these students, don't reset completely
-      // but ensure we have entries for all students/subjects
-      const m: Record<string, Record<string, number>> = { ...prev };
-      students.forEach((s) => {
-        if (!m[s.id]) m[s.id] = {};
-        subjects.forEach(sub => {
-          // If the student already has marks for this subject from the backend (if we were to fetch them)
-          // or if they were already in state, keep them. Otherwise default to 0.
-          if (m[s.id][sub.id] === undefined) {
-             m[s.id][sub.id] = (s.marks && s.marks[sub.id]) || 0;
-          }
-        });
-      });
-      return m;
-    });
-  }, [students, subjects]);
+    if (subjects.length > 0 && !activeSubjectId) {
+      setActiveSubjectId(subjects[0].id || subjects[0]._id);
+    }
+  }, [subjects, activeSubjectId]);
 
-  const update = (sid: string, subid: string, val: string) => {
-    const n = Math.max(0, Math.min(100, Number(val) || 0));
-    setMarks((prev) => ({
-      ...prev,
-      [sid]: {
-        ...(prev[sid] || {}),
-        [subid]: n
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const loadDetailedMarks = useCallback(async () => {
+    if (!activeSubjectId) return;
+    setLoading(true);
+    try {
+      const data: any[] = await api.get("/marks", {
+        params: {
+          subjectId: activeSubjectId,
+          classGrade: user.classGrade,
+          classStream: user.classStream,
+          term: 1,
+          year: 2024
+        }
+      });
+
+      setMarksData(prev => ({
+        ...prev,
+        [activeSubjectId]: data.reduce((acc, item) => {
+          acc[item.studentId] = item.marks;
+          return acc;
+        }, {} as any)
+      }));
+    } catch (err) {
+      console.error("Failed to load detailed marks", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeSubjectId, user.classGrade, user.classStream]);
+
+  useEffect(() => {
+    loadDetailedMarks();
+  }, [loadDetailedMarks]);
+
+  const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
+    setMarksData((prev) => {
+      const newData = { ...prev };
+      if (!newData[subjectId]) newData[subjectId] = {};
+      if (!newData[subjectId][studentId]) newData[subjectId][studentId] = { 
+        cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
+        cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
+        exam: null, examMax: 100, finalScore: null 
+      };
+      
+      let n: number | null = value === "" ? null : Number(value);
+      if (n !== null && isNaN(n)) n = null;
+
+      // Only clamp if not 'finalScore'
+      if (key !== "finalScore") {
+        const maxKey = `${key}Max`;
+        const max = (newData[subjectId][studentId] as any)[maxKey] || (key === "exam" ? 100 : 40);
+        if (n !== null) n = Math.max(0, Math.min(n, max));
+      } else if (n !== null) {
+        n = Math.max(0, Math.min(n, 100));
       }
-    }));
-    if (msg) setMsg(null);
+
+      newData[subjectId][studentId][key as any] = n;
+      return newData;
+    });
   };
 
-  const handleSave = async () => {
-    if (students.length === 0) return;
-    setSaving(true);
+  const handleSaveMarks = async (subjectId: string, catConfigs?: any) => {
+    const subjectMarks = marksData[subjectId];
+    if (!subjectMarks) return;
+
     setMsg(null);
     try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      
-      const payload = {
+      const data = Object.entries(subjectMarks).map(([studentId, marks]) => ({
+        studentId,
+        ...marks
+      }));
+
+      await api.post("/marks/save", {
+        subjectId,
         classGrade: user.classGrade,
         classStream: user.classStream,
-        term: 1, // Default to term 1 for now
+        term: 1,
         year: 2024,
-        marksData: [] as any[]
-      };
-
-      if (!payload.classGrade) {
-        throw new Error("Class grade not found in user profile.");
-      }
-
-      Object.entries(marks).forEach(([studentId, studentMarks]) => {
-        Object.entries(studentMarks).forEach(([subjectId, finalScore]) => {
-          payload.marksData.push({
-            studentId,
-            subjectId,
-            finalScore
-          });
-        });
+        marksData: data,
+        catConfigs
       });
-
-      if (payload.marksData.length === 0) {
-        throw new Error("No marks to save.");
-      }
-
-      await api.post("/marks/summary-save", payload);
       setMsg({ text: "Marks saved successfully!", type: "success" });
     } catch (err: any) {
-      console.error("Save failed", err);
-      setMsg({ text: "Failed to save marks: " + (err.message || "Unknown error"), type: "error" });
-    } finally {
-      setSaving(false);
+      setMsg({ text: "Failed to save: " + err.message, type: "error" });
     }
   };
 
+  // Map students and subjects to the expected types for MarksEntry
+  const mappedStudents: Student[] = students.map(s => ({
+    id: s.id || s._id,
+    name: s.name || s.studentsName,
+    adm: s.admissionNo || s.ADM,
+    marks: (marksData[activeSubjectId] && marksData[activeSubjectId][s.id || s._id]) || {
+      cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, exam: null, finalScore: null
+    },
+    pushed: false
+  }));
 
-  if (students.length === 0) {
-    return <div style={{ padding: 40, textAlign: "center", color: C.textMuted }}>No students found in this class.</div>;
+  const mappedSubjects: Subject[] = subjects.map(s => ({
+    id: s.id || s._id,
+    name: s.name,
+    grade: `${user.classGrade}${user.classStream}`,
+    subjectId: s.id || s._id,
+    classGrade: user.classGrade,
+    classStream: user.classStream,
+    studentCount: students.length
+  }));
+
+  if (subjects.length === 0) {
+    return <div style={{ padding: 40, textAlign: "center" }}>No subjects found.</div>;
   }
 
   return (
     <div className="ct-anim">
-      <SectionHeader
-        eyebrow="Marks"
-        title="Marks management"
-        sub="Edit marks per subject. Values are clamped to 0–100."
-        action={
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {msg && (
-              <span style={{ 
-                fontSize: 13, 
-                fontWeight: 600, 
-                color: msg.type === "success" ? C.successText : C.dangerText 
-              }}>
-                {msg.text}
-              </span>
-            )}
-            <button
-              className="ct-primarybtn"
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 20px",
-                background: C.gold,
-                color: "#fff",
-                border: "none",
-                borderRadius: 9,
-                fontFamily: FONT.sans,
-                fontSize: 13.5,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.22s",
-                opacity: saving ? 0.7 : 1
-              }}
-            >
-              {saving ? "Saving..." : "Save changes"}
-            </button>
-          </div>
-        }
+      {msg && (
+        <div style={{ 
+          padding: "10px 20px", 
+          marginBottom: 15, 
+          borderRadius: 8, 
+          background: msg.type === "success" ? C.greenLight : "#fdeaea",
+          color: msg.type === "success" ? C.successText : C.dangerText,
+          fontSize: 13,
+          fontWeight: 600
+        }}>
+          {msg.text}
+        </div>
+      )}
+      
+      <MarksEntry
+        mode="class"
+        subjects={mappedSubjects}
+        activeSubjectId={activeSubjectId}
+        students={mappedStudents}
+        marksData={marksData}
+        onSubjectChange={setActiveSubjectId}
+        onMarkUpdate={handleMarkUpdate}
+        onSaveMarks={handleSaveMarks}
+        avatar={avatar}
       />
-      <div
-        style={{
-          background: C.white,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          overflow: "auto",
-        }}
-      >
-        <table
-          style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}
-        >
-          <thead>
-            <tr style={{ background: C.sand }}>
-              <th
-                style={{
-                  padding: "11px 14px",
-                  textAlign: "left",
-                  fontFamily: FONT.sans,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: C.textMuted,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Student
-              </th>
-              {subjects.map((s) => (
-                <th
-                  key={s.id}
-                  style={{
-                    padding: "11px 10px",
-                    textAlign: "center",
-                    fontFamily: FONT.sans,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: C.textMuted,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {s.name.split(" ")[0]}
-                </th>
-              ))}
-              <th
-                style={{
-                  padding: "11px 14px",
-                  textAlign: "center",
-                  fontFamily: FONT.sans,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: C.textMuted,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Avg
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {students.map((s) => {
-              const currentMarks = marks[s.id] || {};
-              const a = avg(currentMarks);
-              return (
-                <tr
-                  key={s.id}
-                  style={{ borderTop: `1px solid ${C.borderLight}` }}
-                >
-                  <td style={{ padding: "10px 14px" }}>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 9 }}
-                    >
-                      <Avatar name={s.name} size={28} />
-                      <span
-                        style={{
-                          fontFamily: FONT.sans,
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: C.text,
-                        }}
-                      >
-                        {s.name}
-                      </span>
-                    </div>
-                  </td>
-                  {subjects.map((sub) => (
-                    <td
-                      key={sub.id}
-                      style={{ padding: "10px 8px", textAlign: "center" }}
-                    >
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={currentMarks[sub.id] || 0}
-                        onChange={(e) => update(s.id, sub.id, e.target.value)}
-                        className="ct-input"
-                        style={{
-                          width: 58,
-                          padding: "7px 8px",
-                          border: `1.5px solid ${C.border}`,
-                          borderRadius: 8,
-                          fontFamily: FONT.sans,
-                          fontSize: 13.5,
-                          fontWeight: 600,
-                          color: gradeColor(currentMarks[sub.id] || 0),
-                          textAlign: "center",
-                          background: C.cream,
-                          transition: "all 0.2s",
-                        }}
-                      />
-                    </td>
-                  ))}
-                  <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                    <span
-                      style={{
-                        fontFamily: FONT.serif,
-                        fontSize: 17,
-                        fontWeight: 600,
-                        color: gradeColor(a),
-                      }}
-                    >
-                      {a}%
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };

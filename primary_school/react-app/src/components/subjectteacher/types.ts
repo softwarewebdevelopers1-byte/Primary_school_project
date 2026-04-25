@@ -21,7 +21,17 @@ export interface Student {
   marks: {
     cat1: number | null;
     cat2: number | null;
+    cat3: number | null;
+    cat4: number | null;
+    cat5: number | null;
+    cat1Max: number;
+    cat2Max: number;
+    cat3Max: number;
+    cat4Max: number;
+    cat5Max: number;
     exam: number | null;
+    examMax: number;
+    finalScore: number | null;
   };
   pushed: boolean;
 }
@@ -46,7 +56,17 @@ export interface MarksData {
     [studentId: string]: {
       cat1: number | null;
       cat2: number | null;
+      cat3: number | null;
+      cat4: number | null;
+      cat5: number | null;
+      cat1Max: number;
+      cat2Max: number;
+      cat3Max: number;
+      cat4Max: number;
+      cat5Max: number;
       exam: number | null;
+      examMax: number;
+      finalScore: number | null;
     };
   };
 }

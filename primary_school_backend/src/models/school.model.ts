@@ -37,7 +37,16 @@ export interface IMark extends Document {
   year: number;
   cat1: number | null;
   cat2: number | null;
+  cat3: number | null;
+  cat4: number | null;
+  cat5: number | null;
+  cat1Max: number;
+  cat2Max: number;
+  cat3Max: number;
+  cat4Max: number;
+  cat5Max: number;
   exam: number | null;
+  examMax: number;
   finalScore: number | null;
 }
 
@@ -50,7 +59,16 @@ const MarkSchema: Schema = new Schema({
   year: { type: Number, required: true },
   cat1: { type: Number, default: null },
   cat2: { type: Number, default: null },
+  cat3: { type: Number, default: null },
+  cat4: { type: Number, default: null },
+  cat5: { type: Number, default: null },
+  cat1Max: { type: Number, default: 40 },
+  cat2Max: { type: Number, default: 40 },
+  cat3Max: { type: Number, default: 40 },
+  cat4Max: { type: Number, default: 40 },
+  cat5Max: { type: Number, default: 40 },
   exam: { type: Number, default: null },
+  examMax: { type: Number, default: 100 },
   finalScore: { type: Number, default: null },
 }, { timestamps: true });
 

@@ -15,8 +15,8 @@ router.get("/", async (req: Request, res: Response) => {
     }
 
     const query: any = { subjectId, classGrade, classStream };
-    if (term) query.term = term;
-    if (year) query.year = year;
+    if (term) query.term = Number(term);
+    if (year) query.year = Number(year);
 
     const [marks, students] = await Promise.all([
       MarkModel.find(query),
@@ -36,8 +36,22 @@ router.get("/", async (req: Request, res: Response) => {
         marks: studentMark ? {
           cat1: studentMark.cat1,
           cat2: studentMark.cat2,
-          exam: studentMark.exam
-        } : { cat1: null, cat2: null, exam: null }
+          cat3: studentMark.cat3,
+          cat4: studentMark.cat4,
+          cat5: studentMark.cat5,
+          cat1Max: studentMark.cat1Max,
+          cat2Max: studentMark.cat2Max,
+          cat3Max: studentMark.cat3Max,
+          cat4Max: studentMark.cat4Max,
+          cat5Max: studentMark.cat5Max,
+          exam: studentMark.exam,
+          examMax: studentMark.examMax,
+          finalScore: studentMark.finalScore
+        } : { 
+          cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
+          cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
+          exam: null, examMax: 100, finalScore: null 
+        }
       };
     });
 
@@ -50,7 +64,7 @@ router.get("/", async (req: Request, res: Response) => {
 // POST/PUT save marks
 router.post("/save", async (req: Request, res: Response) => {
   try {
-    const { subjectId, classGrade, classStream, term, year, marksData } = req.body;
+    const { subjectId, classGrade, classStream, term, year, marksData, catConfigs } = req.body;
     
     if (!subjectId || !classGrade || !classStream || !term || !year || !Array.isArray(marksData)) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -63,14 +77,23 @@ router.post("/save", async (req: Request, res: Response) => {
           subjectId, 
           classGrade: classGrade.toString(), 
           classStream: classStream || "", 
-          term: term.toString(), 
-          year: year.toString() 
+          term: Number(term), 
+          year: Number(year) 
         },
         update: { 
           $set: { 
             cat1: item.cat1, 
             cat2: item.cat2, 
-            exam: item.exam 
+            cat3: item.cat3, 
+            cat4: item.cat4, 
+            cat5: item.cat5, 
+            cat1Max: catConfigs?.cat1Max ?? item.cat1Max ?? 40,
+            cat2Max: catConfigs?.cat2Max ?? item.cat2Max ?? 40,
+            cat3Max: catConfigs?.cat3Max ?? item.cat3Max ?? 40,
+            cat4Max: catConfigs?.cat4Max ?? item.cat4Max ?? 40,
+            cat5Max: catConfigs?.cat5Max ?? item.cat5Max ?? 40,
+            exam: item.exam,
+            examMax: catConfigs?.examMax ?? item.examMax ?? 100
           } 
         },
         upsert: true
@@ -100,8 +123,8 @@ router.post("/summary-save", async (req: Request, res: Response) => {
           subjectId: item.subjectId, 
           classGrade: classGrade.toString(), 
           classStream: classStream || "", 
-          term: term.toString(), 
-          year: year.toString() 
+          term: Number(term), 
+          year: Number(year) 
         },
         update: { 
           $set: { 

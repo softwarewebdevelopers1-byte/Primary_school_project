@@ -29,8 +29,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   });
 
   const isSubjectTeacher = user?.roles?.includes("subjectteacher");
-  const hasSubjectAssignments = user?.subjects?.length > 0;
-  const teachesSubjects = isSubjectTeacher && hasSubjectAssignments;
+  const teachesSubjects = isSubjectTeacher;
 
   return (
     <header
