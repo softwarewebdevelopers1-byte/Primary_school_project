@@ -22,7 +22,7 @@ router.get("/", async (req: Request, res: Response) => {
       MarkModel.find(query),
       studentModel.find({ 
         class: classGrade as string,
-        classStream: { $in: [classStream as string, "", null] }
+        classStream: classStream === "null" || !classStream ? { $in: ["", null] } : classStream as string
       })
     ]);
 
@@ -61,10 +61,10 @@ router.post("/save", async (req: Request, res: Response) => {
         filter: { 
           studentId: item.studentId, 
           subjectId, 
-          classGrade, 
-          classStream, 
-          term, 
-          year 
+          classGrade: classGrade.toString(), 
+          classStream: classStream || "", 
+          term: term.toString(), 
+          year: year.toString() 
         },
         update: { 
           $set: { 
@@ -98,10 +98,10 @@ router.post("/summary-save", async (req: Request, res: Response) => {
         filter: { 
           studentId: item.studentId, 
           subjectId: item.subjectId, 
-          classGrade, 
-          classStream, 
-          term, 
-          year 
+          classGrade: classGrade.toString(), 
+          classStream: classStream || "", 
+          term: term.toString(), 
+          year: year.toString() 
         },
         update: { 
           $set: { 
@@ -111,6 +111,7 @@ router.post("/summary-save", async (req: Request, res: Response) => {
         upsert: true
       }
     }));
+
 
     await MarkModel.bulkWrite(operations);
     res.json({ message: "Summary marks saved successfully" });

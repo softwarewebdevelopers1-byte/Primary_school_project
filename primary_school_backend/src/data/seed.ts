@@ -1,8 +1,13 @@
+import bcrypt from "bcrypt";
 import {
   rolesMapped,
   studentModel,
   adminModel,
+  classTeacherModel,
+  subjectTeacher,
 } from "../models/user.model.js";
+import { SubjectModel, AssignmentModel } from "../models/school.model.js";
+
 
 type studentsInterface = {
   status: string;
@@ -11,6 +16,7 @@ type studentsInterface = {
   ADM: string;
   role: string;
   studentsName: string;
+  password?: string;
 };
 
 type teachersInterface = {
@@ -20,46 +26,112 @@ type teachersInterface = {
     role1: string;
   };
   teacherNumber: string;
+  password?: string;
+  email?: string;
 };
+
 // adding students if none exists
 export let newStudent = async () => {
-  let studentsData: studentsInterface = {
-    status: "active",
-    class: "7",
-    classStream: "North",
-    ADM: "123",
-    role: rolesMapped.ST,
-    studentsName: "Carlos Maina",
-  };
-  let studentsEnrolled = await studentModel.find();
-  try {
-    if (studentsEnrolled.length === 0) {
-      await studentModel.create(studentsData);
-      console.log("first student added to the database without error");
-    }
-  } catch (error) {
-    console.log(
-      `This error occured when adding first student in the database ${error}`,
-    );
-  }
-};
-// adding admin if none exists
-export let newAdmin = async () => {
-  let adminData: teachersInterface = {
-    status: "active",
-    teachersName: "Lucy Wanjiku",
-    roles: {
-      role1: "admin",
+  const hashedPassword = await bcrypt.hash("student123", 10);
+  
+  const students = [
+    {
+      status: "active",
+      class: "7",
+      classStream: "North",
+      ADM: "123",
+      role: rolesMapped.ST,
+      studentsName: "Carlos Student",
+      password: hashedPassword,
     },
-    teacherNumber: "admin#2024",
-  };
-  let teachersEnrolled = await adminModel.find();
+    {
+      status: "active",
+      class: "1",
+      classStream: "East",
+      ADM: "456",
+      role: rolesMapped.ST,
+      studentsName: "John Student",
+      password: hashedPassword,
+    }
+  ];
+
   try {
-    if (teachersEnrolled.length === 0) {
-      await adminModel.create(adminData);
-      console.log("first admin role added");
+    for (const s of students) {
+      const existing = await studentModel.findOne({ ADM: s.ADM });
+      if (!existing) {
+        await studentModel.create(s);
+        console.log(`Student ${s.studentsName} added`);
+      }
     }
   } catch (error) {
-    console.log(`This error occured when adding new admin role ${error}`);
+    console.log(`Student seed error: ${error}`);
   }
 };
+
+
+// adding staff if none exists
+export let newStaff = async () => {
+  const hashedPassword = await bcrypt.hash("staff123", 10);
+  
+  // Class Teacher
+  const ctData = {
+    status: "active",
+    teachersName: "Carlos Maina",
+    email: "carlosmaina198@gmail.com",
+    roles: { role1: rolesMapped.CT },
+    teacherNumber: "CT001",
+    password: hashedPassword,
+    class: "7",
+    classStream: "North"
+  };
+
+  // Subject Teacher
+  const sjData = {
+    status: "active",
+    teachersName: "John Doe",
+    email: "john@gmail.com",
+    roles: { role1: rolesMapped.SJ },
+    teacherNumber: "SJ001",
+    password: hashedPassword
+  };
+
+  try {
+    // Update or create Class Teacher
+    await classTeacherModel.findOneAndUpdate(
+      { email: "carlosmaina198@gmail.com" },
+      { $set: ctData },
+      { upsert: true }
+    );
+    console.log("Class teacher updated/created");
+
+    // Update or create Subject Teacher
+    const sj = await subjectTeacher.findOneAndUpdate(
+      { email: "john@gmail.com" },
+      { $set: sjData },
+      { upsert: true, new: true }
+    );
+    console.log("Subject teacher updated/created");
+      
+    // Assign a subject to this teacher if not assigned
+    const subject = await SubjectModel.findOne();
+    if (subject && sj) {
+      await AssignmentModel.findOneAndUpdate(
+        { teacherId: sj._id },
+        { 
+          $set: {
+            subjectId: subject._id,
+            classGrade: "7",
+            classStream: "North"
+          }
+        },
+        { upsert: true }
+      );
+      console.log("Assignment created/updated for subject teacher");
+    }
+  } catch (error) {
+    console.log(`Seed error: ${error}`);
+  }
+};
+
+
+
