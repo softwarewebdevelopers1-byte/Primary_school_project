@@ -1,6 +1,6 @@
 // components/classteacher/MarksManagement.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { C, FONT } from "./shared/constants";
+import { C } from "./shared/constants";
 import { api } from "../../lib/api";
 import { MarksEntry } from "../shared/MarksEntry";
 import { avatar } from "../../lib/dashboardHelpers";
@@ -14,7 +14,6 @@ interface MarksManagementProps {
 export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects }) => {
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
-  const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -27,59 +26,84 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
 
   const loadDetailedMarks = useCallback(async () => {
     if (!activeSubjectId) return;
-    setLoading(true);
     try {
       const data: any[] = await api.get("/marks", {
-        params: {
-          subjectId: activeSubjectId,
-          classGrade: user.classGrade,
-          classStream: user.classStream,
-          term: 1,
-          year: 2024
-        }
+        subjectId: activeSubjectId,
+        classGrade: user.classGrade,
+        classStream: user.classStream,
+        term: 1,
+        year: 2024
       });
 
       setMarksData(prev => ({
         ...prev,
         [activeSubjectId]: data.reduce((acc, item) => {
-          acc[item.studentId] = item.marks;
+          const sid = item.studentId.toString();
+          acc[sid] = item.marks;
           return acc;
         }, {} as any)
       }));
     } catch (err) {
       console.error("Failed to load detailed marks", err);
-    } finally {
-      setLoading(false);
     }
   }, [activeSubjectId, user.classGrade, user.classStream]);
 
   useEffect(() => {
-    loadDetailedMarks();
-  }, [loadDetailedMarks]);
+    if (activeSubjectId) loadDetailedMarks();
+  }, [activeSubjectId, loadDetailedMarks]);
 
   const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
     setMarksData((prev) => {
-      const newData = { ...prev };
-      if (!newData[subjectId]) newData[subjectId] = {};
-      if (!newData[subjectId][studentId]) newData[subjectId][studentId] = { 
-        cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
-        cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
-        exam: null, examMax: 100, finalScore: null 
+      const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
+      const updatedStudentMarks = { 
+        ...(updatedSubjectMarks[studentId] || {
+          cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
+          cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
+          exam: null, examMax: 100, finalScore: null 
+        })
       };
-      
-      let n: number | null = value === "" ? null : Number(value);
-      if (n !== null && isNaN(n)) n = null;
 
-      // Only clamp if not 'finalScore'
-      if (key !== "finalScore") {
-        const maxKey = `${key}Max`;
-        const max = (newData[subjectId][studentId] as any)[maxKey] || (key === "exam" ? 100 : 40);
-        if (n !== null) n = Math.max(0, Math.min(n, max));
-      } else if (n !== null) {
-        n = Math.max(0, Math.min(n, 100));
+      let n: string | number | null = value;
+      if (n === "") {
+        n = null;
+      } else {
+        const num = Number(n);
+        if (!isNaN(num)) {
+          const maxKey = `${key}Max`;
+          const max = key === "finalScore" ? 100 : (updatedStudentMarks as any)[maxKey] || (key === "exam" ? 100 : 40);
+          if (num > max) {
+            n = max;
+          } else if (num < 0) {
+            n = 0;
+          }
+        } else {
+          n = null;
+        }
       }
 
-      newData[subjectId][studentId][key as any] = n;
+      updatedStudentMarks[key as any] = n as any;
+      updatedSubjectMarks[studentId] = updatedStudentMarks;
+
+      return {
+        ...prev,
+        [subjectId]: updatedSubjectMarks
+      };
+    });
+  };
+
+  const handleConfigUpdate = (subjectId: string, key: string, value: number) => {
+    setMarksData((prev) => {
+      const newData = { ...prev };
+      if (!newData[subjectId]) return prev;
+      
+      const updatedSubjectMarks = { ...newData[subjectId] };
+      Object.keys(updatedSubjectMarks).forEach(studentId => {
+        updatedSubjectMarks[studentId] = {
+          ...updatedSubjectMarks[studentId],
+          [key]: value
+        };
+      });
+      newData[subjectId] = updatedSubjectMarks;
       return newData;
     });
   };
@@ -111,15 +135,23 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
   };
 
   // Map students and subjects to the expected types for MarksEntry
-  const mappedStudents: Student[] = students.map(s => ({
-    id: s.id || s._id,
-    name: s.name || s.studentsName,
-    adm: s.admissionNo || s.ADM,
-    marks: (marksData[activeSubjectId] && marksData[activeSubjectId][s.id || s._id]) || {
-      cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, exam: null, finalScore: null
-    },
-    pushed: false
-  }));
+  const mappedStudents: Student[] = students.map(s => {
+    const sid = (s.id || s._id || "").toString();
+    const studentMarks = (marksData[activeSubjectId] && marksData[activeSubjectId][sid]) || {
+      cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
+      cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
+      exam: null, examMax: 100, finalScore: null
+    };
+
+    return {
+      id: sid,
+      name: s.name || s.studentsName,
+      adm: s.admissionNo || s.ADM,
+      gender: s.gender || "N/A",
+      marks: studentMarks,
+      pushed: false
+    };
+  });
 
   const mappedSubjects: Subject[] = subjects.map(s => ({
     id: s.id || s._id,
@@ -128,8 +160,12 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
     subjectId: s.id || s._id,
     classGrade: user.classGrade,
     classStream: user.classStream,
-    studentCount: students.length
-  }));
+    students: students.length,
+    avg: 0,
+    pushed: false,
+    term: 1,
+    lastAssess: "N/A"
+  } as Subject));
 
   if (subjects.length === 0) {
     return <div style={{ padding: 40, textAlign: "center" }}>No subjects found.</div>;
@@ -160,6 +196,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         onSubjectChange={setActiveSubjectId}
         onMarkUpdate={handleMarkUpdate}
         onSaveMarks={handleSaveMarks}
+        onConfigUpdate={handleConfigUpdate}
         avatar={avatar}
       />
     </div>

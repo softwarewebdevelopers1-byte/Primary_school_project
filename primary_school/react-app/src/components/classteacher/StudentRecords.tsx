@@ -6,6 +6,7 @@ import { C, FONT } from "./shared/constants";
 
 interface StudentRecordsProps {
   students: any[];
+  subjects: any[];
   onViewStudent: (student: any) => void;
   classInfo: string;
 }
@@ -89,6 +90,7 @@ const SectionHeader: React.FC<{
 
 export const StudentRecords: React.FC<StudentRecordsProps> = ({
   students,
+  subjects,
   onViewStudent,
   classInfo
 }) => {
@@ -132,7 +134,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
           background: C.white,
           border: `1px solid ${C.border}`,
           borderRadius: 14,
-          overflow: "hidden",
+          overflowX: "auto",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -141,10 +143,45 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
               {[
                 "Student",
                 "Adm. No",
-                "Gender",
-                "Parent",
-                "Phone",
                 "Status",
+              ].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    padding: "11px 14px",
+                    textAlign: "left",
+                    fontFamily: FONT.sans,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: C.textMuted,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+              {subjects && subjects.map(s => (
+                <th
+                  key={s.id}
+                  style={{
+                    padding: "11px 14px",
+                    textAlign: "center",
+                    fontFamily: FONT.sans,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: C.textMuted,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={s.name}
+                >
+                  {s.name.substring(0, 3)}
+                </th>
+              ))}
+              {[
                 "Avg",
                 "Action",
               ].map((h) => (
@@ -152,7 +189,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   key={h}
                   style={{
                     padding: "11px 14px",
-                    textAlign: "left",
+                    textAlign: h === "Avg" ? "center" : "left",
                     fontFamily: FONT.sans,
                     fontSize: 11,
                     fontWeight: 700,
@@ -207,40 +244,25 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   >
                     {s.admissionNo}
                   </td>
-                  <td
-                    style={{
-                      padding: "12px 14px",
-                      fontFamily: FONT.sans,
-                      fontSize: 12.5,
-                      color: C.textMuted,
-                    }}
-                  >
-                    {s.gender}
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px 14px",
-                      fontFamily: FONT.sans,
-                      fontSize: 12.5,
-                      color: C.textMid,
-                    }}
-                  >
-                    {s.parentName}
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px 14px",
-                      fontFamily: FONT.sans,
-                      fontSize: 12.5,
-                      color: C.textMuted,
-                    }}
-                  >
-                    {s.parentPhone}
-                  </td>
                   <td style={{ padding: "12px 14px" }}>
                     <StatusPill status={s.status} />
                   </td>
-                  <td style={{ padding: "12px 14px" }}>
+                  {subjects && subjects.map(sub => {
+                    const mark = s.marks ? s.marks[sub.id] : null;
+                    return (
+                      <td key={sub.id} style={{ 
+                        padding: "12px 14px",
+                        textAlign: "center",
+                        fontFamily: FONT.sans,
+                        fontSize: 13.5,
+                        fontWeight: 600,
+                        color: mark != null ? gradeColor(mark) : C.textMuted
+                      }}>
+                        {mark != null ? mark : "-"}
+                      </td>
+                    );
+                  })}
+                  <td style={{ padding: "12px 14px", textAlign: "center" }}>
                     <span
                       style={{
                         fontFamily: FONT.serif,

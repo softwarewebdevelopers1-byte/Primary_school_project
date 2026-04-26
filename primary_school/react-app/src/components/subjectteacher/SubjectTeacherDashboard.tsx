@@ -94,7 +94,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       }
 
       const mappedStudents: Student[] = data.map(item => ({
-        id: item.studentId,
+        id: item.studentId.toString(),
         adm: item.admissionNo,
         name: item.name,
         gender: "N/A",
@@ -108,7 +108,8 @@ const SubjectTeacherDashboard: React.FC = () => {
       setMarksData(prev => ({
         ...prev,
         [activeSubjectId]: data.reduce((acc, item) => {
-          acc[item.studentId] = item.marks;
+          const sid = item.studentId.toString();
+          acc[sid] = item.marks;
           return acc;
         }, {} as any)
       }));
@@ -131,22 +132,56 @@ const SubjectTeacherDashboard: React.FC = () => {
 
   const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
     setMarksData((prev) => {
-      const newData = { ...prev };
-      if (!newData[subjectId]) newData[subjectId] = {};
-      if (!newData[subjectId][studentId]) newData[subjectId][studentId] = { 
-        cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
-        cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
-        exam: null, examMax: 100, finalScore: null 
+      const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
+      const updatedStudentMarks = { 
+        ...(updatedSubjectMarks[studentId] || {
+          cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
+          cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
+          exam: null, examMax: 100, finalScore: null 
+        })
       };
 
-      let n: number | null = value === "" ? null : Number(value);
-      if (n !== null && isNaN(n)) n = null;
-      
-      const maxKey = `${key}Max`;
-      const max = (newData[subjectId][studentId] as any)[maxKey] || (key === "exam" ? 100 : 40);
-      if (n !== null) n = Math.max(0, Math.min(n, max));
+      let n: string | number | null = value;
+      if (n === "") {
+        n = null;
+      } else {
+        const num = Number(n);
+        if (!isNaN(num)) {
+          const maxKey = `${key}Max`;
+          const max = key === "finalScore" ? 100 : (updatedStudentMarks as any)[maxKey] || (key === "exam" ? 100 : 40);
+          if (num > max) {
+            n = max;
+          } else if (num < 0) {
+            n = 0;
+          }
+        } else {
+          n = null;
+        }
+      }
 
-      newData[subjectId][studentId][key as any] = n;
+      updatedStudentMarks[key as any] = n as any;
+      updatedSubjectMarks[studentId] = updatedStudentMarks;
+
+      return {
+        ...prev,
+        [subjectId]: updatedSubjectMarks
+      };
+    });
+  };
+
+  const handleConfigUpdate = (subjectId: string, key: string, value: number) => {
+    setMarksData((prev) => {
+      const newData = { ...prev };
+      if (!newData[subjectId]) return prev;
+      
+      const updatedSubjectMarks = { ...newData[subjectId] };
+      Object.keys(updatedSubjectMarks).forEach(studentId => {
+        updatedSubjectMarks[studentId] = {
+          ...updatedSubjectMarks[studentId],
+          [key]: value
+        };
+      });
+      newData[subjectId] = updatedSubjectMarks;
       return newData;
     });
   };
@@ -180,9 +215,32 @@ const SubjectTeacherDashboard: React.FC = () => {
   };
 
 
-  const handlePushMarks = (subjectId: string) => {
-    setPushedSubjects((prev) => new Set(prev).add(subjectId));
-    alert(`Marks pushed for ${subjects.find(s => s.id === subjectId)?.grade}`);
+  const handlePushMarks = async (subjectId: string) => {
+    const currentSubject = subjects.find(s => s.id === subjectId);
+    if (!currentSubject) return;
+
+    const subjectMarks = marksData[subjectId];
+    if (!subjectMarks) return;
+
+    const data = Object.entries(subjectMarks).map(([studentId, marks]) => ({
+      studentId,
+      ...marks
+    }));
+
+    try {
+      await api.post("/marks/save", {
+        subjectId: currentSubject.subjectId,
+        classGrade: currentSubject.classGrade,
+        classStream: currentSubject.classStream,
+        term: 1,
+        year: 2024,
+        marksData: data
+      });
+      setPushedSubjects((prev) => new Set(prev).add(subjectId));
+      alert(`Marks saved and pushed for ${currentSubject.grade}`);
+    } catch (err) {
+      alert("Failed to push marks.");
+    }
   };
 
   const getTabTitle = () => {
@@ -198,7 +256,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       case "subjects":
         return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} />;
       case "marks":
-        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onPushMarks={handlePushMarks} avatar={avatar} />;
+        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onPushMarks={handlePushMarks} avatar={avatar} />;
       case "assessments":
         return <AssessmentsTab assessments={[]} />;
       case "progress":

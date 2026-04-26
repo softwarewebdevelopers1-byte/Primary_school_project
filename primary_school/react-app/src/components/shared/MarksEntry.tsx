@@ -20,6 +20,7 @@ interface MarksEntryProps {
   ) => void;
   onSaveMarks: (subjectId: string, catConfigs?: any) => void;
   onPushMarks?: (subjectId: string) => void;
+  onConfigUpdate?: (subjectId: string, key: string, value: number) => void;
   avatar: (name: string, size: number) => string;
 }
 
@@ -35,6 +36,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   onMarkUpdate,
   onSaveMarks,
   onPushMarks,
+  onConfigUpdate,
   avatar,
 }) => {
   const currentSubject =
@@ -48,31 +50,36 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
 
   // Sync catsCount and configs from loaded data
   useEffect(() => {
-    if (students.length > 0 && students[0].marks) {
-      const m = students[0].marks;
-      setCatConfigs({
-        cat1Max: m.cat1Max || 40,
-        cat2Max: m.cat2Max || 40,
-        cat3Max: m.cat3Max || 40,
-        cat4Max: m.cat4Max || 40,
-        cat5Max: m.cat5Max || 40,
-        examMax: m.examMax || 100
-      });
+    if (students.length > 0) {
+      // Use the first student's marks to sync max values (configs)
+      const firstStudentMarks = subjectMarks[students[0].id];
+      if (firstStudentMarks) {
+        setCatConfigs({
+          cat1Max: firstStudentMarks.cat1Max || 40,
+          cat2Max: firstStudentMarks.cat2Max || 40,
+          cat3Max: firstStudentMarks.cat3Max || 40,
+          cat4Max: firstStudentMarks.cat4Max || 40,
+          cat5Max: firstStudentMarks.cat5Max || 40,
+          examMax: firstStudentMarks.examMax || 100
+        });
+      }
 
-      // Determine catsCount based on what has data or what has a max value different from default?
-      // Actually, let's just look for any student having data in catN.
+      // Determine catsCount based on any student having data in catN.
       let maxCat = 0;
       students.forEach(s => {
         const sm = subjectMarks[s.id];
-        if (sm?.cat5 !== null) maxCat = Math.max(maxCat, 5);
-        else if (sm?.cat4 !== null) maxCat = Math.max(maxCat, 4);
-        else if (sm?.cat3 !== null) maxCat = Math.max(maxCat, 3);
-        else if (sm?.cat2 !== null) maxCat = Math.max(maxCat, 2);
-        else if (sm?.cat1 !== null) maxCat = Math.max(maxCat, 1);
+        if (sm) {
+          if (sm.cat5 !== null) maxCat = Math.max(maxCat, 5);
+          else if (sm.cat4 !== null) maxCat = Math.max(maxCat, 4);
+          else if (sm.cat3 !== null) maxCat = Math.max(maxCat, 3);
+          else if (sm.cat2 !== null) maxCat = Math.max(maxCat, 2);
+          else if (sm.cat1 !== null) maxCat = Math.max(maxCat, 1);
+        }
       });
-      setCatsCount(maxCat);
+      // Only update if we found marks, otherwise keep current (don't reset to 0 if we already added columns)
+      if (maxCat > 0) setCatsCount(maxCat);
     }
-  }, [students, activeSubjectId]); // Re-run when students or subject changes
+  }, [students, activeSubjectId, subjectMarks]);
 
   const allFilled = students.every((s) => {
     const m = subjectMarks[s.id];
@@ -91,6 +98,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   const updateConfig = (key: string, val: string) => {
     const n = parseInt(val) || 0;
     setCatConfigs(prev => ({ ...prev, [key]: n }));
+    if (onConfigUpdate) onConfigUpdate(activeSubjectId, key, n);
   };
 
   return (
@@ -195,14 +203,21 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                   cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, exam: null, finalScore: null
                 };
                 
-                const catsSum = Array.from({ length: catsCount }).reduce((sum: number | null, _, i) => {
-                  const val = marks[`cat${i + 1}` as keyof typeof marks];
-                  if (val === null) return sum; // If one CAT is missing, we still sum the others for Total? Or return null?
-                  // Let's return null if ANY CAT is missing to encourage full entry
-                  return (sum === null) ? null : (sum + val);
-                }, 0);
+                let catsSum: number | null = null;
+                if (catsCount > 0) {
+                  catsSum = Array.from({ length: catsCount }).reduce((sum: number | null, _, i) => {
+                    const val = marks[`cat${i + 1}` as keyof typeof marks];
+                    if (val === null || val === "") return sum;
+                    return (sum === null) ? Number(val) : (sum + Number(val));
+                  }, null);
+                }
 
-                const total = (catsSum !== null && marks.exam !== null) ? (catsSum as number) + marks.exam : null;
+                let total: number | null = null;
+                if (catsCount === 0) {
+                  total = (marks.exam !== null && marks.exam !== "") ? Number(marks.exam) : null;
+                } else {
+                  total = (catsSum !== null && marks.exam !== null && marks.exam !== "") ? catsSum + Number(marks.exam) : null;
+                }
                 const pushed = pushedStudents.has(student.id);
 
                 return (

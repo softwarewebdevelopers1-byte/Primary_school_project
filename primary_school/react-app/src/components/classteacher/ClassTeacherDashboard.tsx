@@ -140,13 +140,14 @@ export default function ClassTeacherDashboard() {
       return (
         <StudentDetails
           student={selectedStudent}
+          subjects={subjects}
           onBack={() => setSelectedStudent(null)}
         />
       );
     }
     switch (tab) {
       case "students":
-        return <StudentRecords students={students} onViewStudent={setSelectedStudent} classInfo={`Grade ${user?.classGrade}${user?.classStream}`} />;
+        return <StudentRecords students={students} subjects={subjects} onViewStudent={setSelectedStudent} classInfo={`Grade ${user?.classGrade}${user?.classStream}`} />;
       case "marks":
         return <MarksManagement students={students} subjects={subjects} />;
       case "assignments":

@@ -1,6 +1,5 @@
 // components/classteacher/StudentDetails.tsx
 import React from "react";
-import { subjects, streamInfo } from "./shared/data";
 import { avg, grade, gradeColor, gradeBg } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { BackIcon } from "./shared/Icons";
@@ -8,11 +7,13 @@ import { C, FONT } from "./shared/constants";
 
 interface StudentDetailsProps {
   student: any;
+  subjects: any[];
   onBack: () => void;
 }
 
 export const StudentDetails: React.FC<StudentDetailsProps> = ({
   student,
+  subjects,
   onBack,
 }) => {
   const a = avg(student.marks);
@@ -82,7 +83,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                 }}
               >
                 {student.admissionNumber} · {student.gender} ·{" "}
-                {streamInfo.className} {streamInfo.name}
+                Grade {student.classGrade} {student.classStream}
               </p>
             </div>
             <div style={{ marginLeft: "auto", textAlign: "right" }}>
@@ -181,8 +182,10 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
             Subject marks
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {subjects.map((sub) => {
-              const m = student.marks[sub.id] ?? 0;
+            {subjects
+              .filter(sub => student.marks && student.marks[sub.id] !== undefined)
+              .map((sub) => {
+              const m = student.marks[sub.id];
               return (
                 <div
                   key={sub.id}

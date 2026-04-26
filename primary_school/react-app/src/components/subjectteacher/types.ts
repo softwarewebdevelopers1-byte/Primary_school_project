@@ -19,19 +19,19 @@ export interface Student {
   name: string;
   gender: string;
   marks: {
-    cat1: number | null;
-    cat2: number | null;
-    cat3: number | null;
-    cat4: number | null;
-    cat5: number | null;
+    cat1: number | string | null;
+    cat2: number | string | null;
+    cat3: number | string | null;
+    cat4: number | string | null;
+    cat5: number | string | null;
     cat1Max: number;
     cat2Max: number;
     cat3Max: number;
     cat4Max: number;
     cat5Max: number;
-    exam: number | null;
+    exam: number | string | null;
     examMax: number;
-    finalScore: number | null;
+    finalScore: number | string | null;
   };
   pushed: boolean;
 }
@@ -54,19 +54,33 @@ export interface Resource {
 export interface MarksData {
   [subjectId: string]: {
     [studentId: string]: {
-      cat1: number | null;
-      cat2: number | null;
-      cat3: number | null;
-      cat4: number | null;
-      cat5: number | null;
+      cat1: number | string | null;
+      cat2: number | string | null;
+      cat3: number | string | null;
+      cat4: number | string | null;
+      cat5: number | string | null;
       cat1Max: number;
       cat2Max: number;
       cat3Max: number;
       cat4Max: number;
       cat5Max: number;
-      exam: number | null;
+      exam: number | string | null;
       examMax: number;
-      finalScore: number | null;
+      finalScore: number | string | null;
     };
   };
+}
+
+export interface MarksTabProps {
+  subjects: Subject[];
+  activeSubjectId: string;
+  students: Student[];
+  marksData: MarksData;
+  pushedSubjects: Set<string>;
+  pushedStudents: Set<string>;
+  onSubjectChange: (id: string) => void;
+  onMarkUpdate: (subjectId: string, studentId: string, key: string, value: string) => void;
+  onSaveMarks: (subjectId: string, catConfigs?: any) => void;
+  onPushMarks: (subjectId: string) => void;
+  avatar: (name: string, size: number) => string;
 }
