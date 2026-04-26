@@ -71,6 +71,27 @@ router.get("/", async (req: Request, res: Response) => {
     const students = allUsers.filter((u: any) => u.__t === rolesMapped.ST);
     const staff = allUsers.filter((u: any) => u.__t !== rolesMapped.ST);
 
+    // Calculate subject stats first to match frontend MarksEntry logic
+    const subjectStats: Record<string, { catsCount: number, catConfigs: any }> = {};
+    allMarks.forEach((m: any) => {
+      const subId = m.subjectId.toString();
+      if (!subjectStats[subId]) {
+        subjectStats[subId] = { catsCount: 0, catConfigs: {
+          cat1Max: m.cat1Max || 40,
+          cat2Max: m.cat2Max || 40,
+          cat3Max: m.cat3Max || 40,
+          cat4Max: m.cat4Max || 40,
+          cat5Max: m.cat5Max || 40,
+          examMax: m.examMax || 100
+        } };
+      }
+      if (m.cat5 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 5);
+      else if (m.cat4 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 4);
+      else if (m.cat3 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 3);
+      else if (m.cat2 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 2);
+      else if (m.cat1 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 1);
+    });
+
     // Map backend models to frontend expected format if necessary
     const mappedStudents = students.map((s: any) => {
       // Find marks for this student
@@ -80,11 +101,26 @@ router.get("/", async (req: Request, res: Response) => {
         if (m.finalScore != null) {
           marksObj[m.subjectId.toString()] = Number(m.finalScore);
         } else {
-           // Basic fallback if finalScore isn't saved yet
-           const total = (m.cat1 || 0) + (m.cat2 || 0) + (m.cat3 || 0) + (m.cat4 || 0) + (m.cat5 || 0) + (m.exam || 0);
-           const possible = (m.cat1Max || 0) + (m.cat2Max || 0) + (m.cat3Max || 0) + (m.cat4Max || 0) + (m.cat5Max || 0) + (m.examMax || 0);
-           if (possible > 0) {
-             marksObj[m.subjectId.toString()] = Math.round((total / possible) * 100);
+           const stats = subjectStats[m.subjectId.toString()];
+           if (stats) {
+             let maxTotal = stats.catConfigs.examMax;
+             if (stats.catsCount > 0) maxTotal += stats.catConfigs.cat1Max;
+             if (stats.catsCount > 1) maxTotal += stats.catConfigs.cat2Max;
+             if (stats.catsCount > 2) maxTotal += stats.catConfigs.cat3Max;
+             if (stats.catsCount > 3) maxTotal += stats.catConfigs.cat4Max;
+             if (stats.catsCount > 4) maxTotal += stats.catConfigs.cat5Max;
+
+             const total = 
+               (stats.catsCount > 0 ? (m.cat1 || 0) : 0) +
+               (stats.catsCount > 1 ? (m.cat2 || 0) : 0) +
+               (stats.catsCount > 2 ? (m.cat3 || 0) : 0) +
+               (stats.catsCount > 3 ? (m.cat4 || 0) : 0) +
+               (stats.catsCount > 4 ? (m.cat5 || 0) : 0) +
+               (m.exam || 0);
+
+             if (maxTotal > 0) {
+               marksObj[m.subjectId.toString()] = Math.round((total / maxTotal) * 100);
+             }
            }
         }
       });
