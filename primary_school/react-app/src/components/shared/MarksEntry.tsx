@@ -45,6 +45,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
     onRemoveCat,
     avatar,
     term,
+    year,
     examType,
     onTermChange,
     onExamTypeChange,
@@ -137,7 +138,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
             <p className={styles.sectionEyebrow}>{mode === "class" ? "Class Management" : "Mark Entry"}</p>
             <h2 className={styles.sectionTitle}>{mode === "class" ? "Detailed Class Marks" : "Enter & Push Marks"}</h2>
             <p className={styles.sectionSub}>
-              {currentSubject?.name} · {currentSubject?.grade} · Term {term}, {examType}
+              {currentSubject?.name} · {currentSubject?.grade} · Term {term}, {year} · {examType}
             </p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>

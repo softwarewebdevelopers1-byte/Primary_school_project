@@ -10,15 +10,25 @@ interface MarksManagementProps {
   students: any[];
   subjects: any[];
   onRefresh?: () => void;
+  user: any;
 }
 
-export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects, onRefresh }) => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects, onRefresh, user }) => {
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
   const [term, setTerm] = useState<number>(user?.term || 1);
-  const [examType, setExamType] = useState<string>("EndTerm");
+  const [year, setYear] = useState<number>(user?.year || 2024);
+  const [examType, setExamType] = useState<string>(user?.examType || "opener");
+
+  // Sync with global user state (e.g. after Admin update)
+  useEffect(() => {
+    if (user) {
+      setTerm(user.term || 1);
+      setYear(user.year || 2024);
+      setExamType(user.examType || "opener");
+    }
+  }, [user]);
 
   useEffect(() => {
     if (subjects.length > 0 && !activeSubjectId) {
@@ -222,6 +232,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         onRemoveCat={handleRemoveCat}
         avatar={avatar}
         term={term}
+        year={year}
         examType={examType}
         onTermChange={setTerm}
         onExamTypeChange={setExamType}

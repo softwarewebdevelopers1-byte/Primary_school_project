@@ -107,6 +107,8 @@ export default function ClassTeacherDashboard() {
 
   useEffect(() => {
     refreshUser();
+    const interval = setInterval(refreshUser, 60000); // Sync every minute
+    return () => clearInterval(interval);
   }, [refreshUser]);
 
   const handleLogout = () => {
@@ -165,7 +167,7 @@ export default function ClassTeacherDashboard() {
       case "students":
         return <StudentRecords students={students} subjects={subjects} onViewStudent={setSelectedStudent} classInfo={`Grade ${user?.classGrade}${user?.classStream}`} />;
       case "marks":
-        return <MarksManagement students={students} subjects={subjects} onRefresh={loadData} />;
+        return <MarksManagement students={students} subjects={subjects} onRefresh={loadData} user={user} />;
       case "assignments":
         return (
           <SubjectAssignments

@@ -87,6 +87,7 @@ export interface MarksTabProps {
   onPushMarks: (subjectId: string) => void;
   avatar: (name: string, size: number) => string;
   term?: number;
+  year?: number;
   examType?: string;
   onTermChange?: (term: number) => void;
   onExamTypeChange?: (type: string) => void;

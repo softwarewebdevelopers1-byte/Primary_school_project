@@ -33,7 +33,8 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
   const [term, setTerm] = useState<number>(user?.term || 1);
-  const [examType, setExamType] = useState<string>("opener");
+  const [year, setYear] = useState<number>(user?.year || 2024);
+  const [examType, setExamType] = useState<string>(user?.examType || "opener");
   const { theme, toggleTheme } = useDashboardTheme();
 
   const handleLogout = () => {
@@ -80,11 +81,16 @@ const SubjectTeacherDashboard: React.FC = () => {
            const updated = { ...user, ...freshUser, id: freshUser._id };
            localStorage.setItem("user", JSON.stringify(updated));
            setTerm(freshUser.term || 1);
+           setYear(freshUser.year || 2024);
            setExamType(freshUser.examType || "opener");
         }
       } catch (e) {}
     };
-    if (user?.id) refreshUser();
+    if (user?.id) {
+      refreshUser();
+      const interval = setInterval(refreshUser, 60000); // Poll every minute
+      return () => clearInterval(interval);
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -102,7 +108,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
         term: term,
-        year: user?.year || 2024,
+        year: year,
         examType: examType
       });
 
@@ -246,7 +252,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
         term: term,
-        year: user?.year || 2024,
+        year: year,
         examType: examType,
         marksData: data,
         catConfigs
@@ -279,7 +285,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
         term: term,
-        year: user?.year || 2024,
+        year: year,
         examType: examType,
         marksData: data
       });
@@ -304,11 +310,11 @@ const SubjectTeacherDashboard: React.FC = () => {
 
     switch (activeTab) {
       case "subjects":
-        return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} term={term} year={user?.year || 2024} />;
+        return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} term={term} year={year} />;
       case "marks":
-        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} term={term} examType={examType} onTermChange={setTerm} onExamTypeChange={setExamType} />;
+        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} term={term} year={year} examType={examType} onTermChange={setTerm} onExamTypeChange={setExamType} />;
       case "assessments":
-        return <AssessmentsTab assessments={[]} term={term} year={user?.year || 2024} />;
+        return <AssessmentsTab assessments={[]} term={term} year={year} />;
       case "progress":
         return <ProgressTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} onSubjectChange={setActiveSubjectId} avatar={avatar} gc={gc} />;
       case "resources":
