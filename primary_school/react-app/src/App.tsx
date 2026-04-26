@@ -23,7 +23,8 @@ function App() {
         
         <Route path="/students" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
         <Route path="/classTeacher" element={<ProtectedRoute><ClassTeacherDashboard /></ProtectedRoute>} />
-        <Route path="/deputyHead" element={<ProtectedRoute><DeputyHeadDashboard /></ProtectedRoute>} />
+        <Route path="/deputyHead" element={<ProtectedRoute><DeputyHeadDashboard userRole="deputy" /></ProtectedRoute>} />
+        <Route path="/headteacher" element={<ProtectedRoute><DeputyHeadDashboard userRole="headteacher" /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         <Route path="/subjectTeacher" element={<ProtectedRoute><SubjectTeacherDashboard /></ProtectedRoute>} />
         
