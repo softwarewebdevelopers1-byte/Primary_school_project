@@ -150,6 +150,11 @@ const ClassTeacherModal: React.FC<{
 }> = ({ currentClass, teachers, onClose, onSave }) => {
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
+  const isBusy = selectedTeacher && selectedTeacher.classGrade && 
+                (selectedTeacher.classGrade !== currentClass.grade || selectedTeacher.classStream !== currentClass.stream);
 
   return (
     <div>
@@ -165,19 +170,31 @@ const ClassTeacherModal: React.FC<{
           Assigning a teacher to <strong>{currentClass.name}</strong>.
         </p>
 
+        {error && (
+          <div style={{ ...noticeStyle, background: "var(--dBg)", color: "var(--dText)", border: `1px solid var(--dText)`, marginBottom: 15 }}>
+            {error}
+          </div>
+        )}
+
         <div style={{ marginBottom: "1.2rem" }}>
           <label style={labelStyle}>Select teacher</label>
           <select
             value={selectedTeacherId}
-            onChange={(event) => setSelectedTeacherId(event.target.value)}
+            onChange={(event) => {
+              setSelectedTeacherId(event.target.value);
+              setError("");
+            }}
             style={inputStyle}
           >
             <option value="">-- Choose a teacher --</option>
-            {teachers.map((teacher) => (
-              <option key={teacher.id} value={teacher.id}>
-                {teacher.name} ({teacher.roleLabel})
-              </option>
-            ))}
+            {teachers.map((teacher) => {
+              const alreadyAssigned = teacher.classGrade && (teacher.classGrade !== currentClass.grade || teacher.classStream !== currentClass.stream);
+              return (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.name} {alreadyAssigned ? `(Already assigned to ${teacher.classGrade}${teacher.classStream})` : `(${teacher.roleLabel})`}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -188,6 +205,10 @@ const ClassTeacherModal: React.FC<{
           <button
             onClick={async () => {
               if (!selectedTeacherId) return;
+              if (isBusy) {
+                setError(`${selectedTeacher.name} is already assigned to Grade ${selectedTeacher.classGrade}${selectedTeacher.classStream}. Please unassign them first.`);
+                return;
+              }
               setSaving(true);
               try {
                 await onSave(selectedTeacherId);
@@ -195,7 +216,11 @@ const ClassTeacherModal: React.FC<{
                 setSaving(false);
               }
             }}
-            style={primaryButtonStyle}
+            style={{
+              ...primaryButtonStyle,
+              opacity: isBusy ? 0.6 : 1,
+              cursor: isBusy ? "not-allowed" : "pointer"
+            }}
             disabled={saving}
           >
             {saving ? "Assigning..." : "Confirm Assignment"}

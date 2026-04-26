@@ -547,6 +547,16 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
       };
     } else {
       const rolesArray = Array.isArray(req.body.roles) ? req.body.roles : [req.body.role].filter(Boolean);
+      // Prevent assigning a teacher who is already assigned to another class
+      if (rolesArray.includes("classteacher") && req.body.classGrade) {
+        const targetTeacher = await userModel.findById(id);
+        if (targetTeacher && targetTeacher.class && targetTeacher.class !== req.body.classGrade) {
+          return res.status(400).json({ 
+            message: `${targetTeacher.teachersName} is already assigned as a class teacher for ${targetTeacher.class}. Please unassign them first.` 
+          });
+        }
+      }
+
       updateData = {
         teachersName: req.body.name,
         email: req.body.email,
