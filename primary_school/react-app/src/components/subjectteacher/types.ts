@@ -80,6 +80,7 @@ export interface MarksTabProps {
   pushedStudents: Set<string>;
   onSubjectChange: (id: string) => void;
   onMarkUpdate: (subjectId: string, studentId: string, key: string, value: string) => void;
+  onConfigUpdate?: (subjectId: string, key: string, value: number | string | null) => void;
   onSaveMarks: (subjectId: string, catConfigs?: any) => void;
   onPushMarks: (subjectId: string) => void;
   avatar: (name: string, size: number) => string;

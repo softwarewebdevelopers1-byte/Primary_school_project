@@ -20,7 +20,7 @@ interface MarksEntryProps {
   ) => void;
   onSaveMarks: (subjectId: string, catConfigs?: any) => void;
   onPushMarks?: (subjectId: string) => void;
-  onConfigUpdate?: (subjectId: string, key: string, value: number) => void;
+  onConfigUpdate?: (subjectId: string, key: string, value: number | string | null) => void;
   avatar: (name: string, size: number) => string;
 }
 
@@ -54,13 +54,17 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
       // Use the first student's marks to sync max values (configs)
       const firstStudentMarks = subjectMarks[students[0].id];
       if (firstStudentMarks) {
-        setCatConfigs({
-          cat1Max: firstStudentMarks.cat1Max || 40,
-          cat2Max: firstStudentMarks.cat2Max || 40,
-          cat3Max: firstStudentMarks.cat3Max || 40,
-          cat4Max: firstStudentMarks.cat4Max || 40,
-          cat5Max: firstStudentMarks.cat5Max || 40,
-          examMax: firstStudentMarks.examMax || 100
+        const newConfigs = {
+          cat1Max: firstStudentMarks.cat1Max !== undefined ? firstStudentMarks.cat1Max : 40,
+          cat2Max: firstStudentMarks.cat2Max !== undefined ? firstStudentMarks.cat2Max : 40,
+          cat3Max: firstStudentMarks.cat3Max !== undefined ? firstStudentMarks.cat3Max : 40,
+          cat4Max: firstStudentMarks.cat4Max !== undefined ? firstStudentMarks.cat4Max : 40,
+          cat5Max: firstStudentMarks.cat5Max !== undefined ? firstStudentMarks.cat5Max : 40,
+          examMax: firstStudentMarks.examMax !== undefined ? firstStudentMarks.examMax : 100
+        };
+        setCatConfigs(prev => {
+          if (JSON.stringify(prev) === JSON.stringify(newConfigs)) return prev;
+          return newConfigs;
         });
       }
 
@@ -69,15 +73,17 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
       students.forEach(s => {
         const sm = subjectMarks[s.id];
         if (sm) {
-          if (sm.cat5 !== null) maxCat = Math.max(maxCat, 5);
-          else if (sm.cat4 !== null) maxCat = Math.max(maxCat, 4);
-          else if (sm.cat3 !== null) maxCat = Math.max(maxCat, 3);
-          else if (sm.cat2 !== null) maxCat = Math.max(maxCat, 2);
-          else if (sm.cat1 !== null) maxCat = Math.max(maxCat, 1);
+          if (sm.cat5 !== null && sm.cat5 !== undefined) maxCat = Math.max(maxCat, 5);
+          else if (sm.cat4 !== null && sm.cat4 !== undefined) maxCat = Math.max(maxCat, 4);
+          else if (sm.cat3 !== null && sm.cat3 !== undefined) maxCat = Math.max(maxCat, 3);
+          else if (sm.cat2 !== null && sm.cat2 !== undefined) maxCat = Math.max(maxCat, 2);
+          else if (sm.cat1 !== null && sm.cat1 !== undefined) maxCat = Math.max(maxCat, 1);
         }
       });
       // Only update if we found marks, otherwise keep current (don't reset to 0 if we already added columns)
-      if (maxCat > 0) setCatsCount(maxCat);
+      if (maxCat > 0) {
+        setCatsCount(prev => prev === maxCat ? prev : maxCat);
+      }
     }
   }, [students, activeSubjectId, subjectMarks]);
 
@@ -96,9 +102,19 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   };
 
   const updateConfig = (key: string, val: string) => {
-    const n = parseInt(val) || 0;
+    let n: number | string | null = val;
+    if (n === "") {
+      n = null;
+    } else {
+      const num = Number(n);
+      if (!isNaN(num)) {
+        if (num < 0) n = 0;
+      } else {
+        n = null;
+      }
+    }
     setCatConfigs(prev => ({ ...prev, [key]: n }));
-    if (onConfigUpdate) onConfigUpdate(activeSubjectId, key, n);
+    if (onConfigUpdate) onConfigUpdate(activeSubjectId, key, n as any);
   };
 
   return (
@@ -174,7 +190,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                         <input
                           type="number"
                           className={styles.maxInput}
-                          value={catConfigs[key]}
+                          value={catConfigs[key] ?? ""}
                           onChange={(e) => updateConfig(key, e.target.value)}
                         />
                       </div>
@@ -187,7 +203,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                     <input
                       type="number"
                       className={styles.maxInput}
-                      value={catConfigs.examMax}
+                      value={catConfigs.examMax ?? ""}
                       onChange={(e) => updateConfig("examMax", e.target.value)}
                     />
                   </div>
@@ -203,6 +219,11 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                   cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, exam: null, finalScore: null
                 };
                 
+                const maxTotal = Array.from({ length: catsCount }).reduce((a: number, _, i) => {
+                  const m = Number(catConfigs[`cat${i + 1}Max`]);
+                  return a + (isNaN(m) ? 0 : m);
+                }, 0) + (isNaN(Number(catConfigs.examMax)) ? 0 : Number(catConfigs.examMax));
+
                 let catsSum: number | null = null;
                 if (catsCount > 0) {
                   catsSum = Array.from({ length: catsCount }).reduce((sum: number | null, _, i) => {
@@ -258,7 +279,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                           className={styles.markInput}
                           type="number" min="0" max="100"
                           value={marks.finalScore ?? ""}
-                          placeholder={total !== null ? Math.round(total / (Array.from({length: catsCount}).reduce((a, _, i) => a + catConfigs[`cat${i+1}Max`], 0) + catConfigs.examMax) * 100).toString() : "–"}
+                          placeholder={(total !== null && maxTotal > 0) ? Math.round((total / maxTotal) * 100).toString() : "–"}
                           onChange={(e) => onMarkUpdate(activeSubjectId, student.id, "finalScore", e.target.value)}
                           style={{ borderColor: "var(--gold)", fontWeight: 700 }}
                         />

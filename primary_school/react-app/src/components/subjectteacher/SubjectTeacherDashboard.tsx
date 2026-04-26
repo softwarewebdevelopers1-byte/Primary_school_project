@@ -169,7 +169,7 @@ const SubjectTeacherDashboard: React.FC = () => {
     });
   };
 
-  const handleConfigUpdate = (subjectId: string, key: string, value: number) => {
+  const handleConfigUpdate = (subjectId: string, key: string, value: number | string | null) => {
     setMarksData((prev) => {
       const newData = { ...prev };
       if (!newData[subjectId]) return prev;
