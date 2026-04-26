@@ -10,15 +10,33 @@ const SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 const router = Router();
 
-const extractRoles = (user: any) => {
+const extractRoles = async (user: any) => {
   const rolesSet = new Set<string>();
   if (user.__t === rolesMapped.ST) {
     rolesSet.add("student");
   } else {
+    // Roles from roles object
     if (user.roles?.role1) rolesSet.add(user.roles.role1);
     if (user.roles?.role2) rolesSet.add(user.roles.role2);
     if (user.roles?.role3) rolesSet.add(user.roles.role3);
+    
+    // Discriminator
     if (user.__t) rolesSet.add(user.__t);
+    
+    // Legacy subjects check
+    if (user.subjects?.subject1 || user.subjects?.subject2) {
+      rolesSet.add(rolesMapped.SJ);
+    }
+    
+    // Check assignments
+    try {
+      const hasAssignments = await AssignmentModel.exists({ teacherId: user._id });
+      if (hasAssignments) {
+        rolesSet.add(rolesMapped.SJ);
+      }
+    } catch (err) {
+      // Ignore if model not ready
+    }
   }
   return Array.from(rolesSet);
 };
@@ -45,7 +63,7 @@ router.post("/login", async (req: Request, res: Response) => {
     }
 
     // Extract all roles
-    const roles = extractRoles(user);
+    const roles = await extractRoles(user);
 
     const token = jwt.sign({ id: user._id, email: user.email || user.ADM, roles }, SECRET, { expiresIn: "1d" });
 
@@ -155,8 +173,8 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
       };
     });
 
-    const mappedStaff = staff.map((t: any) => {
-      const staffRoles = extractRoles(t);
+    const mappedStaffPromises = staff.map(async (t: any) => {
+      const staffRoles = await extractRoles(t);
       return {
         id: t._id,
         name: t.teachersName,
@@ -177,6 +195,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         examType: t.examType,
       };
     });
+    const mappedStaff = await Promise.all(mappedStaffPromises);
 
     res.json({
       students: mappedStudents,
@@ -205,7 +224,7 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Map roles to array format for frontend consistency
-    const roles = extractRoles(user);
+    const roles = await extractRoles(user);
 
     const mapped = {
       ...user.toObject(),
