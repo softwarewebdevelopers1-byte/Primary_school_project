@@ -12,13 +12,14 @@ let app = express();
 app.use(cors({
   origin: ["http://localhost:5173", "http://localhost:5174"],
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type"]
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true // If you're using cookies/sessions
 }));
 app.use(express.json());
 
 // Simple request logger
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+
   next();
 });
 
@@ -31,11 +32,11 @@ app.use("/api/school", schoolRoutes);
 app.use("/api/marks", marksRoutes);
 
 app.listen(DotEnvFile.DEVPort, (): void => {
-  console.log("server started at port", DotEnvFile.DEVPort);
+
 });
 
 function GracefulShutdown(): void {
-  console.log("Server shutting down");
+
 }
 // signal of interruption
 process.on("SIGINT", GracefulShutdown);

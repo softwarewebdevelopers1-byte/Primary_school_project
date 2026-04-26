@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const SECRET = process.env.JWT_SECRET || "fallback_secret";
+const SECRET: string = process.env.JWT_SECRET || "fallback_secret";
 
 export interface AuthRequest extends Request {
   user?: any;
@@ -17,6 +17,9 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
   }
 
   const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Invalid token format." });
+  }
 
   try {
     const decoded = jwt.verify(token, SECRET);

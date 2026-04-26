@@ -60,11 +60,11 @@ export let newStudent = async () => {
       const existing = await studentModel.findOne({ ADM: s.ADM });
       if (!existing) {
         await studentModel.create(s);
-        console.log(`Student ${s.studentsName} added`);
+        
       }
     }
   } catch (error) {
-    console.log(`Student seed error: ${error}`);
+    
   }
 };
 
@@ -102,7 +102,7 @@ export let newStaff = async () => {
       { $set: ctData },
       { upsert: true }
     );
-    console.log("Class teacher updated/created");
+    
 
     // Update or create Subject Teacher
     const sj = await subjectTeacher.findOneAndUpdate(
@@ -110,7 +110,7 @@ export let newStaff = async () => {
       { $set: sjData },
       { upsert: true, new: true }
     );
-    console.log("Subject teacher updated/created");
+    
       
     // Assign a subject to this teacher if not assigned
     const subject = await SubjectModel.findOne();
@@ -126,10 +126,10 @@ export let newStaff = async () => {
         },
         { upsert: true }
       );
-      console.log("Assignment created/updated for subject teacher");
+      
     }
   } catch (error) {
-    console.log(`Seed error: ${error}`);
+    
   }
 };
 
