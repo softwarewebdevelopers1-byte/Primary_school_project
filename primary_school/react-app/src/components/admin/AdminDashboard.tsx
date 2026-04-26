@@ -428,11 +428,15 @@ const AdminDashboard: React.FC = () => {
     try {
       const teacher = teachers.find(t => t.id === teacherId);
       if (teacher) {
+        const existingRoles = teacher.roles || [];
+        const newRoles = existingRoles.filter(r => r !== "classteacher");
+        if (newRoles.length === 0) newRoles.push("subjectteacher");
+
         await api.put(`/users/${teacherId}`, {
           ...teacher,
           classGrade: null,
           classStream: null,
-          role: "subjectteacher", // Default back to subject teacher
+          roles: newRoles,
         });
         await loadDashboardUsers();
         showSuccess("Class teacher unassigned successfully.");

@@ -238,14 +238,19 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     showModal(
       <ClassTeacherModal
         currentClass={currentClass}
-        teachers={teachers.filter(t => t.roles.includes("classteacher") || t.roles.includes("subjectteacher") || t.roles.includes("admin"))}
+        teachers={teachers.filter(t => (t.roles || []).includes("classteacher") || (t.roles || []).includes("subjectteacher") || (t.roles || []).includes("admin"))}
         onClose={closeModal}
         onSave={async (teacherId) => {
           const teacher = teachers.find(t => t.id === teacherId);
           if (teacher) {
+            const existingRoles = teacher.roles || [];
+            const newRoles = existingRoles.includes("classteacher") 
+              ? existingRoles 
+              : [...existingRoles, "classteacher"];
+              
             await onSaveClassTeacher({
               ...teacher,
-              role: "classteacher",
+              roles: newRoles,
               classGrade: currentClass.grade,
               classStream: currentClass.stream,
             }, teacher.id);
