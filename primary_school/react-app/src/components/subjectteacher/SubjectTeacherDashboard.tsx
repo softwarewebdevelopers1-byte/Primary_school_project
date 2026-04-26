@@ -142,7 +142,13 @@ const SubjectTeacherDashboard: React.FC = () => {
       console.error("Failed to load students and marks", err);
       setStudents([]);
     }
-  }, [activeSubjectId, subjects, term, examType, user?.year]);
+  }, [activeSubjectId, subjects, term, year, examType]);
+
+  // Clear state when switching period
+  useEffect(() => {
+    setStudents([]);
+    setMarksData({});
+  }, [term, year, examType]);
 
   useEffect(() => {
     if (activeSubjectId) loadStudentsAndMarks();

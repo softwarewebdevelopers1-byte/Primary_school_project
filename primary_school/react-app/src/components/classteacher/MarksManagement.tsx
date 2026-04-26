@@ -59,7 +59,12 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
     } catch (err) {
       console.error("Failed to load detailed marks", err);
     }
-  }, [activeSubjectId, user.classGrade, user.classStream, term, examType, user.year]);
+  }, [activeSubjectId, user.classGrade, user.classStream, term, year, examType]);
+
+  // Clear marks when switching period to ensure "Specific term specific exam at specific year"
+  useEffect(() => {
+    setMarksData({});
+  }, [term, year, examType]);
 
   useEffect(() => {
     if (activeSubjectId) loadDetailedMarks();
