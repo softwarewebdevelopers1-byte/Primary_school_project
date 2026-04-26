@@ -352,19 +352,33 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
     const newYear = Number(year);
     const newTerm = Number(term);
 
-    // Promote students if the year is advancing
-    // Find students whose current year is less than the new year
-    const studentsToPromote = await userModel.find({ 
-      __t: rolesMapped.ST, 
-      year: { $lt: newYear } 
+    // Promote students and class teachers if the year is advancing
+    // Find users whose current year is less than the new year or missing
+    const usersToPromote = await userModel.find({ 
+      $or: [
+        { __t: rolesMapped.ST },
+        { "roles.role1": rolesMapped.CT }
+      ],
+      class: { $ne: null },
+      $or: [
+        { year: { $lt: newYear } },
+        { year: { $exists: false } },
+        { year: null }
+      ]
     } as any);
 
-    for (const student of studentsToPromote) {
-      const currentClass = parseInt(student.class || "0");
-      if (currentClass > 0) {
-        await userModel.findByIdAndUpdate(student._id, { 
-          $set: { class: (currentClass + 1).toString() } 
-        });
+    for (const u of usersToPromote) {
+      const currentClassStr = u.class;
+      if (currentClassStr) {
+        // Extract number from class (handles "7" or "Grade 7")
+        const match = currentClassStr.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0]);
+          const nextClass = currentClassStr.replace(match[0], (num + 1).toString());
+          await userModel.findByIdAndUpdate(u._id, { 
+            $set: { class: nextClass } 
+          });
+        }
       }
     }
 
