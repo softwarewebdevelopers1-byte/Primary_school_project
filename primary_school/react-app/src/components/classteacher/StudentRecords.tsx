@@ -1,6 +1,6 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { avg, gradeColor } from "./shared/helpers";
+import { avg, sum, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
@@ -182,6 +182,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                 </th>
               ))}
               {[
+                "Total",
                 "Avg",
                 "Action",
               ].map((h) => (
@@ -189,7 +190,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   key={h}
                   style={{
                     padding: "11px 14px",
-                    textAlign: h === "Avg" ? "center" : "left",
+                    textAlign: h === "Action" ? "left" : "center",
                     fontFamily: FONT.sans,
                     fontSize: 11,
                     fontWeight: 700,
@@ -262,6 +263,18 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                       </td>
                     );
                   })}
+                  <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                    <span
+                      style={{
+                        fontFamily: FONT.serif,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: C.text,
+                      }}
+                    >
+                      {s.marks ? sum(s.marks) : 0}
+                    </span>
+                  </td>
                   <td style={{ padding: "12px 14px", textAlign: "center" }}>
                     <span
                       style={{

@@ -31,6 +31,7 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [pushedSubjects, setPushedSubjects] = useState<Set<string>>(new Set());
   const [pushedStudents, setPushedStudents] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
   const { theme, toggleTheme } = useDashboardTheme();
 
   const handleLogout = () => {
@@ -225,9 +226,11 @@ const SubjectTeacherDashboard: React.FC = () => {
         marksData: data,
         catConfigs
       });
-      alert("Marks saved successfully!");
+      setMsg({ text: "Marks saved successfully!", type: "success" });
+      setTimeout(() => setMsg(null), 3000);
     } catch (err) {
-      alert("Failed to save marks.");
+      setMsg({ text: "Failed to save marks.", type: "error" });
+      setTimeout(() => setMsg(null), 3000);
     }
   };
 
@@ -254,9 +257,11 @@ const SubjectTeacherDashboard: React.FC = () => {
         marksData: data
       });
       setPushedSubjects((prev) => new Set(prev).add(subjectId));
-      alert(`Marks saved and pushed for ${currentSubject.grade}`);
+      setMsg({ text: `Marks saved and pushed for ${currentSubject.grade}`, type: "success" });
+      setTimeout(() => setMsg(null), 3000);
     } catch (err) {
-      alert("Failed to push marks.");
+      setMsg({ text: "Failed to push marks.", type: "error" });
+      setTimeout(() => setMsg(null), 3000);
     }
   };
 
@@ -313,7 +318,22 @@ const SubjectTeacherDashboard: React.FC = () => {
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}
         />
-        <div className={styles.contentArea}>{renderContent()}</div>
+        <div className={styles.contentArea}>
+          {msg && (
+            <div style={{ 
+              padding: "10px 20px", 
+              marginBottom: 15, 
+              borderRadius: 8, 
+              background: msg.type === "success" ? "#eaf3de" : "#fdeaea",
+              color: msg.type === "success" ? "#3b6d11" : "#a32d2d",
+              fontSize: 13,
+              fontWeight: 600
+            }}>
+              {msg.text}
+            </div>
+          )}
+          {renderContent()}
+        </div>
       </div>
     </div>
   );

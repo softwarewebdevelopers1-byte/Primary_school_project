@@ -5,6 +5,10 @@ export const avg = (marks: Record<string, number>): number => {
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 };
 
+export const sum = (marks: Record<string, number>): number => {
+  return Object.values(marks).reduce((a, b) => a + b, 0);
+};
+
 export const grade = (v: number): string =>
   v >= 80 ? "A" : v >= 70 ? "B" : v >= 60 ? "C" : v >= 50 ? "D" : "E";
 

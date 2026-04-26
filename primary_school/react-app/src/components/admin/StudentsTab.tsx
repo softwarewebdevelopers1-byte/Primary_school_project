@@ -202,6 +202,7 @@ const StudentFormModal: React.FC<{
   const [guardianName, setGuardianName] = useState(student?.guardianName || "");
   const [guardianPhone, setGuardianPhone] = useState(student?.guardianPhone || "");
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   return (
     <div>
@@ -213,6 +214,11 @@ const StudentFormModal: React.FC<{
       </div>
 
       <div style={{ padding: "18px 22px 22px" }}>
+        {errorMsg && (
+          <div style={{ padding: "10px", marginBottom: "15px", background: "#fdeaea", color: "#a32d2d", borderRadius: "8px", fontSize: "13px", fontWeight: 600 }}>
+            {errorMsg}
+          </div>
+        )}
         <div style={{ marginBottom: "1rem" }}>
           <label style={labelStyle}>Student name</label>
           <input
@@ -322,9 +328,10 @@ const StudentFormModal: React.FC<{
                 !guardianName.trim() ||
                 !guardianPhone.trim()
               ) {
-                alert("Fill in the required student details.");
+                setErrorMsg("Fill in the required student details.");
                 return;
               }
+              setErrorMsg("");
 
               setSaving(true);
               try {

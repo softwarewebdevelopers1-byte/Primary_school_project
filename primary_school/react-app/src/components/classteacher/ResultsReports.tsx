@@ -2,7 +2,7 @@
 import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { avg, gradeColor } from "./shared/helpers";
+import { avg, sum, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 
 interface ResultsReportsProps {
@@ -79,8 +79,63 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
   const topStudent = sortedStudents.length > 0 ? sortedStudents[0] : null;
   const leastStudent = sortedStudents.length > 0 ? sortedStudents[sortedStudents.length - 1] : null;
 
+  const [msg, setMsg] = React.useState<{ text: string, type: "success" | "error" } | null>(null);
+
   const handleDownload = (type: string, studentName?: string) => {
-    alert(`Downloading ${type}${studentName ? ` for ${studentName}` : ""}...`);
+    try {
+      if (type === "Full Merit List" || type === "Full class report" || type === "Subject summary") {
+        const csvContent = [
+          ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg"],
+          ...sortedStudents.map((s, i) => [
+            i + 1,
+            `"${s.name}"`,
+            s.adm || "-",
+            ...subjects.map(sub => (s.marks || {})[sub.id] ?? "-"),
+            sum(s.marks || {}),
+            avg(s.marks || {}) + "%"
+          ])
+        ].map(row => row.join(",")).join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Term1_Report_${Date.now()}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (type === "Report Slip" || type === "Individual result slips") {
+        if (!studentName) {
+           setMsg({ text: "Individual slip download requires student selection from the Merit List table.", type: "error" });
+           setTimeout(() => setMsg(null), 3500);
+           return;
+        }
+        const slip = sortedStudents.find(s => s.name === studentName);
+        if (!slip) return;
+        const content = `STUDENT REPORT SLIP
+Name: ${slip.name}
+Admission No: ${slip.adm || "-"}
+Term: 1 | Year: 2024
+-----------------------------------
+${subjects.map(sub => `${sub.name.padEnd(20)}: ${(slip.marks || {})[sub.id] ?? "-"}%`).join("\n")}
+-----------------------------------
+Total Marks: ${sum(slip.marks || {})}
+Average: ${avg(slip.marks || {})}%
+`;
+        const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${slip.name.replace(/\s+/g, '_')}_Report.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      setMsg({ text: `Successfully downloaded ${type}${studentName ? ` for ${studentName}` : ""}`, type: "success" });
+    } catch (err) {
+      setMsg({ text: `Failed to download ${type}`, type: "error" });
+    }
+    setTimeout(() => setMsg(null), 3500);
   };
 
   return (
@@ -91,6 +146,19 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
           title="Results & reports"
           sub={`Download and review performance summaries for Term 1, 2024.`}
         />
+        {msg && (
+          <div style={{ 
+            padding: "10px 20px", 
+            marginBottom: 15, 
+            borderRadius: 8, 
+            background: msg.type === "success" ? "#eaf3de" : "#fdeaea",
+            color: msg.type === "success" ? "#3b6d11" : "#a32d2d",
+            fontSize: 13,
+            fontWeight: 600
+          }}>
+            {msg.text}
+          </div>
+        )}
         <div
           style={{
             display: "grid",
@@ -243,6 +311,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
                 {subjects.slice(0, 5).map(s => (
                   <th key={s.id} style={{ ...thStyle, textAlign: "center" }}>{s.name.slice(0, 3)}</th>
                 ))}
+                <th style={{ ...thStyle, textAlign: "center" }}>Total</th>
                 <th style={{ ...thStyle, textAlign: "center" }}>Avg</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Action</th>
               </tr>
@@ -267,6 +336,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
                         </td>
                       );
                     })}
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: C.text }}>{sum(s.marks || {})}</td>
                     <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: gradeColor(a) }}>{a}%</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
                       <button

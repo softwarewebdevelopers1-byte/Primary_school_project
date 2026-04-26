@@ -167,6 +167,7 @@ const StaffFormModal: React.FC<{
   const [classStream, setClassStream] = useState(teacher?.classStream || "");
   const [subjects, setSubjects] = useState((teacher?.subjects || []).join(", "));
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   return (
     <div>
@@ -178,6 +179,11 @@ const StaffFormModal: React.FC<{
       </div>
 
       <div style={{ padding: "18px 22px 22px" }}>
+        {errorMsg && (
+          <div style={{ padding: "10px", marginBottom: "15px", background: "#fdeaea", color: "#a32d2d", borderRadius: "8px", fontSize: "13px", fontWeight: 600 }}>
+            {errorMsg}
+          </div>
+        )}
         <div style={{ marginBottom: "1rem" }}>
           <label style={labelStyle}>Roles (Select up to 3)</label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", padding: "8px", background: "var(--sand)", borderRadius: "8px" }}>
@@ -189,8 +195,12 @@ const StaffFormModal: React.FC<{
                   onChange={(e) => {
                     const currentRoles = Array.isArray(role) ? [...role] : [role];
                     if (e.target.checked) {
-                      if (currentRoles.length < 3) setRole([...currentRoles, option.value]);
-                      else alert("Maximum 3 roles allowed");
+                      if (currentRoles.length < 3) {
+                        setRole([...currentRoles, option.value]);
+                        setErrorMsg("");
+                      } else {
+                        setErrorMsg("Maximum 3 roles allowed");
+                      }
                     } else {
                       setRole(currentRoles.filter(r => r !== option.value));
                     }
@@ -293,9 +303,10 @@ const StaffFormModal: React.FC<{
           <button
             onClick={async () => {
               if (!name.trim() || !email.trim()) {
-                alert("Name and email are required.");
+                setErrorMsg("Name and email are required.");
                 return;
               }
+              setErrorMsg("");
 
               setSaving(true);
               try {
