@@ -162,7 +162,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
               >
                 <option value="Opener">Opener</option>
                 <option value="Midterm">Midterm</option>
-                <option value="EndTerm">End of Term</option>
+                <option value="EndTerm">Endterm</option>
               </select>
             )}
             <select

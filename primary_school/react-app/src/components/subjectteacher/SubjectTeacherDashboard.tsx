@@ -121,7 +121,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       console.error("Failed to load students and marks", err);
       setStudents([]);
     }
-  }, [activeSubjectId, subjects]);
+  }, [activeSubjectId, subjects, term, examType, user?.year]);
 
   useEffect(() => {
     if (activeSubjectId) loadStudentsAndMarks();
