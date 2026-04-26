@@ -552,7 +552,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
         const targetTeacher = await userModel.findById(id);
         if (targetTeacher && targetTeacher.class && targetTeacher.class !== req.body.classGrade) {
           return res.status(400).json({ 
-            message: `${targetTeacher.teachersName} is already assigned as a class teacher for ${targetTeacher.class}. Please unassign them first.` 
+            message: `${(targetTeacher as any).teachersName} is already assigned as a class teacher for ${targetTeacher.class}. Please unassign them first.` 
           });
         }
       }
