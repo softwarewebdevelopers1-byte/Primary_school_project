@@ -458,7 +458,7 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
     // NEW: Archive marks before updating cycle and deleting them
     try {
       const { archiveClassMarks } = await import("../utils/archiver.js");
-      const { ArchiveModel, MarkModel } = await import("../models/school.model.js");
+      const { MarkModel } = await import("../models/school.model.js");
       
       // Get current cycle from the first student found (or fallback)
       const sampleUser = await userModel.findOne({ term: { $ne: null } } as any);
@@ -466,7 +466,7 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
       const currentYear = sampleUser?.year || 2024;
       const currentExamType = sampleUser?.examType || "opener";
 
-      // Find all unique classes
+      // Find all unique classes that have students
       const uniqueClasses = await studentModel.aggregate([
         { $match: { class: { $ne: null }, classStream: { $ne: null } } },
         { $group: { _id: { class: "$class", stream: "$classStream" } } }
@@ -482,7 +482,8 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
         );
       }
 
-      // Advance assignments
+      // Advance assignments to next grade if year is advanced
+      const { AssignmentModel } = await import("../models/school.model.js");
       const allAssignments = await AssignmentModel.find();
       for (const assignment of allAssignments) {
         const match = assignment.classGrade.match(/\d+/);
@@ -501,10 +502,15 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
         }
       }
 
-      await MarkModel.deleteMany({});
+      // Safe deletion: only delete marks for the cycle we just archived
+      await MarkModel.deleteMany({
+        term: currentTerm,
+        year: currentYear,
+        examType: currentExamType
+      });
       
     } catch (archiveError) {
-      // Archive error caught silently for flow
+      // Silently continue or log if needed, but don't break the promo flow
     }
 
     await userModel.updateMany({}, { 
