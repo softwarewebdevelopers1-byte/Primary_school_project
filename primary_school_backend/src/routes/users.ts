@@ -10,6 +10,19 @@ const SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 const router = Router();
 
+const extractRoles = (user: any) => {
+  const rolesSet = new Set<string>();
+  if (user.__t === rolesMapped.ST) {
+    rolesSet.add("student");
+  } else {
+    if (user.roles?.role1) rolesSet.add(user.roles.role1);
+    if (user.roles?.role2) rolesSet.add(user.roles.role2);
+    if (user.roles?.role3) rolesSet.add(user.roles.role3);
+    if (user.__t) rolesSet.add(user.__t);
+  }
+  return Array.from(rolesSet);
+};
+
 // POST login
 router.post("/login", async (req: Request, res: Response) => {
   try {
@@ -32,19 +45,7 @@ router.post("/login", async (req: Request, res: Response) => {
     }
 
     // Extract all roles
-    const roles = [];
-    if (user.__t === rolesMapped.ST) {
-      roles.push("student");
-    } else {
-      if (user.roles?.role1) roles.push(user.roles.role1);
-      if (user.roles?.role2) roles.push(user.roles.role2);
-      if (user.roles?.role3) roles.push(user.roles.role3);
-      
-      // Fallback to discriminator name if roles object is empty (legacy)
-      if (roles.length === 0 && user.__t) {
-        roles.push(user.__t);
-      }
-    }
+    const roles = extractRoles(user);
 
     const token = jwt.sign({ id: user._id, email: user.email || user.ADM, roles }, SECRET, { expiresIn: "1d" });
 
@@ -154,24 +155,28 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
       };
     });
 
-    const mappedStaff = staff.map((t: any) => ({
-      id: t._id,
-      name: t.teachersName,
-      email: t.email,
-      phone: t.phone,
-      department: t.department,
-      role: t.__t,
-      roleLabel: t.__t ? t.__t.charAt(0).toUpperCase() + t.__t.slice(1) : "Staff",
-      status: t.status,
-      classGrade: t.class,
-      classStream: t.classStream,
-      subjects: t.subjects ? [t.subjects.subject1, t.subjects.subject2].filter(Boolean) : [],
-      teacherNumber: t.teacherNumber,
-      joinDate: t.joinDate,
-      term: t.term,
-      year: t.year,
-      examType: t.examType,
-    }));
+    const mappedStaff = staff.map((t: any) => {
+      const staffRoles = extractRoles(t);
+      return {
+        id: t._id,
+        name: t.teachersName,
+        email: t.email,
+        phone: t.phone,
+        department: t.department,
+        roles: staffRoles,
+        role: t.__t,
+        roleLabel: t.__t ? t.__t.charAt(0).toUpperCase() + t.__t.slice(1) : "Staff",
+        status: t.status,
+        classGrade: t.class,
+        classStream: t.classStream,
+        subjects: t.subjects ? [t.subjects.subject1, t.subjects.subject2].filter(Boolean) : [],
+        teacherNumber: t.teacherNumber,
+        joinDate: t.joinDate,
+        term: t.term,
+        year: t.year,
+        examType: t.examType,
+      };
+    });
 
     res.json({
       students: mappedStudents,
@@ -200,15 +205,7 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Map roles to array format for frontend consistency
-    const roles = [];
-    if (user.__t === rolesMapped.ST) {
-      roles.push("student");
-    } else {
-      if (user.roles?.role1) roles.push(user.roles.role1);
-      if (user.roles?.role2) roles.push(user.roles.role2);
-      if (user.roles?.role3) roles.push(user.roles.role3);
-      if (roles.length === 0 && user.__t) roles.push(user.__t);
-    }
+    const roles = extractRoles(user);
 
     const mapped = {
       ...user.toObject(),
