@@ -2,21 +2,22 @@ import React, { useState } from "react";
 import styles from "./AdminDashboard.module.css";
 
 interface CycleTabProps {
-  onBulkTermUpdate: (term: number, year: number) => Promise<void>;
+  onBulkTermUpdate: (term: number, year: number, examType: string) => Promise<void>;
 }
 
 export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate }) => {
   const [term, setTerm] = useState<number>(1);
   const [year, setYear] = useState<number>(new Date().getFullYear());
+  const [examType, setExamType] = useState<string>("opener");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm(`Are you sure you want to promote ALL classes to Term ${term}, ${year}? This action is global.`)) return;
+    if (!window.confirm(`Are you sure you want to promote ALL classes to Term ${term}, ${year} (${examType})? This action is global.`)) return;
     
     setLoading(true);
     try {
-      await onBulkTermUpdate(term, year);
+      await onBulkTermUpdate(term, year, examType);
     } finally {
       setLoading(false);
     }
@@ -32,7 +33,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate }) => {
       <div style={noticeStyle}>
         <h4 style={{ margin: "0 0 8px", color: "var(--gold)", fontSize: 14 }}>⚠️ Critical Action</h4>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-          Updating the academic term and year is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> All teachers and students will be moved to the selected term immediately.
+          Updating the academic term and year is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> All teachers and students will be moved to the selected term and exam phase immediately.
         </p>
       </div>
 
@@ -60,6 +61,20 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate }) => {
               <option value={1}>Term 1</option>
               <option value={2}>Term 2</option>
               <option value={3}>Term 3</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Exam / CAT Phase</label>
+            <select 
+              value={examType} 
+              onChange={(e) => setExamType(e.target.value)}
+              style={inputStyle}
+              required
+            >
+              <option value="opener">Opener Exam</option>
+              <option value="midterm">Mid Term</option>
+              <option value="closing">Closing Exam</option>
             </select>
           </div>
 

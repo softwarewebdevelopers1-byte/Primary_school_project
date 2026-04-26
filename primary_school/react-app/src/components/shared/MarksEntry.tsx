@@ -158,11 +158,11 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                 className={styles.dhInput}
                 value={examType}
                 onChange={(e) => onExamTypeChange(e.target.value)}
-                style={{ width: 120 }}
+                style={{ width: 130 }}
               >
-                <option value="Opener">Opener</option>
-                <option value="Midterm">Midterm</option>
-                <option value="EndTerm">Closing</option>
+                <option value="opener">Opener Exam</option>
+                <option value="midterm">Mid Term</option>
+                <option value="closing">Closing Exam</option>
               </select>
             )}
             <select

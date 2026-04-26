@@ -136,6 +136,9 @@ router.get("/", async (req: Request, res: Response) => {
         classStream: s.classStream,
         status: s.status,
         marks: marksObj,
+        term: s.term,
+        year: s.year,
+        examType: s.examType,
       };
     });
 
@@ -153,6 +156,9 @@ router.get("/", async (req: Request, res: Response) => {
       subjects: t.subjects ? [t.subjects.subject1, t.subjects.subject2].filter(Boolean) : [],
       teacherNumber: t.teacherNumber,
       joinDate: t.joinDate,
+      term: t.term,
+      year: t.year,
+      examType: t.examType,
     }));
 
     res.json({
@@ -338,7 +344,7 @@ router.post("/", async (req: Request, res: Response) => {
 // Bulk update term and year for all users
 router.put("/bulk-update-term", async (req: Request, res: Response) => {
   try {
-    const { term, year } = req.body;
+    const { term, year, examType } = req.body;
     if (term === undefined || year === undefined) {
       return res.status(400).json({ message: "Term and Year are required." });
     }
@@ -347,17 +353,27 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
     const newTerm = Number(term);
 
     // Promote students if the year is advancing
-    // We check if their stored year is less than the new year
-    await userModel.updateMany(
-      { __t: rolesMapped.ST, year: { $lt: newYear } },
-      { $inc: { class: 1 } }
-    );
+    // Find students whose current year is less than the new year
+    const studentsToPromote = await userModel.find({ 
+      __t: rolesMapped.ST, 
+      year: { $lt: newYear } 
+    } as any);
 
-    // Update term and year for all users (staff and students)
+    for (const student of studentsToPromote) {
+      const currentClass = parseInt(student.class || "0");
+      if (currentClass > 0) {
+        await userModel.findByIdAndUpdate(student._id, { 
+          $set: { class: (currentClass + 1).toString() } 
+        });
+      }
+    }
+
+    // Update term, year and examType for all users (staff and students)
     await userModel.updateMany({}, { 
       $set: { 
         term: newTerm, 
-        year: newYear 
+        year: newYear,
+        examType: examType || "opener"
       } 
     });
 

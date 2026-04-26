@@ -38,6 +38,11 @@ const UserSchema = new Schema<user>({
     type: Number,
     default: () => new Date().getFullYear(),
   },
+  examType: {
+    type: String,
+    enum: ["opener", "midterm", "closing"],
+    default: "opener",
+  },
 });
 const teachersSchema = new Schema<teachers>({
   password: {

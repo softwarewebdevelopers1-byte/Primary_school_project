@@ -34,7 +34,7 @@ const NAV = [
 
 export default function ClassTeacherDashboard() {
   const navigate = useNavigate();
-  const [user] = useState(() => {
+  const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("user");
     return saved ? JSON.parse(saved) : null;
   });
@@ -100,6 +100,7 @@ export default function ClassTeacherDashboard() {
       if (freshUser) {
         const updated = { ...user, ...freshUser, id: freshUser._id };
         localStorage.setItem("user", JSON.stringify(updated));
+        setUser(updated);
       }
     } catch (e) {}
   }, [user?.id]);
@@ -342,7 +343,7 @@ export default function ClassTeacherDashboard() {
                       maxWidth: 520,
                     }}
                   >
-                    {students.length} learners enrolled · Term 1 well underway
+                    {students.length} learners enrolled · Term {user?.term || 1} well underway
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

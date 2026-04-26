@@ -33,7 +33,7 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
   const [term, setTerm] = useState<number>(user?.term || 1);
-  const [examType, setExamType] = useState<string>("EndTerm");
+  const [examType, setExamType] = useState<string>("opener");
   const { theme, toggleTheme } = useDashboardTheme();
 
   const handleLogout = () => {
@@ -80,6 +80,7 @@ const SubjectTeacherDashboard: React.FC = () => {
            const updated = { ...user, ...freshUser, id: freshUser._id };
            localStorage.setItem("user", JSON.stringify(updated));
            setTerm(freshUser.term || 1);
+           setExamType(freshUser.examType || "opener");
         }
       } catch (e) {}
     };

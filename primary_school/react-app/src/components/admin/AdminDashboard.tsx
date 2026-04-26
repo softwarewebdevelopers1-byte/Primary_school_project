@@ -59,6 +59,9 @@ const mapStudentsFromApi = (students: ApiStudent[]): Student[] =>
     guardianPhone: student.guardianPhone,
     classId: buildClassId(student.classGrade, student.classStream),
     status: normalizeStatus(student.status),
+    term: student.term,
+    year: student.year,
+    examType: student.examType,
   }));
 
 const deriveClasses = (
@@ -95,8 +98,9 @@ const deriveClasses = (
       students: students.filter((current) => current.classId === student.classId).length,
       classTeacherId: classTeacher?.id || "",
       subjectAssignments: getAssignmentsForClass(grade, stream),
-      term: classTeacher?.term,
-      year: classTeacher?.year,
+      term: classTeacher?.term || student.term || 1,
+      year: classTeacher?.year || student.year || 2024,
+      examType: classTeacher?.examType || student.examType || "opener",
     });
   });
 
@@ -119,8 +123,9 @@ const deriveClasses = (
         students: 0,
         classTeacherId: teacher.id,
         subjectAssignments: getAssignmentsForClass(grade, stream),
-        term: teacher.term,
-        year: teacher.year,
+        term: teacher.term || 1,
+        year: teacher.year || 2024,
+        examType: teacher.examType || "opener",
       });
     });
 
@@ -425,11 +430,11 @@ const AdminDashboard: React.FC = () => {
     }
   };
   
-  const handleBulkTermUpdate = async (term: number, year: number) => {
+  const handleBulkTermUpdate = async (term: number, year: number, examType: string) => {
     try {
-      await api.put("/users/bulk-update-term", { term, year });
+      await api.put("/users/bulk-update-term", { term, year, examType });
       await loadDashboardUsers();
-      showSuccess(`All classes have been updated to Term ${term}, ${year}.`);
+      showSuccess(`All classes have been updated to Term ${term}, ${year} (${examType}).`);
     } catch (err) {
       showError("Failed to update all classes.");
     }
