@@ -313,6 +313,10 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
           description="Review the latest class timetable PDFs generated for the current school cycle."
           emptyMessage="No timetable has been generated for the current cycle yet."
           refreshKey={refreshKey}
+          allowDelete
+          onDeleteSuccess={(message) => {
+            setStatus({ type: "success", text: message });
+          }}
         />
       </div>
     </div>

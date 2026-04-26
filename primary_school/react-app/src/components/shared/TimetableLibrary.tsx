@@ -10,6 +10,8 @@ interface TimetableLibraryProps {
   emptyMessage?: string;
   highlightTeacherId?: string;
   refreshKey?: number;
+  allowDelete?: boolean;
+  onDeleteSuccess?: (message: string) => void;
 }
 
 export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
@@ -20,17 +22,22 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
   emptyMessage = "No timetable has been published yet.",
   highlightTeacherId,
   refreshKey = 0,
+  allowDelete = false,
+  onDeleteSuccess,
 }) => {
   const [timetables, setTimetables] = useState<TimetableRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState("");
+  const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         setError("");
+        setActionMessage(null);
         const data = await api.get<TimetableRecord[]>(fetchPath, fetchParams);
         setTimetables(data || []);
       } catch (err) {
@@ -61,6 +68,35 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
 
   const teacherLessonCount = selected?.myLessons?.length || 0;
 
+  const handleDelete = async () => {
+    if (!selected || deleting) return;
+
+    const classLabel = `${selected.classGrade} ${selected.classStream}`.trim();
+    const confirmed = window.confirm(
+      `Delete the published timetable for ${classLabel}? This will remove the PDF from Supabase and delete its database record.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      const response = await api.delete<{ message: string }>(`/school/timetables/${selected.id}`);
+      const successMessage =
+        response.message || `Deleted timetable for ${classLabel} successfully.`;
+
+      setTimetables((current) => current.filter((item) => item.id !== selected.id));
+      setActionMessage({ type: "success", text: successMessage });
+      onDeleteSuccess?.(successMessage);
+    } catch (err) {
+      setActionMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to delete timetable.",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="ct-anim">
       <div style={{ marginBottom: 24 }}>
@@ -90,6 +126,24 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
           {description}
         </p>
       </div>
+
+      {actionMessage && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            borderRadius: 12,
+            border: actionMessage.type === "success" ? "1px solid var(--sBg)" : "1px solid var(--dBg)",
+            background: actionMessage.type === "success" ? "var(--sBg)" : "var(--dBg)",
+            color: actionMessage.type === "success" ? "var(--sText)" : "var(--dText)",
+            fontSize: 12.5,
+            fontWeight: 700,
+            lineHeight: 1.5,
+          }}
+        >
+          {actionMessage.text}
+        </div>
+      )}
 
       {loading ? (
         <div
@@ -253,6 +307,27 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
               >
                 Open PDF
               </a>
+              {allowDelete && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    background: "var(--dText)",
+                    color: "#fff",
+                    border: "none",
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                    cursor: deleting ? "not-allowed" : "pointer",
+                    opacity: deleting ? 0.7 : 1,
+                  }}
+                >
+                  {deleting ? "Deleting..." : "Delete Timetable"}
+                </button>
+              )}
             </div>
 
             {selected.aiSummary ? (

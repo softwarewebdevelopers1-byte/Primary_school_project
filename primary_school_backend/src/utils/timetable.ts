@@ -1163,3 +1163,34 @@ export async function generateAndStoreSchoolTimetables(input: CreateSchoolTimeta
     timetables: savedTimetables,
   };
 }
+
+export async function deleteStoredTimetableById(timetableId: string) {
+  const deletedTimetable = await TimetableModel.findByIdAndDelete(timetableId);
+
+  if (!deletedTimetable) {
+    throw new Error("Timetable not found.");
+  }
+
+  const deletedSnapshot = deletedTimetable.toObject();
+  const classLabel = `${deletedSnapshot.classGrade} ${deletedSnapshot.classStream}`.trim();
+
+  try {
+    await removeSupabaseFiles([deletedSnapshot.storagePath]);
+  } catch (error: any) {
+    try {
+      await TimetableModel.create(deletedSnapshot);
+    } catch (restoreError: any) {
+      throw new Error(
+        `Supabase deletion failed for ${classLabel}, and the timetable record could not be restored. ${restoreError.message}`,
+      );
+    }
+
+    throw new Error(
+      `Supabase deletion failed for ${classLabel}. The database record was restored to prevent broken links. ${error.message}`,
+    );
+  }
+
+  return {
+    classLabel,
+  };
+}

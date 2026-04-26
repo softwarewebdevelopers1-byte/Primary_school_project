@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import { AssignmentModel, SubjectModel, TimetableModel } from "../models/school.model.js";
 import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
 import { authenticate, type AuthRequest } from "../middleware/auth.js";
-import { generateAndStoreSchoolTimetables } from "../utils/timetable.js";
+import { deleteStoredTimetableById, generateAndStoreSchoolTimetables } from "../utils/timetable.js";
 
 const router = Router();
 
@@ -271,6 +271,29 @@ router.get("/timetables/my", async (req: AuthRequest, res: Response) => {
     res.json(timetables.map((record: any) => mapTimetableRecord(record, teacherId)));
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete("/timetables/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    if (!hasRole(roles, rolesMapped.ADM)) {
+      return res.status(403).json({ message: "Only admins can delete published timetables." });
+    }
+
+    const timetableId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    if (!timetableId) {
+      return res.status(400).json({ message: "Timetable id is required." });
+    }
+
+    const result = await deleteStoredTimetableById(timetableId);
+
+    res.json({
+      message: `Deleted timetable for ${result.classLabel} from Supabase and removed its database record.`,
+    });
+  } catch (error: any) {
+    const statusCode = error?.message === "Timetable not found." ? 404 : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 });
 
