@@ -1,6 +1,7 @@
 // components/classteacher/Settings.tsx
 import React, { useState } from "react";
 import { C, FONT } from "./shared/constants";
+import { api } from "../../lib/api";
 
 interface SettingsProps {
   user: any;
@@ -84,6 +85,8 @@ export const Settings: React.FC<SettingsProps> = ({ user, studentsCount, onUserU
       setLoading(false);
     }
   };
+
+  const Field: React.FC<{ label: string; k: string; type?: string; disabled?: boolean }> = ({
     label,
     k,
     type = "text",
