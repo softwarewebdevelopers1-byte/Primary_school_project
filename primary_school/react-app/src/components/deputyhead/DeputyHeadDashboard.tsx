@@ -13,6 +13,7 @@ import { ParentConcerns } from "./ParentConcerns";
 import { C, F } from "./shared/constants";
 import { NAV_ALL } from "./shared/data";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
+import { api } from "../../lib/api";
 
 export type UserRoleType = "deputy" | "headteacher";
 
@@ -29,6 +30,73 @@ export default function DeputyHeadDashboard({
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [roleToggle, setRoleToggle] = useState<UserRoleType>(userRole);
   const { theme, toggleTheme } = useDashboardTheme();
+
+  const [students, setStudents] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data: any = await api.get("/users");
+      setStudents(data.students || []);
+      setStaff(data.staff || []);
+      setSubjects(data.subjects || []);
+      setAssignments(data.assignments || []);
+      
+      // Derive classes from students and assignments
+      const classMap = new Map();
+      (data.students || []).forEach((s: any) => {
+        if (!s.classGrade) return;
+        const key = `${s.classGrade}${s.classStream || ""}`;
+        if (!classMap.has(key)) {
+          classMap.set(key, {
+            id: key,
+            name: `Grade ${s.classGrade} ${s.classStream || ""}`.trim(),
+            grade: s.classGrade,
+            stream: s.classStream,
+            students: 0,
+            subjects: 0,
+            avg: 0,
+            term: 1,
+            teacher: "Unassigned",
+          });
+        }
+        classMap.get(key).students += 1;
+      });
+
+      // Find class teachers from staff
+      (data.staff || []).forEach((t: any) => {
+        if (t.roleLabel === "ClassTeacher" && t.classGrade) {
+          const key = `${t.classGrade}${t.classStream || ""}`;
+          if (classMap.has(key)) {
+            classMap.get(key).teacher = t.name;
+          }
+        }
+      });
+
+      // Count subjects per class from assignments
+      (data.assignments || []).forEach((a: any) => {
+        const key = `${a.classGrade}${a.classStream || ""}`;
+        if (classMap.has(key)) {
+          classMap.get(key).subjects += 1;
+        }
+      });
+
+      setClasses(Array.from(classMap.values()));
+    } catch (err) {
+      console.error("Failed to load dashboard data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
@@ -77,15 +145,17 @@ export default function DeputyHeadDashboard({
   };
 
   const renderContent = () => {
+    if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Loading dashboard...</div>;
+
     switch (tab) {
       case "overview":
-        return <SchoolOverview isHT={isHT} />;
+        return <SchoolOverview isHT={isHT} classes={classes} students={students} staff={staff} />;
       case "teachers":
-        return <TeacherManagement />;
+        return <TeacherManagement staff={staff} />;
       case "classes":
-        return <ClassManagement />;
+        return <ClassManagement classes={classes} />;
       case "students":
-        return <StudentManagement />;
+        return <StudentManagement students={students} />;
       case "analytics":
         return <Analytics />;
       case "reports":
@@ -244,7 +314,7 @@ export default function DeputyHeadDashboard({
                       margin: 0,
                     }}
                   >
-                    {nav.length - 1} streams · {nav.length - 2} teachers ·{" "}
+                    {classes.length} streams · {staff.length} teachers ·{" "}
                     {isHT ? "Full" : "Deputy"} access active
                   </p>
                 </div>

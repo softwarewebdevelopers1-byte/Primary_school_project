@@ -2,15 +2,18 @@
 import React from "react";
 import { SectionHeader } from "./shared/SectionHeader";
 import { C, F } from "./shared/constants";
-import { CLASSES } from "./shared/data";
 import { gc } from "./shared/helpers";
 
-export const ClassManagement: React.FC = () => (
+interface ClassManagementProps {
+  classes?: any[];
+}
+
+export const ClassManagement: React.FC<ClassManagementProps> = ({ classes = [] }) => (
   <div className="dh-anim">
     <SectionHeader
       eyebrow="Classes"
       title="Class management"
-      sub={`${CLASSES.length} streams · Grades 7–9 · Term 1, 2024`}
+      sub={`${classes.length} streams · Grades 7–9 · Term 1, 2024`}
     />
     <div
       style={{
@@ -19,9 +22,9 @@ export const ClassManagement: React.FC = () => (
         gap: 14,
       }}
     >
-      {CLASSES.map((c) => (
+      {classes.map((c, i) => (
         <div
-          key={c.id}
+          key={c.id || i}
           className="dh-card"
           style={{
             background: C.white,

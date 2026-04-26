@@ -28,6 +28,12 @@ export const gc = (v: number): string => {
   return v >= 80 ? C.successText : v >= 65 ? C.warnText : C.dangerText;
 };
 
+export const avg = (marks: Record<string, number>): number => {
+  const vals = Object.values(marks || {});
+  if (vals.length === 0) return 0;
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+};
+
 export const gb = (v: number): string => {
   return v >= 80 ? C.successBg : v >= 65 ? C.warnBg : C.dangerBg;
 };

@@ -4,20 +4,21 @@ import { SectionHeader } from "./shared/SectionHeader";
 import { MetricCard } from "./shared/MetricCard";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { TEACHERS, CLASSES, STUDENTS, CONCERNS } from "./shared/data";
+import { CONCERNS } from "./shared/data";
 import { gc } from "./shared/helpers";
 
 interface SchoolOverviewProps {
   isHT: boolean;
+  classes?: any[];
+  students?: any[];
+  staff?: any[];
 }
 
-export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ isHT }) => {
-  const totalStudents = STUDENTS.length * 35;
-  const totalTeachers = TEACHERS.length;
-  const totalClasses = CLASSES.length;
-  const classAvg = Math.round(
-    CLASSES.reduce((a, c) => a + c.avg, 0) / CLASSES.length,
-  );
+export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ isHT, classes = [], students = [], staff = [] }) => {
+  const totalStudents = students.length;
+  const totalTeachers = staff.length;
+  const totalClasses = classes.length;
+  const classAvg = classes.length > 0 ? Math.round(classes.reduce((a, c) => a + c.avg, 0) / classes.length) : 0;
   const openConcerns = CONCERNS.filter((c) => c.status === "Open").length;
 
   return (
@@ -94,8 +95,8 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ isHT }) => {
           >
             Class performance
           </p>
-          {CLASSES.map((c) => (
-            <div key={c.id} style={{ marginBottom: 12 }}>
+          {classes.map((c, i) => (
+            <div key={c.id || i} style={{ marginBottom: 12 }}>
               <div
                 style={{
                   display: "flex",
@@ -160,9 +161,9 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ isHT }) => {
           >
             Staff overview
           </p>
-          {TEACHERS.map((t) => (
+          {staff.slice(0, 6).map((t, i) => (
             <div
-              key={t.id}
+              key={t.id || i}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -191,7 +192,7 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ isHT }) => {
                     margin: 0,
                   }}
                 >
-                  {t.subject} · {t.class}
+                  {t.department || "General"} · {t.roleLabel || t.role}
                 </p>
               </div>
               <span

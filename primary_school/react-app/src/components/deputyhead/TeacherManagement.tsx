@@ -3,30 +3,33 @@ import React, { useState } from "react";
 import { SectionHeader } from "./shared/SectionHeader";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { TEACHERS } from "./shared/data";
 import { gc } from "./shared/helpers";
 
-export const TeacherManagement: React.FC = () => {
+interface TeacherManagementProps {
+  staff?: any[];
+}
+
+export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = [] }) => {
   const [search, setSearch] = useState("");
-  const filtered = TEACHERS.filter(
+  const filtered = staff.filter(
     (t) =>
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.subject.toLowerCase().includes(search.toLowerCase()),
+      t.name?.toLowerCase().includes(search.toLowerCase()) ||
+      t.department?.toLowerCase().includes(search.toLowerCase()),
   );
-  const activeCount = TEACHERS.filter((t) => t.status === "Active").length;
+  const activeCount = staff.filter((t) => t.status === "active" || t.status === "Active").length;
 
   return (
     <div className="dh-anim">
       <SectionHeader
         eyebrow="Staff"
         title="Teacher management"
-        sub={`${TEACHERS.length} teachers on record · ${activeCount} currently active`}
+        sub={`${staff.length} teachers on record · ${activeCount} currently active`}
         action={
           <input
             className="dh-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or subject…"
+            placeholder="Search name or department…"
             style={{
               padding: "9px 14px",
               border: `1.5px solid ${C.border}`,
@@ -54,7 +57,7 @@ export const TeacherManagement: React.FC = () => {
             <tr style={{ background: C.sand }}>
               {[
                 "Teacher",
-                "Subject",
+                "Department",
                 "Class",
                 "Students",
                 "Status",
@@ -111,7 +114,7 @@ export const TeacherManagement: React.FC = () => {
                     color: C.textMid,
                   }}
                 >
-                  {t.subject}
+                  {t.department || "General"}
                 </td>
                 <td
                   style={{
@@ -121,7 +124,7 @@ export const TeacherManagement: React.FC = () => {
                     color: C.textMuted,
                   }}
                 >
-                  {t.class}
+                  {t.classGrade ? `Grade ${t.classGrade}${t.classStream || ""}` : "None"}
                 </td>
                 <td
                   style={{
@@ -132,7 +135,7 @@ export const TeacherManagement: React.FC = () => {
                     color: C.text,
                   }}
                 >
-                  {t.students}
+                  {t.subjects?.length || 0} subjects
                 </td>
                 <td style={{ padding: "11px 14px" }}>
                   <span
@@ -143,11 +146,11 @@ export const TeacherManagement: React.FC = () => {
                       fontSize: 10.5,
                       fontWeight: 700,
                       background:
-                        t.status === "Active" ? C.successBg : C.warnBg,
-                      color: t.status === "Active" ? C.successText : C.warnText,
+                        t.status === "active" || t.status === "Active" ? C.successBg : C.warnBg,
+                      color: t.status === "active" || t.status === "Active" ? C.successText : C.warnText,
                     }}
                   >
-                    {t.status}
+                    {t.status || "Active"}
                   </span>
                 </td>
                 <td style={{ padding: "11px 14px" }}>
@@ -156,10 +159,10 @@ export const TeacherManagement: React.FC = () => {
                       fontFamily: F.serif,
                       fontSize: 16,
                       fontWeight: 600,
-                      color: gc(t.avg),
+                      color: gc(75),
                     }}
                   >
-                    {t.avg}%
+                    -
                   </span>
                 </td>
                 <td style={{ padding: "11px 14px" }}>

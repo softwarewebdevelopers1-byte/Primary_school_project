@@ -3,15 +3,19 @@ import React, { useState } from "react";
 import { SectionHeader } from "./shared/SectionHeader";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { STUDENTS } from "./shared/data";
-import { gc } from "./shared/helpers";
+import { gc, avg } from "./shared/helpers";
 
-export const StudentManagement: React.FC = () => {
+interface StudentManagementProps {
+  students?: any[];
+}
+
+export const StudentManagement: React.FC<StudentManagementProps> = ({ students = [] }) => {
   const [search, setSearch] = useState("");
-  const filtered = STUDENTS.filter(
+  const filtered = students.filter(
     (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.class.toLowerCase().includes(search.toLowerCase()),
+      s.name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.classGrade?.toString().includes(search.toLowerCase()) ||
+      s.classStream?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -19,7 +23,7 @@ export const StudentManagement: React.FC = () => {
       <SectionHeader
         eyebrow="Learners"
         title="Student management"
-        sub={`${STUDENTS.length} student records · schoolwide view`}
+        sub={`${students.length} student records · schoolwide view`}
         action={
           <input
             className="dh-input"
@@ -110,7 +114,7 @@ export const StudentManagement: React.FC = () => {
                     color: C.textMuted,
                   }}
                 >
-                  {s.adm}
+                  {s.admissionNo || s.adm || "-"}
                 </td>
                 <td
                   style={{
@@ -120,7 +124,7 @@ export const StudentManagement: React.FC = () => {
                     color: C.textMid,
                   }}
                 >
-                  {s.class}
+                  Grade {s.classGrade}{s.classStream || ""}
                 </td>
                 <td
                   style={{
@@ -130,7 +134,7 @@ export const StudentManagement: React.FC = () => {
                     color: C.textMuted,
                   }}
                 >
-                  {s.gender}
+                  {s.gender || "N/A"}
                 </td>
                 <td style={{ padding: "11px 14px" }}>
                   <span
@@ -141,12 +145,12 @@ export const StudentManagement: React.FC = () => {
                       fontSize: 10.5,
                       fontWeight: 700,
                       background:
-                        s.status === "Active" ? C.successBg : C.dangerBg,
+                        s.status === "active" || s.status === "Active" ? C.successBg : C.dangerBg,
                       color:
-                        s.status === "Active" ? C.successText : C.dangerText,
+                        s.status === "active" || s.status === "Active" ? C.successText : C.dangerText,
                     }}
                   >
-                    {s.status}
+                    {s.status || "Active"}
                   </span>
                 </td>
                 <td style={{ padding: "11px 14px" }}>
@@ -164,9 +168,9 @@ export const StudentManagement: React.FC = () => {
                     >
                       <div
                         style={{
-                          width: `${s.avg}%`,
+                          width: `${avg(s.marks || {})} %`,
                           height: "100%",
-                          background: gc(s.avg),
+                          background: gc(avg(s.marks || {})),
                           borderRadius: 3,
                         }}
                       />
@@ -176,10 +180,10 @@ export const StudentManagement: React.FC = () => {
                         fontFamily: F.serif,
                         fontSize: 15,
                         fontWeight: 600,
-                        color: gc(s.avg),
+                        color: gc(avg(s.marks || {})),
                       }}
                     >
-                      {s.avg}%
+                      {avg(s.marks || {})}%
                     </span>
                   </div>
                 </td>

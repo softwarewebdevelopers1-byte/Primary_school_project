@@ -4,6 +4,8 @@ import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
 import { avg, sum, gradeColor, grade } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface ResultsReportsProps {
   students: any[];
@@ -84,27 +86,34 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
   const handleDownload = (type: string, studentName?: string) => {
     try {
       if (type === "Full Merit List" || type === "Full class report" || type === "Subject summary") {
-        const csvContent = [
-          ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg", "Grade"],
-          ...sortedStudents.map((s, i) => [
-            i + 1,
-            `"${s.name}"`,
-            s.adm || "-",
-            ...subjects.map(sub => (s.marks || {})[sub.id] ?? "-"),
-            sum(s.marks || {}),
-            avg(s.marks || {}) + "%",
-            grade(avg(s.marks || {}))
-          ])
-        ].map(row => row.join(",")).join("\n");
+        const doc = new jsPDF("landscape");
+        
+        doc.setFontSize(16);
+        doc.text("Class Merit List - Term 1, 2024", 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `Term1_Report_${Date.now()}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const tableColumn = ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg", "Grade"];
+        const tableRows = sortedStudents.map((s, i) => [
+          i + 1,
+          s.name,
+          s.adm || "-",
+          ...subjects.map(sub => (s.marks || {})[sub.id] ?? "-"),
+          sum(s.marks || {}),
+          avg(s.marks || {}) + "%",
+          grade(avg(s.marks || {}))
+        ]);
+
+        autoTable(doc, {
+          head: [tableColumn],
+          body: tableRows,
+          startY: 28,
+          theme: 'grid',
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [201, 150, 61] } // var(--gold)
+        });
+
+        doc.save(`Term1_Report_${Date.now()}.pdf`);
       } else if (type === "Report Slip" || type === "Individual result slips") {
         if (!studentName) {
            setMsg({ text: "Individual slip download requires student selection from the Merit List table.", type: "error" });
@@ -113,24 +122,50 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
         }
         const slip = sortedStudents.find(s => s.name === studentName);
         if (!slip) return;
-        const content = `STUDENT REPORT SLIP
-Name: ${slip.name}
-Admission No: ${slip.adm || "-"}
-Term: 1 | Year: 2024
------------------------------------
-${subjects.map(sub => `${sub.name.padEnd(20)}: ${((slip.marks || {})[sub.id] ?? "-").toString().padEnd(4)}  ${(slip.marks || {})[sub.id] != null ? `(${grade((slip.marks || {})[sub.id])})` : ""}`).join("\n")}
------------------------------------
-Total Marks: ${sum(slip.marks || {})}
-Average: ${avg(slip.marks || {})}%  (${grade(avg(slip.marks || {}))})
-`;
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `${slip.name.replace(/\s+/g, '_')}_Report.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+
+        const doc = new jsPDF();
+        
+        // Header
+        doc.setFontSize(20);
+        doc.setTextColor(201, 150, 61); // Gold
+        doc.text("STUDENT REPORT SLIP", 105, 20, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Name: ${slip.name}`, 20, 40);
+        doc.text(`Admission No: ${slip.adm || "-"}`, 20, 48);
+        doc.text(`Term: 1 | Year: 2024`, 20, 56);
+        
+        doc.setLineWidth(0.5);
+        doc.line(20, 62, 190, 62);
+
+        const tableCol = ["Subject", "Score (%)", "Grade"];
+        const tableData = subjects.map(sub => {
+          const m = (slip.marks || {})[sub.id];
+          return [
+            sub.name,
+            m != null ? m.toString() : "-",
+            m != null ? grade(m) : "-"
+          ];
+        });
+
+        autoTable(doc, {
+          head: [tableCol],
+          body: tableData,
+          startY: 68,
+          theme: 'striped',
+          headStyles: { fillColor: [201, 150, 61] }
+        });
+
+        const finalY = (doc as any).lastAutoTable.finalY || 150;
+        
+        doc.setFontSize(13);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Total Marks: ${sum(slip.marks || {})}`, 20, finalY + 15);
+        doc.text(`Average Score: ${avg(slip.marks || {})}%`, 20, finalY + 23);
+        doc.text(`Final Grade: ${grade(avg(slip.marks || {}))}`, 20, finalY + 31);
+
+        doc.save(`${slip.name.replace(/\s+/g, '_')}_Report.pdf`);
       }
       setMsg({ text: `Successfully downloaded ${type}${studentName ? ` for ${studentName}` : ""}`, type: "success" });
     } catch (err) {
