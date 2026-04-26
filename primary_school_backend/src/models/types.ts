@@ -4,6 +4,7 @@ export interface user {
   classStream: string | null;
   term: number;
   year: number;
+  examType?: string;
 }
 
 export interface teachers {

@@ -3,13 +3,23 @@ import styles from "./AdminDashboard.module.css";
 
 interface CycleTabProps {
   onBulkTermUpdate: (term: number, year: number, examType: string) => Promise<void>;
+  initialData?: { term: number; year: number; examType: string };
 }
 
-export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate }) => {
-  const [term, setTerm] = useState<number>(1);
-  const [year, setYear] = useState<number>(new Date().getFullYear());
-  const [examType, setExamType] = useState<string>("opener");
+export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialData }) => {
+  const [term, setTerm] = useState<number>(initialData?.term || 1);
+  const [year, setYear] = useState<number>(initialData?.year || new Date().getFullYear());
+  const [examType, setExamType] = useState<string>(initialData?.examType || "opener");
   const [loading, setLoading] = useState(false);
+
+  // Sync with initialData when it loads
+  React.useEffect(() => {
+    if (initialData) {
+      setTerm(initialData.term);
+      setYear(initialData.year);
+      setExamType(initialData.examType);
+    }
+  }, [initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

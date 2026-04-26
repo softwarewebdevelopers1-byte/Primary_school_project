@@ -63,6 +63,20 @@ export const Settings: React.FC<SettingsProps> = ({ user, studentsCount, onUserU
     academicYear: user?.year?.toString() || "2024",
     term: user?.term?.toString() || "1",
   });
+
+  // Sync form with user prop when it changes (e.g. after global admin update)
+  React.useEffect(() => {
+    if (user) {
+      setForm({
+        name: user.classStream || "",
+        className: `Grade ${user.classGrade || ""}`,
+        classTeacher: user.name || "",
+        academicYear: user.year?.toString() || "2024",
+        term: user.term?.toString() || "1",
+      });
+    }
+  }, [user]);
+
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
 

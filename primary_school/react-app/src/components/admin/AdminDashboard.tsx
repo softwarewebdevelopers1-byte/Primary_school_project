@@ -585,7 +585,12 @@ const AdminDashboard: React.FC = () => {
     }
 
     if (activeTab === "cycle") {
-      return <CycleTab onBulkTermUpdate={handleBulkTermUpdate} />;
+      const currentPeriod = {
+        term: teachers[0]?.term || students[0]?.term || 1,
+        year: teachers[0]?.year || students[0]?.year || new Date().getFullYear(),
+        examType: teachers[0]?.examType || students[0]?.examType || "opener"
+      };
+      return <CycleTab onBulkTermUpdate={handleBulkTermUpdate} initialData={currentPeriod} />;
     }
 
     return (

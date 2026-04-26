@@ -352,31 +352,39 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
     const newYear = Number(year);
     const newTerm = Number(term);
 
-    // Promote students and class teachers if the year is advancing
-    // Find users whose current year is less than the new year or missing
-    const usersToPromote = await userModel.find({ 
+    // Promote or demote students and class teachers based on individual year change
+    const usersToProcess = await userModel.find({ 
       $or: [
         { __t: rolesMapped.ST },
         { "roles.role1": rolesMapped.CT }
       ],
-      class: { $ne: null },
-      $or: [
-        { year: { $lt: newYear } },
-        { year: { $exists: false } },
-        { year: null }
-      ]
+      class: { $ne: null }
     } as any);
 
-    for (const u of usersToPromote) {
+    for (const u of usersToProcess) {
+      const userYear = Number(u.year || 2024);
       const currentClassStr = u.class;
-      if (currentClassStr) {
-        // Extract number from class (handles "7" or "Grade 7")
-        const match = currentClassStr.match(/\d+/);
-        if (match) {
-          const num = parseInt(match[0]);
-          const nextClass = currentClassStr.replace(match[0], (num + 1).toString());
+
+      if (!currentClassStr) continue;
+
+      const match = currentClassStr.match(/\d+/);
+      if (!match) continue;
+
+      const num = parseInt(match[0]);
+      
+      if (newYear > userYear) {
+        // Advance
+        const nextClass = currentClassStr.replace(match[0], (num + 1).toString());
+        await userModel.findByIdAndUpdate(u._id, { 
+          $set: { class: nextClass } 
+        });
+      } else if (newYear < userYear) {
+        // Retreat
+        const prevNum = num - 1;
+        if (prevNum > 0) {
+          const prevClass = currentClassStr.replace(match[0], prevNum.toString());
           await userModel.findByIdAndUpdate(u._id, { 
-            $set: { class: nextClass } 
+            $set: { class: prevClass } 
           });
         }
       }
