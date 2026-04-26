@@ -67,8 +67,11 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
     const assignments = await AssignmentModel.find({ teacherId: id } as any).populate("subjectId");
     
-    // Add student count to each assignment
-    const enrichedAssignments = await Promise.all(assignments.map(async (a: any) => {
+    // Filter out assignments where the subject no longer exists in the system
+    const validAssignments = assignments.filter((a: any) => a.subjectId != null);
+
+    // Add student count to each valid assignment
+    const enrichedAssignments = await Promise.all(validAssignments.map(async (a: any) => {
       const studentCount = await studentModel.countDocuments({
         class: a.classGrade,
         classStream: a.classStream
