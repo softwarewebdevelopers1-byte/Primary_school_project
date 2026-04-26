@@ -108,6 +108,23 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
     });
   };
 
+  const handleRemoveCat = (subjectId: string, catIndex: number) => {
+    setMarksData(prev => {
+      const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
+      Object.keys(updatedSubjectMarks).forEach(studentId => {
+        updatedSubjectMarks[studentId] = {
+          ...updatedSubjectMarks[studentId],
+          [`cat${catIndex}`]: null,
+          [`cat${catIndex}Max`]: 40
+        };
+      });
+      return {
+        ...prev,
+        [subjectId]: updatedSubjectMarks
+      };
+    });
+  };
+
   const handleSaveMarks = async (subjectId: string, catConfigs?: any) => {
     const subjectMarks = marksData[subjectId];
     if (!subjectMarks) return;
@@ -197,6 +214,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         onMarkUpdate={handleMarkUpdate}
         onSaveMarks={handleSaveMarks}
         onConfigUpdate={handleConfigUpdate}
+        onRemoveCat={handleRemoveCat}
         avatar={avatar}
       />
     </div>

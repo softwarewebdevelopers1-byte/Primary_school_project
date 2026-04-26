@@ -186,6 +186,23 @@ const SubjectTeacherDashboard: React.FC = () => {
     });
   };
 
+  const handleRemoveCat = (subjectId: string, catIndex: number) => {
+    setMarksData(prev => {
+      const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
+      Object.keys(updatedSubjectMarks).forEach(studentId => {
+        updatedSubjectMarks[studentId] = {
+          ...updatedSubjectMarks[studentId],
+          [`cat${catIndex}`]: null,
+          [`cat${catIndex}Max`]: 40
+        };
+      });
+      return {
+        ...prev,
+        [subjectId]: updatedSubjectMarks
+      };
+    });
+  };
+
   const handleSaveMarks = async (assignmentId: string, catConfigs?: any) => {
     const currentSubject = subjects.find(s => s.id === assignmentId);
     if (!currentSubject) return;
@@ -256,7 +273,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       case "subjects":
         return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} />;
       case "marks":
-        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onPushMarks={handlePushMarks} avatar={avatar} />;
+        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} />;
       case "assessments":
         return <AssessmentsTab assessments={[]} />;
       case "progress":

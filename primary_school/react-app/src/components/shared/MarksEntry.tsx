@@ -21,6 +21,7 @@ interface MarksEntryProps {
   onSaveMarks: (subjectId: string, catConfigs?: any) => void;
   onPushMarks?: (subjectId: string) => void;
   onConfigUpdate?: (subjectId: string, key: string, value: number | string | null) => void;
+  onRemoveCat?: (subjectId: string, catIndex: number) => void;
   avatar: (name: string, size: number) => string;
 }
 
@@ -37,6 +38,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   onSaveMarks,
   onPushMarks,
   onConfigUpdate,
+  onRemoveCat,
   avatar,
 }) => {
   const currentSubject =
@@ -98,7 +100,10 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   };
 
   const removeCat = () => {
-    if (catsCount > 0) setCatsCount(prev => prev - 1);
+    if (catsCount > 0) {
+      if (onRemoveCat) onRemoveCat(activeSubjectId, catsCount);
+      setCatsCount(prev => prev - 1);
+    }
   };
 
   const updateConfig = (key: string, val: string) => {
@@ -284,8 +289,10 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                           style={{ borderColor: "var(--gold)", fontWeight: 700 }}
                         />
                       ) : (
-                        marks.finalScore !== null ? (
-                          <span style={{ fontFamily: "var(--serif)", fontSize: "15px", fontWeight: 700, color: "var(--gold)" }}>{marks.finalScore}%</span>
+                        (marks.finalScore !== null || (total !== null && maxTotal > 0)) ? (
+                          <span style={{ fontFamily: "var(--serif)", fontSize: "15px", fontWeight: 700, color: "var(--gold)" }}>
+                            {marks.finalScore !== null ? marks.finalScore : Math.round((total / maxTotal) * 100)}%
+                          </span>
                         ) : (
                           <span style={{ color: "var(--textF)", fontSize: "11px" }}>Pending</span>
                         )
