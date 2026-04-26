@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import styles from "./AdminDashboard.module.css";
 import { AssignmentsTab } from "./AssignmentsTab";
 import { ClassesTab } from "./ClassesTab";
@@ -180,7 +180,7 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { theme, toggleTheme } = useDashboardTheme();
-  const [user] = useState(() => {
+  const [user, setUserState] = useState(() => {
     const saved = localStorage.getItem("user");
     if (saved) {
       try {
@@ -217,9 +217,37 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const refreshUser = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const freshUser: any = await api.get(`/users/${user.id}`);
+      if (freshUser) {
+        // Ensure roles is always an array
+        let rolesArr = freshUser.roles;
+        if (rolesArr && !Array.isArray(rolesArr)) {
+          rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
+        }
+        const updatedUser = {
+          ...user,
+          ...freshUser,
+          id: freshUser._id,
+          roles: rolesArr || user.roles || [],
+        };
+        const savedItem = localStorage.getItem("user");
+        if (savedItem) {
+          const parsed = JSON.parse(savedItem);
+          parsed.user = updatedUser;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        }
+        setUserState(updatedUser);
+      }
+    } catch (e) {}
+  }, [user?.id]);
+
   useEffect(() => {
     void loadDashboardUsers();
-  }, []);
+    void refreshUser();
+  }, [refreshUser]);
 
   const closeModal = () => setModalContent(null);
   const showModal = (content: React.ReactNode) => setModalContent(content);
@@ -295,6 +323,7 @@ const AdminDashboard: React.FC = () => {
       }
 
       await loadDashboardUsers();
+      await refreshUser();
       showSuccess(`Staff member ${teacherId ? "updated" : "added"} successfully.`);
       closeModal();
     } catch (err) {
@@ -306,6 +335,7 @@ const AdminDashboard: React.FC = () => {
     try {
       await api.delete(`/users/${teacherId}`);
       await loadDashboardUsers();
+      await refreshUser();
       showSuccess("Staff record deleted.");
     } catch (err) {
       showError("Failed to delete staff member.");
@@ -402,6 +432,7 @@ const AdminDashboard: React.FC = () => {
     try {
       await api.post("/school/assignments", payload);
       await loadDashboardUsers();
+      await refreshUser();
       showSuccess("Assignment updated successfully.");
       closeModal();
     } catch (err) {
@@ -417,6 +448,7 @@ const AdminDashboard: React.FC = () => {
       try {
         await api.delete(`/school/assignments/${assignment.id}`);
         await loadDashboardUsers();
+        await refreshUser();
         showSuccess("Teacher unassigned successfully.");
       } catch (err) {
         showError("Failed to unassign teacher.");
@@ -439,6 +471,7 @@ const AdminDashboard: React.FC = () => {
           roles: newRoles,
         });
         await loadDashboardUsers();
+        await refreshUser();
         showSuccess("Class teacher unassigned successfully.");
       }
     } catch (err) {
