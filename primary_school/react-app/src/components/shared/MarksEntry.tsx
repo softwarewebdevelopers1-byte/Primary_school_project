@@ -262,18 +262,22 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                   cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, exam: null, finalScore: null
                 };
                 
-                const maxTotal = Array.from({ length: catsCount }).reduce((a: number, _, i) => {
+                let maxTotal = 0;
+                for (let i = 0; i < catsCount; i++) {
                   const m = Number(catConfigs[`cat${i + 1}Max`]);
-                  return a + (isNaN(m) ? 0 : m);
-                }, 0) + (isNaN(Number(catConfigs.examMax)) ? 0 : Number(catConfigs.examMax));
+                  maxTotal += isNaN(m) ? 0 : m;
+                }
+                const exMax = Number(catConfigs.examMax);
+                maxTotal += isNaN(exMax) ? 0 : exMax;
 
                 let catsSum: number | null = null;
                 if (catsCount > 0) {
-                  catsSum = Array.from({ length: catsCount }).reduce((sum: number | null, _, i) => {
+                  for (let i = 0; i < catsCount; i++) {
                     const val = marks[`cat${i + 1}` as keyof typeof marks];
-                    if (val === null || val === "") return sum;
-                    return (sum === null) ? Number(val) : (sum + Number(val));
-                  }, null);
+                    if (val !== null && val !== "") {
+                      catsSum = (catsSum === null ? 0 : catsSum) + Number(val);
+                    }
+                  }
                 }
 
                 let total: number | null = null;
