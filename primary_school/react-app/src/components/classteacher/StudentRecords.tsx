@@ -258,7 +258,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         fontWeight: 600,
                         color: mark != null ? gradeColor(mark) : C.textMuted
                       }}>
-                        {mark != null ? mark : "-"}
+                        {mark != null ? `${mark}%` : "-"}
                       </td>
                     );
                   })}

@@ -76,6 +76,12 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
   ];
 
   const sortedStudents = [...students].sort((a, b) => avg(b.marks || {}) - avg(a.marks || {}));
+  const topStudent = sortedStudents.length > 0 ? sortedStudents[0] : null;
+  const leastStudent = sortedStudents.length > 0 ? sortedStudents[sortedStudents.length - 1] : null;
+
+  const handleDownload = (type: string, studentName?: string) => {
+    alert(`Downloading ${type}${studentName ? ` for ${studentName}` : ""}...`);
+  };
 
   return (
     <div className="ct-anim" style={{ display: "grid", gap: 30 }}>
@@ -150,6 +156,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
               </p>
               <button
                 className="ct-actionbtn"
+                onClick={() => handleDownload(title)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -174,6 +181,27 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
         </div>
       </div>
 
+      {sortedStudents.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ background: C.greenLight, border: `1px solid ${C.green}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+            <Avatar name={topStudent.name} size={40} />
+            <div>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.green, textTransform: "uppercase" }}>Top Student</p>
+              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent.name}</h4>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(topStudent.marks || {})}%</strong></p>
+            </div>
+          </div>
+          <div style={{ background: "#fdeaea", border: `1px solid ${C.dangerBg}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+            <Avatar name={leastStudent.name} size={40} />
+            <div>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.dangerText, textTransform: "uppercase" }}>Least Student</p>
+              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent.name}</h4>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(leastStudent.marks || {})}%</strong></p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           background: C.white,
@@ -182,10 +210,29 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
           overflow: "hidden",
         }}
       >
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.border}`, background: C.goldPale }}>
+        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.border}`, background: C.goldPale, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3 style={{ fontFamily: FONT.serif, fontSize: "1.3rem", fontWeight: 600, color: C.text, margin: 0 }}>
             Class Merit List (Real-time Preview)
           </h3>
+          <button
+            onClick={() => handleDownload("Full Merit List")}
+            style={{
+              padding: "7px 12px",
+              background: C.white,
+              border: `1px solid ${C.border}`,
+              borderRadius: 6,
+              fontFamily: FONT.sans,
+              fontSize: 12,
+              fontWeight: 600,
+              color: C.textMid,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6
+            }}
+          >
+            <DlIcon /> Download List
+          </button>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
@@ -197,6 +244,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
                   <th key={s.id} style={{ ...thStyle, textAlign: "center" }}>{s.name.slice(0, 3)}</th>
                 ))}
                 <th style={{ ...thStyle, textAlign: "center" }}>Avg</th>
+                <th style={{ ...thStyle, textAlign: "right" }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -211,12 +259,33 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
                         <span style={{ fontWeight: 600 }}>{s.name}</span>
                       </div>
                     </td>
-                    {subjects.slice(0, 5).map(sub => (
-                      <td key={sub.id} style={{ ...tdStyle, textAlign: "center", color: gradeColor((s.marks || {})[sub.id] || 0) }}>
-                        {(s.marks || {})[sub.id] || "-"}
-                      </td>
-                    ))}
+                    {subjects.slice(0, 5).map(sub => {
+                      const mark = (s.marks || {})[sub.id];
+                      return (
+                        <td key={sub.id} style={{ ...tdStyle, textAlign: "center", color: gradeColor(mark || 0) }}>
+                          {mark != null ? `${mark}%` : "-"}
+                        </td>
+                      );
+                    })}
                     <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: gradeColor(a) }}>{a}%</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                      <button
+                        onClick={() => handleDownload("Report Slip", s.name)}
+                        style={{
+                          padding: "5px 10px",
+                          background: "transparent",
+                          border: `1px solid ${C.border}`,
+                          borderRadius: 6,
+                          fontFamily: FONT.sans,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: C.textMid,
+                          cursor: "pointer"
+                        }}
+                      >
+                        Download
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

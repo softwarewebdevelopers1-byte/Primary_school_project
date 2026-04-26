@@ -139,6 +139,27 @@ router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
       year: 2024
     } as any);
 
+    // Calculate subject stats first to match frontend MarksEntry logic
+    const subjectStats: Record<string, { catsCount: number, catConfigs: any }> = {};
+    allMarks.forEach(m => {
+      const subId = m.subjectId.toString();
+      if (!subjectStats[subId]) {
+        subjectStats[subId] = { catsCount: 0, catConfigs: {
+          cat1Max: m.cat1Max || 40,
+          cat2Max: m.cat2Max || 40,
+          cat3Max: m.cat3Max || 40,
+          cat4Max: m.cat4Max || 40,
+          cat5Max: m.cat5Max || 40,
+          examMax: m.examMax || 100
+        } };
+      }
+      if (m.cat5 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 5);
+      else if (m.cat4 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 4);
+      else if (m.cat3 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 3);
+      else if (m.cat2 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 2);
+      else if (m.cat1 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 1);
+    });
+
     const mapped = students.map((s: any) => {
       // Create a marks object: { subjectId: score }
       // We prioritize finalScore, then cat/exam average
@@ -148,12 +169,27 @@ router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
         if (m.finalScore !== null) {
           studentMarks[m.subjectId.toString()] = m.finalScore;
         } else {
-          // Fallback to calculated average of cat1, cat2, exam if finalScore is missing
-          const components = [m.cat1, m.cat2, m.exam].filter(v => v !== null) as number[];
-          if (components.length > 0) {
-            // This is a simple fallback, might need adjustment based on weighting
-            const avg = components.reduce((a, b) => a + b, 0) / components.length;
-            studentMarks[m.subjectId.toString()] = Math.round(avg);
+          // Calculate using max values globally for the subject
+          const stats = subjectStats[m.subjectId.toString()];
+          if (stats) {
+            let maxTotal = stats.catConfigs.examMax;
+            if (stats.catsCount > 0) maxTotal += stats.catConfigs.cat1Max;
+            if (stats.catsCount > 1) maxTotal += stats.catConfigs.cat2Max;
+            if (stats.catsCount > 2) maxTotal += stats.catConfigs.cat3Max;
+            if (stats.catsCount > 3) maxTotal += stats.catConfigs.cat4Max;
+            if (stats.catsCount > 4) maxTotal += stats.catConfigs.cat5Max;
+
+            const total = 
+              (stats.catsCount > 0 ? (m.cat1 || 0) : 0) +
+              (stats.catsCount > 1 ? (m.cat2 || 0) : 0) +
+              (stats.catsCount > 2 ? (m.cat3 || 0) : 0) +
+              (stats.catsCount > 3 ? (m.cat4 || 0) : 0) +
+              (stats.catsCount > 4 ? (m.cat5 || 0) : 0) +
+              (m.exam || 0);
+
+            if (maxTotal > 0) {
+              studentMarks[m.subjectId.toString()] = Math.round((total / maxTotal) * 100);
+            }
           }
         }
       });
