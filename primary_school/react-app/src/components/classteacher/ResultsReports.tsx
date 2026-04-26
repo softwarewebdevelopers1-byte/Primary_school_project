@@ -12,6 +12,7 @@ interface ResultsReportsProps {
   subjects: any[];
   term?: number;
   year?: number;
+  examType?: string;
 }
 
 const SectionHeader: React.FC<{
@@ -64,7 +65,8 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
   students, 
   subjects,
   term = 1,
-  year = 2024
+  year = 2024,
+  examType = "opener"
 }) => {
   const reports = [
     {
@@ -96,7 +98,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         const doc = new jsPDF("landscape");
         
         doc.setFontSize(16);
-        doc.text(`Class Merit List - Term ${term}, ${year}`, 14, 15);
+        doc.text(`Class Merit List - Term ${term}, ${year} (${examType.toUpperCase()})`, 14, 15);
         doc.setFontSize(10);
         doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
@@ -141,7 +143,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setTextColor(50, 50, 50);
         doc.text(`Name: ${slip.name}`, 20, 40);
         doc.text(`Admission No: ${slip.adm || "-"}`, 20, 48);
-        doc.text(`Term: ${term} | Year: ${year}`, 20, 56);
+        doc.text(`Term: ${term} | Year: ${year} | Phase: ${examType.toUpperCase()}`, 20, 56);
         
         doc.setLineWidth(0.5);
         doc.line(20, 62, 190, 62);
@@ -187,7 +189,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         <SectionHeader
           eyebrow="Reports"
           title="Results & reports"
-          sub={`Download and review performance summaries for Term ${term}, ${year}.`}
+          sub={`Download and review performance summaries for Term ${term}, ${year} (${examType}).`}
         />
         {msg && (
           <div style={{ 

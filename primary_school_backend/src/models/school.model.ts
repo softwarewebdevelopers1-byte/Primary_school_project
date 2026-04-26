@@ -35,7 +35,7 @@ export interface IMark extends Document {
   classStream: string;
   term: number;
   year: number;
-  examType: "Opener" | "Midterm" | "EndTerm";
+  examType: "opener" | "midterm" | "closing";
   cat1: number | null;
   cat2: number | null;
   cat3: number | null;
@@ -58,7 +58,7 @@ const MarkSchema: Schema = new Schema({
   classStream: { type: String, required: true },
   term: { type: Number, required: true },
   year: { type: Number, required: true },
-  examType: { type: String, enum: ["Opener", "Midterm", "EndTerm"], default: "EndTerm" },
+  examType: { type: String, enum: ["opener", "midterm", "closing"], default: "opener" },
   cat1: { type: Number, default: null },
   cat2: { type: Number, default: null },
   cat3: { type: Number, default: null },
@@ -75,3 +75,24 @@ const MarkSchema: Schema = new Schema({
 }, { timestamps: true });
 
 export const MarkModel = mongoose.model<IMark>("Mark", MarkSchema);
+
+export interface IArchive extends Document {
+  classGrade: string;
+  classStream: string;
+  term: number;
+  year: number;
+  examType: string;
+  pdfUrl: string;
+  createdAt: Date;
+}
+
+const ArchiveSchema = new Schema({
+  classGrade: { type: String, required: true },
+  classStream: { type: String, required: true },
+  term: { type: Number, required: true },
+  year: { type: Number, required: true },
+  examType: { type: String, required: true },
+  pdfUrl: { type: String, required: true },
+}, { timestamps: true });
+
+export const ArchiveModel = mongoose.model<IArchive>("Archive", ArchiveSchema);

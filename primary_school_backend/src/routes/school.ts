@@ -110,4 +110,21 @@ router.delete("/assignments/:id", async (req: Request, res: Response) => {
   }
 });
 
+// Archives
+router.get("/archives", async (req: Request, res: Response) => {
+  try {
+    const { classGrade, classStream } = req.query;
+    const { ArchiveModel } = await import("../models/school.model.js");
+    
+    let query: any = {};
+    if (classGrade) query.classGrade = classGrade;
+    if (classStream) query.classStream = classStream;
+
+    const archives = await ArchiveModel.find(query).sort({ createdAt: -1 });
+    res.json(archives);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

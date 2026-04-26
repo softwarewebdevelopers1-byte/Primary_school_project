@@ -73,3 +73,10 @@ export const BackIcon = () => <Icon d="M19 12H5M12 5l-7 7 7 7" />;
 export const DlIcon = () => (
   <Icon d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
 );
+
+export const ArchiveIcon = () => (
+  <Icon 
+    d="M21 8V21H3V8" 
+    d2="M1 3H23V8H1V3M10 12H14" 
+  />
+);

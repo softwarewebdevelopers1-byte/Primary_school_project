@@ -11,6 +11,7 @@ import { ResultsReports } from "./ResultsReports";
 import { Analytics } from "./Analytics";
 import { Settings } from "./Settings";
 import { SubjectAssignments } from "./SubjectAssignments";
+import { ArchivesView } from "../shared/ArchivesView";
 import {
   UsersIcon,
   MarkIcon,
@@ -18,6 +19,7 @@ import {
   BarIcon,
   SettIcon,
   HomeIcon,
+  ArchiveIcon,
 } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
@@ -29,6 +31,7 @@ const NAV = [
   { id: "assignments", label: "Subject assignments", desc: "See subjects and the assigned teachers.", Icon: HomeIcon },
   { id: "results", label: "Results & reports", desc: "Downloadable reports for this stream.", Icon: FileIcon },
   { id: "analytics", label: "Analytics", desc: "Averages, rankings, and class trends.", Icon: BarIcon },
+  { id: "archives", label: "Archives", desc: "Past performance reports (PDF).", Icon: ArchiveIcon },
   { id: "settings", label: "Settings", desc: "Stream details and reporting preferences.", Icon: SettIcon },
 ];
 
@@ -190,9 +193,11 @@ export default function ClassTeacherDashboard() {
           />
         );
       case "results":
-        return <ResultsReports students={students} subjects={subjects} term={user.term} year={user.year} />;
+        return <ResultsReports students={students} subjects={subjects} term={user.term} year={user.year} examType={user.examType} />;
       case "analytics":
         return <Analytics students={students} subjects={subjects} classGrade={user.classGrade} classStream={user.classStream} term={user.term} year={user.year} />;
+      case "archives":
+        return <ArchivesView classGrade={user.classGrade} classStream={user.classStream} title="Class Performance Archives" />;
       case "settings":
         return <Settings user={user} studentsCount={students.length} onUserUpdate={(u) => {
           // Update the user state which will trigger re-renders
