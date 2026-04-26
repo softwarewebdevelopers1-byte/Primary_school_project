@@ -12,9 +12,18 @@ interface SchoolOverviewProps {
   classes?: any[];
   students?: any[];
   staff?: any[];
+  term?: number;
+  year?: number;
 }
 
-export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ isHT, classes = [], students = [], staff = [] }) => {
+export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ 
+  isHT, 
+  classes = [], 
+  students = [], 
+  staff = [],
+  term = 1,
+  year = 2024
+}) => {
   const totalStudents = students.length;
   const totalTeachers = staff.length;
   const totalClasses = classes.length;
@@ -26,7 +35,7 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({ isHT, classes = 
       <SectionHeader
         eyebrow="Overview"
         title="School overview"
-        sub={`Academic Year 2024 · Term 1 · ${isHT ? "Full school" : "Academic support"} access`}
+        sub={`Academic Year ${year} · Term ${term} · ${isHT ? "Full school" : "Academic support"} access`}
       />
       <div
         style={{

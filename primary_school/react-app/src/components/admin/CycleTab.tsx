@@ -32,7 +32,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate }) => {
       <div style={noticeStyle}>
         <h4 style={{ margin: "0 0 8px", color: "var(--gold)", fontSize: 14 }}>⚠️ Critical Action</h4>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-          Updating the academic term and year is a global action. All teachers and students will be moved to the selected term immediately. This affects mark entry, report generation, and dashboard views across the entire school.
+          Updating the academic term and year is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> All teachers and students will be moved to the selected term immediately.
         </p>
       </div>
 

@@ -93,6 +93,21 @@ export default function ClassTeacherDashboard() {
     loadData();
   }, [loadData]);
 
+  const refreshUser = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const freshUser: any = await api.get(`/users/${user.id}`);
+      if (freshUser) {
+        const updated = { ...user, ...freshUser, id: freshUser._id };
+        localStorage.setItem("user", JSON.stringify(updated));
+      }
+    } catch (e) {}
+  }, [user?.id]);
+
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
   const handleLogout = () => {
     localStorage.removeItem("user");
     navigate("/login");

@@ -4,7 +4,12 @@ import { SectionHeader } from "./shared/SectionHeader";
 import { DownloadIcon } from "./shared/Icons";
 import { C, F } from "./shared/constants";
 
-export const Reports: React.FC = () => {
+interface ReportsProps {
+  term?: number;
+  year?: number;
+}
+
+export const Reports: React.FC<ReportsProps> = ({ term = 1, year = 2024 }) => {
   const reports = [
     {
       title: "Term performance report",
@@ -49,7 +54,7 @@ export const Reports: React.FC = () => {
       <SectionHeader
         eyebrow="Reports"
         title="Leadership reports"
-        sub="Summaries and documentation packs for Term 1, 2024"
+        sub={`Summaries and documentation packs for Term ${term}, ${year}`}
       />
       <div
         style={{

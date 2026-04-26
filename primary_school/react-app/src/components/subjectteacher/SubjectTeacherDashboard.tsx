@@ -73,6 +73,20 @@ const SubjectTeacherDashboard: React.FC = () => {
   }, [user?.id]);
 
   useEffect(() => {
+    const refreshUser = async () => {
+      try {
+        const freshUser: any = await api.get(`/users/${user.id}`);
+        if (freshUser) {
+           const updated = { ...user, ...freshUser, id: freshUser._id };
+           localStorage.setItem("user", JSON.stringify(updated));
+           setTerm(freshUser.term || 1);
+        }
+      } catch (e) {}
+    };
+    if (user?.id) refreshUser();
+  }, [user?.id]);
+
+  useEffect(() => {
     loadAssignments();
   }, [loadAssignments]);
 
@@ -126,6 +140,12 @@ const SubjectTeacherDashboard: React.FC = () => {
   useEffect(() => {
     if (activeSubjectId) loadStudentsAndMarks();
   }, [activeSubjectId, loadStudentsAndMarks, term, examType]);
+
+  // Clear pushed status when period changes
+  useEffect(() => {
+    setPushedSubjects(new Set());
+    setPushedStudents(new Set());
+  }, [term, examType]);
 
   const teacherName = user?.name || "Teacher";
   const teacherInitials = initials(teacherName);
@@ -283,11 +303,11 @@ const SubjectTeacherDashboard: React.FC = () => {
 
     switch (activeTab) {
       case "subjects":
-        return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} />;
+        return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} term={term} year={user?.year || 2024} />;
       case "marks":
         return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} term={term} examType={examType} onTermChange={setTerm} onExamTypeChange={setExamType} />;
       case "assessments":
-        return <AssessmentsTab assessments={[]} />;
+        return <AssessmentsTab assessments={[]} term={term} year={user?.year || 2024} />;
       case "progress":
         return <ProgressTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} onSubjectChange={setActiveSubjectId} avatar={avatar} gc={gc} />;
       case "resources":

@@ -149,7 +149,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               margin: 0,
             }}
           >
-            Term 1
+            Term {user?.term || 1}
           </p>
           <p
             style={{
@@ -160,7 +160,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               margin: 0,
             }}
           >
-            2024 Academic Year
+            {user?.year || 2024} Academic Year
           </p>
         </div>
 

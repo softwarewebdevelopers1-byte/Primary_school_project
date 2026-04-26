@@ -343,14 +343,25 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Term and Year are required." });
     }
 
+    const newYear = Number(year);
+    const newTerm = Number(term);
+
+    // Promote students if the year is advancing
+    // We check if their stored year is less than the new year
+    await userModel.updateMany(
+      { __t: rolesMapped.ST, year: { $lt: newYear } },
+      { $inc: { class: 1 } }
+    );
+
+    // Update term and year for all users (staff and students)
     await userModel.updateMany({}, { 
       $set: { 
-        term: Number(term), 
-        year: Number(year) 
+        term: newTerm, 
+        year: newYear 
       } 
     });
 
-    res.json({ message: "All classes updated to the new term successfully." });
+    res.json({ message: "Academic cycle updated. Students promoted where applicable." });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

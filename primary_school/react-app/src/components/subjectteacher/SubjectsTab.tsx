@@ -9,6 +9,8 @@ interface SubjectsTabProps {
   onEnterMarks: (subjectId: string) => void;
   pushedSubjects: Set<string>;
   gc: (value: number) => string;
+  term: number;
+  year: number;
 }
 
 export const SubjectsTab: React.FC<SubjectsTabProps> = ({
@@ -17,6 +19,8 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   onEnterMarks,
   pushedSubjects,
   gc,
+  term,
+  year,
 }) => {
   const totalStudents = subjects.reduce((sum, s) => sum + s.students, 0);
   const avgAll = Math.round(
@@ -30,8 +34,8 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
           <p className={styles.sectionEyebrow}>My Teaching Streams</p>
           <h2 className={styles.sectionTitle}>Assigned Subjects</h2>
           <p className={styles.sectionSub}>
-            {subjects.length} streams · {totalStudents} total learners · Term 1,
-            2024
+            {subjects.length} streams · {totalStudents} total learners · Term {term},
+            {year}
           </p>
         </div>
       </div>

@@ -5,6 +5,8 @@ import { Assessment } from "./types";
 
 interface AssessmentsTabProps {
   assessments: Assessment[];
+  term: number;
+  year: number;
 }
 
 const getStatusStyle = (status: string) => {
@@ -18,6 +20,8 @@ const getStatusStyle = (status: string) => {
 
 export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
   assessments,
+  term,
+  year,
 }) => {
   return (
     <div className={styles.anim}>
@@ -26,7 +30,7 @@ export const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
           <p className={styles.sectionEyebrow}>Assessments</p>
           <h2 className={styles.sectionTitle}>Assessment Schedule</h2>
           <p className={styles.sectionSub}>
-            {assessments.length} assessments · Term 1, 2024
+            {assessments.length} assessments · Term {term}, {year}
           </p>
         </div>
       </div>

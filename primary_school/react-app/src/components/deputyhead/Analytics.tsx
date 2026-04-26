@@ -9,9 +9,17 @@ interface AnalyticsProps {
   classes?: any[];
   staff?: any[];
   students?: any[];
+  term?: number;
+  year?: number;
 }
 
-export const Analytics: React.FC<AnalyticsProps> = ({ classes = [], staff = [], students = [] }) => {
+export const Analytics: React.FC<AnalyticsProps> = ({ 
+  classes = [], 
+  staff = [], 
+  students = [],
+  term = 1,
+  year = 2024
+}) => {
   const classAvg = classes.length > 0 ? Math.round(
     classes.reduce((a, c) => a + (c.avg || 0), 0) / classes.length,
   ) : 0;
@@ -35,7 +43,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ classes = [], staff = [], 
       <SectionHeader
         eyebrow="Insights"
         title="Performance analytics"
-        sub="Schoolwide trends · Term 1, 2024"
+        sub={`Schoolwide trends · Term ${term}, ${year}`}
       />
       <div
         style={{

@@ -8,9 +8,17 @@ interface ClassManagementProps {
   classes?: any[];
   students?: any[];
   staff?: any[];
+  term?: number;
+  year?: number;
 }
 
-export const ClassManagement: React.FC<ClassManagementProps> = ({ classes = [], students = [], staff = [] }) => {
+export const ClassManagement: React.FC<ClassManagementProps> = ({ 
+  classes = [], 
+  students = [], 
+  staff = [],
+  term = 1,
+  year = 2024
+}) => {
   const [selectedClass, setSelectedClass] = useState<any>(null);
 
   return (
@@ -18,7 +26,7 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ classes = [], 
     <SectionHeader
       eyebrow="Classes"
       title="Class management"
-      sub={`${classes.length} streams · Grades 7–9 · Term 1, 2024`}
+      sub={`${classes.length} streams · Grades 7–9 · Term ${term}, ${year}`}
     />
     <div
       style={{
