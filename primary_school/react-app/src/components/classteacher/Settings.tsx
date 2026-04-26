@@ -92,7 +92,7 @@ export const Settings: React.FC<SettingsProps> = ({ user, studentsCount, onUserU
       setSaved(true);
       if (onUserUpdate) onUserUpdate(updatedData);
       // Update local storage too
-      localStorage.setItem("user", JSON.stringify(updatedData));
+      const savedItem = localStorage.getItem("user"); if (savedItem) { const parsed = JSON.parse(savedItem); parsed.user = updatedData; localStorage.setItem("user", JSON.stringify(parsed)); }
     } catch (err) {
       alert("Failed to save settings");
     } finally {

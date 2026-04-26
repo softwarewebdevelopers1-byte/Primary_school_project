@@ -90,7 +90,7 @@ const SubjectTeacherDashboard: React.FC = () => {
              rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
            }
            const updated = { ...currentUser, ...freshUser, id: freshUser._id, roles: rolesArr || currentUser.roles || [] };
-           localStorage.setItem("user", JSON.stringify(updated));
+           const savedItem = localStorage.getItem("user"); if (savedItem) { const parsed = JSON.parse(savedItem); parsed.user = updated; localStorage.setItem("user", JSON.stringify(parsed)); }
            setCurrentUser(updated);
            setTerm(freshUser.term || 1);
            setYear(freshUser.year || 2024);

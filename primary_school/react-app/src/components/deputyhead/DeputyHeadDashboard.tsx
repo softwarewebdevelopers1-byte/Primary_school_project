@@ -55,7 +55,7 @@ export default function DeputyHeadDashboard({
       const freshUser: any = await api.get(`/users/${storedUser.id}`);
       if (freshUser) {
         const updated = { ...storedUser, ...freshUser, id: freshUser._id };
-        localStorage.setItem("user", JSON.stringify(updated));
+        const savedItem = localStorage.getItem("user"); if (savedItem) { const parsed = JSON.parse(savedItem); parsed.user = updated; localStorage.setItem("user", JSON.stringify(parsed)); }
         setStoredUser(updated);
       }
     } catch (e) {}

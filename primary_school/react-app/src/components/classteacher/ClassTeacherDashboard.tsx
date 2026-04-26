@@ -115,7 +115,7 @@ export default function ClassTeacherDashboard() {
           rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
         }
         const updated = { ...currentUser, ...freshUser, id: freshUser._id || freshUser.id, roles: rolesArr || currentUser.roles || [] };
-        localStorage.setItem("user", JSON.stringify(updated));
+        const savedItem = localStorage.getItem("user"); if (savedItem) { const parsed = JSON.parse(savedItem); parsed.user = updated; localStorage.setItem("user", JSON.stringify(parsed)); }
         setCurrentUser(updated);
       }
     } catch (e) {}
