@@ -101,7 +101,12 @@ export default function ClassTeacherDashboard() {
     try {
       const freshUser: any = await api.get(`/users/${user.id}`);
       if (freshUser) {
-        const updated = { ...user, ...freshUser, id: freshUser._id };
+        // Ensure roles is always an array (backend may return object from DB)
+        let rolesArr = freshUser.roles;
+        if (rolesArr && !Array.isArray(rolesArr)) {
+          rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
+        }
+        const updated = { ...user, ...freshUser, id: freshUser._id || freshUser.id, roles: rolesArr || user.roles || [] };
         localStorage.setItem("user", JSON.stringify(updated));
         setUser(updated);
       }
@@ -110,7 +115,7 @@ export default function ClassTeacherDashboard() {
 
   useEffect(() => {
     refreshUser();
-    const interval = setInterval(refreshUser, 15000); // Sync every 15 seconds
+    const interval = setInterval(refreshUser, 15000);
     return () => clearInterval(interval);
   }, [refreshUser]);
 
@@ -119,16 +124,17 @@ export default function ClassTeacherDashboard() {
     navigate("/login");
   };
 
-  // Roles check
-  const isSubjectTeacher = user?.roles?.includes("subjectteacher");
+  // Roles check — guard against roles being a non-array
+  const rolesArray = Array.isArray(user?.roles) ? user.roles : [];
+  const isSubjectTeacher = rolesArray.includes("subjectteacher");
   const hasSubjectAssignments = user?.subjects?.length > 0;
   const canSwitchToSubjectDashboard = isSubjectTeacher && hasSubjectAssignments;
 
   useEffect(() => {
-    if (!user || !user.roles?.includes("classteacher")) {
+    if (!user || !rolesArray.includes("classteacher")) {
       navigate("/login");
     }
-  }, [user, navigate]);
+  }, [user, navigate, rolesArray]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);

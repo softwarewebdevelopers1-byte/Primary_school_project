@@ -78,7 +78,12 @@ const SubjectTeacherDashboard: React.FC = () => {
       try {
         const freshUser: any = await api.get(`/users/${user.id}`);
         if (freshUser) {
-           const updated = { ...user, ...freshUser, id: freshUser._id };
+           // Ensure roles is always an array
+           let rolesArr = freshUser.roles;
+           if (rolesArr && !Array.isArray(rolesArr)) {
+             rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
+           }
+           const updated = { ...user, ...freshUser, id: freshUser._id, roles: rolesArr || user.roles || [] };
            localStorage.setItem("user", JSON.stringify(updated));
            setTerm(freshUser.term || 1);
            setYear(freshUser.year || 2024);
@@ -164,7 +169,8 @@ const SubjectTeacherDashboard: React.FC = () => {
   const teacherInitials = initials(teacherName);
   const teacherAvatarColor = avatarColor(teacherName);
   
-  const isClassTeacher = user?.roles?.includes("classteacher");
+  const rolesArray = Array.isArray(user?.roles) ? user.roles : [];
+  const isClassTeacher = rolesArray.includes("classteacher");
   const canSwitchToClassDashboard = isClassTeacher;
 
   const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {

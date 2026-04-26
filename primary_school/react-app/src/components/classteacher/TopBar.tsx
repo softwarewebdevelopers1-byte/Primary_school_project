@@ -26,7 +26,8 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const isSubjectTeacher = user?.roles?.includes("subjectteacher");
+  const rolesArray = Array.isArray(user?.roles) ? user.roles : [];
+  const isSubjectTeacher = rolesArray.includes("subjectteacher");
   const teachesSubjects = isSubjectTeacher;
 
   return (
