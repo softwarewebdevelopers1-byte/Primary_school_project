@@ -27,15 +27,38 @@ const roleLabels: Record<string, string> = {
 
 export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
   const navigate = useNavigate();
-  const roles = user?.roles || [];
+  
+  // Robustly extract roles array
+  let roles: string[] = [];
+  if (user?.roles) {
+    if (Array.isArray(user.roles)) {
+      roles = user.roles;
+    } else {
+      // Handle object format { role1, role2, role3 }
+      roles = [user.roles.role1, user.roles.role2, user.roles.role3].filter(Boolean);
+    }
+  }
+  
+  // Also include discriminator if not already present
+  if (user?.__t && !roles.includes(user.__t)) {
+    roles.push(user.__t);
+  }
+  if (user?.role && !roles.includes(user.role)) {
+    roles.push(user.role);
+  }
+
+  // Remove duplicates
+  roles = Array.from(new Set(roles));
 
   if (roles.length <= 1) return null;
 
   const currentPath = window.location.pathname;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-      {roles.map((r: string) => {
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "4px 8px", background: "var(--sand)", borderRadius: "12px", border: "1px solid var(--border)" }}>
+      <span style={{ fontSize: "10px", fontWeight: 800, color: "var(--gold)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Switch:</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {roles.map((r: string) => {
         const path = rolePaths[r];
         if (!path) return null;
         const isActive = currentPath.toLowerCase() === path.toLowerCase();
@@ -61,7 +84,8 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
             {roleLabels[r] || r}
           </button>
         );
-      })}
+        })}
+      </div>
     </div>
   );
 };
