@@ -441,7 +441,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
 
       <div
         style={{
-          background: "#fff",
+          background: "var(--white)",
           border: "1px solid var(--border)",
           borderRadius: 13,
           overflow: "hidden",

@@ -157,7 +157,7 @@ const StatCard: React.FC<{
 }> = ({ label, value, accent = "var(--gold)" }) => (
   <div
     style={{
-      background: "#fff",
+      background: "var(--white)",
       border: "1px solid var(--border)",
       borderRadius: 12,
       padding: "1rem 1.1rem",
@@ -510,7 +510,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
       <div
         style={{
-          background: "#fff",
+          background: "var(--white)",
           border: "1px solid var(--border)",
           borderRadius: 13,
           overflow: "hidden",

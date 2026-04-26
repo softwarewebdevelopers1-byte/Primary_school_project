@@ -123,7 +123,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       <div style={{ display: "grid", gridTemplateColumns: "1.05fr .95fr", gap: 14 }}>
         <div
           style={{
-            background: "#fff",
+            background: "var(--white)",
             border: "1px solid var(--border)",
             borderRadius: 13,
             padding: "1.3rem",
@@ -170,7 +170,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
         <div
           style={{
-            background: "#fff",
+            background: "var(--white)",
             border: "1px solid var(--border)",
             borderRadius: 13,
             padding: "1.3rem",

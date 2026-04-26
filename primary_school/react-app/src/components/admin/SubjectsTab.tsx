@@ -143,7 +143,7 @@ const metricBoxStyle: React.CSSProperties = {
 };
 
 const emptyCardStyle: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--white)",
   border: "1px solid var(--border)",
   borderRadius: 13,
   padding: "2rem",
@@ -327,7 +327,7 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
             <div
               key={subject.id}
               style={{
-                background: "#fff",
+                background: "var(--white)",
                 border: "1px solid var(--border)",
                 borderRadius: 13,
                 padding: "1.2rem",
