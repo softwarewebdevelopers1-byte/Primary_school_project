@@ -39,19 +39,19 @@ export default function DeputyHeadDashboard({
   const [assignments, setAssignments] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(() => {
+  const [storedUser, setStoredUser] = useState(() => {
     const saved = localStorage.getItem("user");
     return saved ? JSON.parse(saved) : null;
   });
 
   const refreshUser = async () => {
-    if (!user?.id) return;
+    if (!storedUser?.id) return;
     try {
-      const freshUser: any = await api.get(`/users/${user.id}`);
+      const freshUser: any = await api.get(`/users/${storedUser.id}`);
       if (freshUser) {
-        const updated = { ...user, ...freshUser, id: freshUser._id };
+        const updated = { ...storedUser, ...freshUser, id: freshUser._id };
         localStorage.setItem("user", JSON.stringify(updated));
-        setUser(updated);
+        setStoredUser(updated);
       }
     } catch (e) {}
   };
@@ -111,7 +111,7 @@ export default function DeputyHeadDashboard({
             students: 0,
             subjects: 0,
             avg: 0,
-            term: user?.term || 1,
+            term: storedUser?.term || 1,
             teacher: "Unassigned",
             _totalAvg: 0, // Keep track to compute mean
             _studentsWithMarks: 0
@@ -216,19 +216,19 @@ export default function DeputyHeadDashboard({
 
     switch (tab) {
       case "overview":
-        return <SchoolOverview isHT={isHT} classes={classes} students={students} staff={staff} term={user?.term || 1} year={user?.year || 2024} />;
+        return <SchoolOverview isHT={isHT} classes={classes} students={students} staff={staff} term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
       case "teachers":
         return <TeacherManagement staff={staff} />;
       case "classes":
-        return <ClassManagement classes={classes} students={students} staff={staff} term={user?.term || 1} year={user?.year || 2024} />;
+        return <ClassManagement classes={classes} students={students} staff={staff} term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
       case "students":
         return <StudentManagement students={students} subjects={subjects} />;
       case "analytics":
-        return <Analytics classes={classes} staff={staff} students={students} term={user?.term || 1} year={user?.year || 2024} />;
+        return <Analytics classes={classes} staff={staff} students={students} term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
       case "topStudents":
         return <TopStudents students={students} classes={classes} />;
       case "reports":
-        return <Reports term={user?.term || 1} year={user?.year || 2024} />;
+        return <Reports term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
       case "concerns":
         return <ParentConcerns />;
       default:
