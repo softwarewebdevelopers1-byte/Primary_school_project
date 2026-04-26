@@ -184,9 +184,30 @@ router.get("/", async (req: Request, res: Response) => {
 
 router.get("/:id", async (req: Request, res: Response) => {
   try {
-    const user = await userModel.findById(req.params.id);
+    const user: any = await userModel.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
+
+    // Map roles to array format for frontend consistency
+    const roles = [];
+    if (user.__t === rolesMapped.ST) {
+      roles.push("student");
+    } else {
+      if (user.roles?.role1) roles.push(user.roles.role1);
+      if (user.roles?.role2) roles.push(user.roles.role2);
+      if (user.roles?.role3) roles.push(user.roles.role3);
+      if (roles.length === 0 && user.__t) roles.push(user.__t);
+    }
+
+    const mapped = {
+      ...user.toObject(),
+      id: user._id,
+      roles,
+      name: user.teachersName || user.studentsName,
+      classGrade: user.class,
+      classStream: user.classStream
+    };
+
+    res.json(mapped);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
