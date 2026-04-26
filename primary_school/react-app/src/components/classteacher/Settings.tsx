@@ -178,8 +178,8 @@ export const Settings: React.FC<SettingsProps> = ({ user, studentsCount, onUserU
           <Field label="Stream name" k="name" disabled />
           <Field label="Class name" k="className" disabled />
           <Field label="Class teacher" k="classTeacher" disabled />
-          <Field label="Academic year" k="academicYear" />
-          <Field label="Term" k="term" type="number" />
+          <Field label="Academic year" k="academicYear" disabled />
+          <Field label="Term" k="term" type="number" disabled />
           <p style={{ fontSize: 12, color: C.textFaint, marginBottom: "1rem" }}>
             Note: Some fields are locked by administration.
           </p>

@@ -185,20 +185,22 @@ router.get("/", async (req: Request, res: Response) => {
 router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
   try {
     const { grade, stream } = req.params;
+    const { term, year } = req.query;
+    
     const students = await userModel.find({ 
       __t: rolesMapped.ST, 
       class: grade, 
       classStream: stream 
     } as any);
     
-    // Fetch all marks for these students in this class
+    // Fetch all marks for these students in this class for the specific period
     const studentIds = students.map(s => s._id);
     const allMarks = await MarkModel.find({
       studentId: { $in: studentIds },
       classGrade: grade,
       classStream: stream,
-      term: 1, // Default to term 1 for now
-      year: 2024
+      term: term ? Number(term) : 1,
+      year: year ? Number(year) : 2024
     } as any);
 
     // Calculate subject stats first to match frontend MarksEntry logic

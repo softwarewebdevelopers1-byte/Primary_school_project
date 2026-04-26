@@ -148,6 +148,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                 value={term}
                 onChange={(e) => onTermChange(Number(e.target.value))}
                 style={{ width: 100 }}
+                disabled
               >
                 <option value={1}>Term 1</option>
                 <option value={2}>Term 2</option>
@@ -160,6 +161,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                 value={examType}
                 onChange={(e) => onExamTypeChange(e.target.value)}
                 style={{ width: 130 }}
+                disabled
               >
                 <option value="opener">Opener Exam</option>
                 <option value="midterm">Mid Term</option>

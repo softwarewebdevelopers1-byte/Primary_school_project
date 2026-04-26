@@ -62,7 +62,10 @@ export default function ClassTeacherDashboard() {
       setLoading(true);
       setError(null);
       const [studentsData, subjectsData, staffData] = (await Promise.all([
-        api.get(`/users/class/${user.classGrade}/${user.classStream}`),
+        api.get(`/users/class/${user.classGrade}/${user.classStream}`, {
+          term: user.term,
+          year: user.year
+        }),
         api.get("/school/subjects"),
         api.get("/users") // Get assignments and staff names
       ])) as [any[], any[], any];
