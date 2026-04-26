@@ -157,7 +157,7 @@ const StatCard: React.FC<{ label: string; value: number; accent?: string }> = ({
 }) => (
   <div
     style={{
-      background: "#fff",
+      background: "var(--white)",
       border: "1px solid var(--border)",
       borderRadius: 12,
       padding: "1rem 1.1rem",

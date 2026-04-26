@@ -30,6 +30,29 @@
   --sans: "Nunito", sans-serif;
   --panelBg: linear-gradient(180deg, #fdfbf7 0%, #f7f0e3 100%);
   color-scheme: light;
+
+  /* Aliases for shared components */
+  --ct-green: var(--cg);
+  --ct-green-mid: var(--cgm);
+  --ct-green-light: var(--cgl);
+  --ct-gold: var(--gold);
+  --ct-gold-light: var(--goldL);
+  --ct-gold-pale: var(--goldP);
+  --ct-cream: var(--cream);
+  --ct-sand: var(--sand);
+  --ct-border: var(--border);
+  --ct-border-light: var(--borderL);
+  --ct-text: var(--text);
+  --ct-text-mid: var(--textM);
+  --ct-text-muted: var(--textMut);
+  --ct-text-faint: var(--textF);
+  --ct-white: var(--white);
+  --ct-success-bg: var(--sBg);
+  --ct-success-text: var(--sText);
+  --ct-warn-bg: var(--wBg);
+  --ct-warn-text: var(--wText);
+  --ct-danger-bg: var(--dBg);
+  --ct-danger-text: var(--dText);
 }
 
 .dashboard[data-theme="dark"] {
