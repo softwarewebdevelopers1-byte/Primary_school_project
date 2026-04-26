@@ -83,7 +83,10 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
       };
     }));
 
-    res.json(enrichedAssignments);
+    // Filter out assignments that have no students (outdated/orphaned classes)
+    const activeAssignments = enrichedAssignments.filter(a => a.studentCount > 0);
+
+    res.json(activeAssignments);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
