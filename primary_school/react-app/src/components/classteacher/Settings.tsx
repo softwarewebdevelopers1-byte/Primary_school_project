@@ -5,6 +5,7 @@ import { C, FONT } from "./shared/constants";
 interface SettingsProps {
   user: any;
   studentsCount: number;
+  onUserUpdate?: (updatedUser: any) => void;
 }
 
 const SectionHeader: React.FC<{
@@ -53,17 +54,36 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-export const Settings: React.FC<SettingsProps> = ({ user, studentsCount }) => {
+export const Settings: React.FC<SettingsProps> = ({ user, studentsCount, onUserUpdate }) => {
   const [form, setForm] = useState({
     name: user?.classStream || "",
     className: `Grade ${user?.classGrade || ""}`,
     classTeacher: user?.name || "",
-    academicYear: "2024",
-    term: "1",
+    academicYear: user?.year?.toString() || "2024",
+    term: user?.term?.toString() || "1",
   });
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const Field: React.FC<{ label: string; k: string; type?: string; disabled?: boolean }> = ({
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const updatedData = {
+        ...user,
+        term: Number(form.term),
+        year: Number(form.academicYear),
+      };
+      await api.put(`/users/${user.id}`, updatedData);
+      setSaved(true);
+      if (onUserUpdate) onUserUpdate(updatedData);
+      // Update local storage too
+      localStorage.setItem("user", JSON.stringify(updatedData));
+    } catch (err) {
+      alert("Failed to save settings");
+    } finally {
+      setLoading(false);
+    }
+  };
     label,
     k,
     type = "text",
@@ -148,7 +168,8 @@ export const Settings: React.FC<SettingsProps> = ({ user, studentsCount }) => {
           </p>
           <button
             className="ct-primarybtn"
-            onClick={() => setSaved(true)}
+            onClick={handleSave}
+            disabled={loading}
             style={{
               display: "flex",
               alignItems: "center",
@@ -161,12 +182,13 @@ export const Settings: React.FC<SettingsProps> = ({ user, studentsCount }) => {
               fontFamily: FONT.sans,
               fontSize: 14,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               transition: "all 0.22s",
               marginTop: 4,
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            {saved ? "✓ Changes saved" : "Save changes"}
+            {loading ? "Saving..." : saved ? "✓ Changes saved" : "Save changes"}
           </button>
         </div>
         <div

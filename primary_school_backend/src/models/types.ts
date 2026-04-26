@@ -2,6 +2,8 @@ export interface user {
   status: string;
   class: string | null;
   classStream: string | null;
+  term: number;
+  year: number;
 }
 
 export interface teachers {

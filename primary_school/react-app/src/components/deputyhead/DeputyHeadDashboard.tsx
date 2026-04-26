@@ -8,9 +8,11 @@ import { TeacherManagement } from "./TeacherManagement";
 import { ClassManagement } from "./ClassManagement";
 import { StudentManagement } from "./StudentManagement";
 import { Analytics } from "./Analytics";
+import { TopStudents } from "./TopStudents";
 import { Reports } from "./Reports";
 import { ParentConcerns } from "./ParentConcerns";
 import { C, F } from "./shared/constants";
+import { avg } from "./shared/helpers";
 import { NAV_ALL } from "./shared/data";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
 import { api } from "../../lib/api";
@@ -43,9 +45,37 @@ export default function DeputyHeadDashboard({
       setLoading(true);
       const data: any = await api.get("/users");
       setStudents(data.students || []);
-      setStaff(data.staff || []);
       setSubjects(data.subjects || []);
       setAssignments(data.assignments || []);
+
+      // Calculate teacher averages from their assignments
+      const staffWithAvgs = (data.staff || []).map((t: any) => {
+        // Find assignments for this teacher
+        const tAssignments = (data.assignments || []).filter((a: any) => a.teacherId === t.id);
+        let totalMarks = 0;
+        let count = 0;
+
+        tAssignments.forEach((a: any) => {
+          // Find students in this class
+          const classStudents = (data.students || []).filter((s: any) => 
+            String(s.classGrade) === String(a.classGrade) && s.classStream === a.classStream
+          );
+
+          classStudents.forEach((s: any) => {
+            const mark = (s.marks || {})[a.subjectId];
+            if (mark != null) {
+              totalMarks += Number(mark);
+              count++;
+            }
+          });
+        });
+
+        return {
+          ...t,
+          avg: count > 0 ? Math.round(totalMarks / count) : 0
+        };
+      });
+      setStaff(staffWithAvgs);
       
       // Derive classes from students and assignments
       const classMap = new Map();
@@ -63,9 +93,23 @@ export default function DeputyHeadDashboard({
             avg: 0,
             term: 1,
             teacher: "Unassigned",
+            _totalAvg: 0, // Keep track to compute mean
+            _studentsWithMarks: 0
           });
         }
         classMap.get(key).students += 1;
+        const studentAvg = avg(s.marks || {});
+        if (studentAvg > 0) {
+          classMap.get(key)._totalAvg += studentAvg;
+          classMap.get(key)._studentsWithMarks += 1;
+        }
+      });
+
+      // Compute final avg for classes
+      classMap.forEach(c => {
+        if (c._studentsWithMarks > 0) {
+          c.avg = Math.round(c._totalAvg / c._studentsWithMarks);
+        }
       });
 
       // Find class teachers from staff
@@ -160,7 +204,9 @@ export default function DeputyHeadDashboard({
       case "students":
         return <StudentManagement students={students} subjects={subjects} />;
       case "analytics":
-        return <Analytics />;
+        return <Analytics classes={classes} staff={staff} students={students} />;
+      case "topStudents":
+        return <TopStudents students={students} classes={classes} />;
       case "reports":
         return <Reports />;
       case "concerns":

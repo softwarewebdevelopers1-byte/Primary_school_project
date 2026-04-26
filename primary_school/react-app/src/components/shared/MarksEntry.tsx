@@ -23,6 +23,10 @@ interface MarksEntryProps {
   onConfigUpdate?: (subjectId: string, key: string, value: number | string | null) => void;
   onRemoveCat?: (subjectId: string, catIndex: number) => void;
   avatar: (name: string, size: number) => string;
+  term?: number;
+  examType?: string;
+  onTermChange?: (term: number) => void;
+  onExamTypeChange?: (type: string) => void;
 }
 
 export const MarksEntry: React.FC<MarksEntryProps> = ({
@@ -37,112 +41,142 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   onMarkUpdate,
   onSaveMarks,
   onPushMarks,
-  onConfigUpdate,
-  onRemoveCat,
-  avatar,
-}) => {
-  const currentSubject =
-    subjects.find((s) => s.id === activeSubjectId) || subjects[0];
-  const subjectMarks = marksData[activeSubjectId] || {};
-
-  const [catsCount, setCatsCount] = useState(0);
-  const [catConfigs, setCatConfigs] = useState<any>({
-    cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40, examMax: 100
-  });
-
-  // Sync catsCount and configs from loaded data
-  useEffect(() => {
-    if (students.length > 0) {
-      // Use the first student's marks to sync max values (configs)
-      const firstStudentMarks = subjectMarks[students[0].id];
-      if (firstStudentMarks) {
-        const newConfigs = {
-          cat1Max: firstStudentMarks.cat1Max !== undefined ? firstStudentMarks.cat1Max : 40,
-          cat2Max: firstStudentMarks.cat2Max !== undefined ? firstStudentMarks.cat2Max : 40,
-          cat3Max: firstStudentMarks.cat3Max !== undefined ? firstStudentMarks.cat3Max : 40,
-          cat4Max: firstStudentMarks.cat4Max !== undefined ? firstStudentMarks.cat4Max : 40,
-          cat5Max: firstStudentMarks.cat5Max !== undefined ? firstStudentMarks.cat5Max : 40,
-          examMax: firstStudentMarks.examMax !== undefined ? firstStudentMarks.examMax : 100
-        };
-        setCatConfigs(prev => {
-          if (JSON.stringify(prev) === JSON.stringify(newConfigs)) return prev;
-          return newConfigs;
-        });
-      }
-
-      // Determine catsCount based on any student having data in catN.
-      let maxCat = 0;
-      students.forEach(s => {
-        const sm = subjectMarks[s.id];
-        if (sm) {
-          if (sm.cat5 !== null && sm.cat5 !== undefined) maxCat = Math.max(maxCat, 5);
-          else if (sm.cat4 !== null && sm.cat4 !== undefined) maxCat = Math.max(maxCat, 4);
-          else if (sm.cat3 !== null && sm.cat3 !== undefined) maxCat = Math.max(maxCat, 3);
-          else if (sm.cat2 !== null && sm.cat2 !== undefined) maxCat = Math.max(maxCat, 2);
-          else if (sm.cat1 !== null && sm.cat1 !== undefined) maxCat = Math.max(maxCat, 1);
+    onConfigUpdate,
+    onRemoveCat,
+    avatar,
+    term,
+    examType,
+    onTermChange,
+    onExamTypeChange,
+  }) => {
+    const currentSubject =
+      subjects.find((s) => s.id === activeSubjectId) || subjects[0];
+    const subjectMarks = marksData[activeSubjectId] || {};
+  
+    const [catsCount, setCatsCount] = useState(0);
+    const [catConfigs, setCatConfigs] = useState<any>({
+      cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40, examMax: 100
+    });
+  
+    // Sync catsCount and configs from loaded data
+    useEffect(() => {
+      if (students.length > 0) {
+        // Use the first student's marks to sync max values (configs)
+        const firstStudentMarks = subjectMarks[students[0].id];
+        if (firstStudentMarks) {
+          const newConfigs = {
+            cat1Max: firstStudentMarks.cat1Max !== undefined ? firstStudentMarks.cat1Max : 40,
+            cat2Max: firstStudentMarks.cat2Max !== undefined ? firstStudentMarks.cat2Max : 40,
+            cat3Max: firstStudentMarks.cat3Max !== undefined ? firstStudentMarks.cat3Max : 40,
+            cat4Max: firstStudentMarks.cat4Max !== undefined ? firstStudentMarks.cat4Max : 40,
+            cat5Max: firstStudentMarks.cat5Max !== undefined ? firstStudentMarks.cat5Max : 40,
+            examMax: firstStudentMarks.examMax !== undefined ? firstStudentMarks.examMax : 100
+          };
+          setCatConfigs(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(newConfigs)) return prev;
+            return newConfigs;
+          });
         }
-      });
-      // Only update if we found marks, otherwise keep current (don't reset to 0 if we already added columns)
-      if (maxCat > 0) {
-        setCatsCount(prev => prev === maxCat ? prev : maxCat);
+  
+        // Determine catsCount based on any student having data in catN.
+        let maxCat = 0;
+        students.forEach(s => {
+          const sm = subjectMarks[s.id];
+          if (sm) {
+            if (sm.cat5 !== null && sm.cat5 !== undefined) maxCat = Math.max(maxCat, 5);
+            else if (sm.cat4 !== null && sm.cat4 !== undefined) maxCat = Math.max(maxCat, 4);
+            else if (sm.cat3 !== null && sm.cat3 !== undefined) maxCat = Math.max(maxCat, 3);
+            else if (sm.cat2 !== null && sm.cat2 !== undefined) maxCat = Math.max(maxCat, 2);
+            else if (sm.cat1 !== null && sm.cat1 !== undefined) maxCat = Math.max(maxCat, 1);
+          }
+        });
+        // Only update if we found marks, otherwise keep current (don't reset to 0 if we already added columns)
+        if (maxCat > 0) {
+          setCatsCount(prev => prev === maxCat ? prev : maxCat);
+        }
       }
-    }
-  }, [students, activeSubjectId, subjectMarks]);
-
-  const allFilled = students.every((s) => {
-    const m = subjectMarks[s.id];
-    const catsFilled = Array.from({ length: catsCount }).every((_, i) => m && m[`cat${i + 1}` as keyof typeof m] !== null);
-    return m && catsFilled && m.exam !== null;
-  });
-
-  const addCat = () => {
-    if (catsCount < 5) setCatsCount(prev => prev + 1);
-  };
-
-  const removeCat = () => {
-    if (catsCount > 0) {
-      if (onRemoveCat) onRemoveCat(activeSubjectId, catsCount);
-      setCatsCount(prev => prev - 1);
-    }
-  };
-
-  const updateConfig = (key: string, val: string) => {
-    let n: number | string | null = val;
-    if (n === "") {
-      n = null;
-    } else {
-      const num = Number(n);
-      if (!isNaN(num)) {
-        if (num < 0) n = 0;
-      } else {
+    }, [students, activeSubjectId, subjectMarks]);
+  
+    const allFilled = students.every((s) => {
+      const m = subjectMarks[s.id];
+      const catsFilled = Array.from({ length: catsCount }).every((_, i) => m && m[`cat${i + 1}` as keyof typeof m] !== null);
+      return m && catsFilled && m.exam !== null;
+    });
+  
+    const addCat = () => {
+      if (catsCount < 5) setCatsCount(prev => prev + 1);
+    };
+  
+    const removeCat = () => {
+      if (catsCount > 0) {
+        if (onRemoveCat) onRemoveCat(activeSubjectId, catsCount);
+        setCatsCount(prev => prev - 1);
+      }
+    };
+  
+    const updateConfig = (key: string, val: string) => {
+      let n: number | string | null = val;
+      if (n === "") {
         n = null;
+      } else {
+        const num = Number(n);
+        if (!isNaN(num)) {
+          if (num < 0) n = 0;
+        } else {
+          n = null;
+        }
       }
-    }
-    setCatConfigs(prev => ({ ...prev, [key]: n }));
-    if (onConfigUpdate) onConfigUpdate(activeSubjectId, key, n as any);
-  };
-
-  return (
-    <div className={styles.anim}>
-      <div className={styles.sectionHeader}>
-        <div>
-          <p className={styles.sectionEyebrow}>{mode === "class" ? "Class Management" : "Mark Entry"}</p>
-          <h2 className={styles.sectionTitle}>{mode === "class" ? "Detailed Class Marks" : "Enter & Push Marks"}</h2>
-          <p className={styles.sectionSub}>
-            {currentSubject?.name} · {currentSubject?.grade} · Term 1, 2024
-          </p>
+      setCatConfigs(prev => ({ ...prev, [key]: n }));
+      if (onConfigUpdate) onConfigUpdate(activeSubjectId, key, n as any);
+    };
+  
+    return (
+      <div className={styles.anim}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <p className={styles.sectionEyebrow}>{mode === "class" ? "Class Management" : "Mark Entry"}</p>
+            <h2 className={styles.sectionTitle}>{mode === "class" ? "Detailed Class Marks" : "Enter & Push Marks"}</h2>
+            <p className={styles.sectionSub}>
+              {currentSubject?.name} · {currentSubject?.grade} · Term {term}, {examType}
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {onTermChange && (
+              <select
+                className={styles.dhInput}
+                value={term}
+                onChange={(e) => onTermChange(Number(e.target.value))}
+                style={{ width: 100 }}
+              >
+                <option value={1}>Term 1</option>
+                <option value={2}>Term 2</option>
+                <option value={3}>Term 3</option>
+              </select>
+            )}
+            {onExamTypeChange && (
+              <select
+                className={styles.dhInput}
+                value={examType}
+                onChange={(e) => onExamTypeChange(e.target.value)}
+                style={{ width: 120 }}
+              >
+                <option value="Opener">Opener</option>
+                <option value="Midterm">Midterm</option>
+                <option value="EndTerm">End of Term</option>
+              </select>
+            )}
+            <select
+              className={styles.dhInput}
+              value={activeSubjectId}
+              onChange={(e) => onSubjectChange(e.target.value)}
+            >
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} – {s.grade}
+                </option>
+              ))}
+            </select>
         </div>
-        <select
-          className={styles.dhInput}
-          value={activeSubjectId}
-          onChange={(e) => onSubjectChange(e.target.value)}
-        >
-          {subjects.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} – {s.grade}
-            </option>
-          ))}
-        </select>
       </div>
 
       {mode === "subject" && onPushMarks && (

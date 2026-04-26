@@ -4,23 +4,31 @@ import { SectionHeader } from "./shared/SectionHeader";
 import { MetricCard } from "./shared/MetricCard";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { CLASSES, TEACHERS, CONCERNS } from "./shared/data";
 import { gc } from "./shared/helpers";
+interface AnalyticsProps {
+  classes?: any[];
+  staff?: any[];
+  students?: any[];
+}
 
-export const Analytics: React.FC = () => {
-  const classAvg = Math.round(
-    CLASSES.reduce((a, c) => a + c.avg, 0) / CLASSES.length,
-  );
-  const teacherAvg = Math.round(
-    TEACHERS.reduce((a, t) => a + t.avg, 0) / TEACHERS.length,
-  );
-  const topClass = CLASSES.reduce((a, b) => (a.avg > b.avg ? a : b));
-  const bottomClass = CLASSES.reduce((a, b) => (a.avg < b.avg ? a : b));
-  const sorted = [...CLASSES].sort((a, b) => b.avg - a.avg);
-  const activeTeachers = TEACHERS.filter((t) => t.status === "Active").length;
-  const openConcerns = CONCERNS.filter((c) => c.status === "Open").length;
-  const highPriority = CONCERNS.filter((c) => c.priority === "High").length;
-  const highPerformers = CLASSES.filter((c) => c.avg >= 80).length;
+export const Analytics: React.FC<AnalyticsProps> = ({ classes = [], staff = [], students = [] }) => {
+  const classAvg = classes.length > 0 ? Math.round(
+    classes.reduce((a, c) => a + (c.avg || 0), 0) / classes.length,
+  ) : 0;
+  
+  const teacherAvg = staff.length > 0 ? Math.round(
+    staff.reduce((a, t) => a + (t.avg || 0), 0) / staff.length,
+  ) : 0;
+  
+  const topClass = classes.length > 0 ? classes.reduce((a, b) => ((a.avg || 0) > (b.avg || 0) ? a : b)) : { name: "N/A", avg: 0 };
+  const bottomClass = classes.length > 0 ? classes.reduce((a, b) => ((a.avg || 0) < (b.avg || 0) ? a : b)) : { name: "N/A", avg: 0 };
+  const sorted = [...classes].sort((a, b) => (b.avg || 0) - (a.avg || 0));
+  const activeTeachers = staff.filter((t) => t.status === "active" || t.status === "Active").length;
+  const highPerformers = classes.filter((c) => (c.avg || 0) >= 80).length;
+
+  // Mock concerns since not in DB yet
+  const openConcerns = 0;
+  const highPriority = 0;
 
   return (
     <div className="dh-anim">
@@ -178,7 +186,7 @@ export const Analytics: React.FC = () => {
           >
             Teacher performance
           </p>
-          {TEACHERS.map((t) => (
+          {staff.map((t) => (
             <div
               key={t.id}
               style={{
@@ -211,10 +219,10 @@ export const Analytics: React.FC = () => {
                       fontFamily: F.serif,
                       fontSize: 13,
                       fontWeight: 600,
-                      color: gc(t.avg),
+                      color: gc(t.avg || 0),
                     }}
                   >
-                    {t.avg}%
+                    {t.avg || 0}%
                   </span>
                 </div>
                 <div
@@ -227,9 +235,9 @@ export const Analytics: React.FC = () => {
                 >
                   <div
                     style={{
-                      width: `${t.avg}%`,
+                      width: `${t.avg || 0}%`,
                       height: "100%",
-                      background: gc(t.avg),
+                      background: gc(t.avg || 0),
                       borderRadius: 3,
                     }}
                   />
@@ -277,7 +285,7 @@ export const Analytics: React.FC = () => {
               },
               {
                 label: "On leave",
-                value: TEACHERS.length - activeTeachers,
+                value: 0,
                 bg: C.warnBg,
                 text: C.warnText,
               },
@@ -295,7 +303,7 @@ export const Analytics: React.FC = () => {
               },
               {
                 label: "Total classes",
-                value: CLASSES.length,
+                value: classes.length,
                 bg: C.infoBg,
                 text: C.infoText,
               },

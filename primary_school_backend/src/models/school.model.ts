@@ -35,6 +35,7 @@ export interface IMark extends Document {
   classStream: string;
   term: number;
   year: number;
+  examType: "Opener" | "Midterm" | "EndTerm";
   cat1: number | null;
   cat2: number | null;
   cat3: number | null;
@@ -57,6 +58,7 @@ const MarkSchema: Schema = new Schema({
   classStream: { type: String, required: true },
   term: { type: Number, required: true },
   year: { type: Number, required: true },
+  examType: { type: String, enum: ["Opener", "Midterm", "EndTerm"], default: "EndTerm" },
   cat1: { type: Number, default: null },
   cat2: { type: Number, default: null },
   cat3: { type: Number, default: null },

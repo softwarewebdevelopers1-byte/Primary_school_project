@@ -13,17 +13,18 @@ interface MarksManagementProps {
 }
 
 export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects, onRefresh }) => {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
+  const [term, setTerm] = useState<number>(user?.term || 1);
+  const [examType, setExamType] = useState<string>("EndTerm");
 
   useEffect(() => {
     if (subjects.length > 0 && !activeSubjectId) {
       setActiveSubjectId(subjects[0].id || subjects[0]._id);
     }
   }, [subjects, activeSubjectId]);
-
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const loadDetailedMarks = useCallback(async () => {
     if (!activeSubjectId) return;
@@ -32,8 +33,9 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         subjectId: activeSubjectId,
         classGrade: user.classGrade,
         classStream: user.classStream,
-        term: 1,
-        year: 2024
+        term: term,
+        year: user.year || 2024,
+        examType: examType
       });
 
       setMarksData(prev => ({
@@ -51,7 +53,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
 
   useEffect(() => {
     if (activeSubjectId) loadDetailedMarks();
-  }, [activeSubjectId, loadDetailedMarks]);
+  }, [activeSubjectId, loadDetailedMarks, term, examType]);
 
   const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
     setMarksData((prev) => {
@@ -141,8 +143,9 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         subjectId,
         classGrade: user.classGrade,
         classStream: user.classStream,
-        term: 1,
-        year: 2024,
+        term: term,
+        year: user.year || 2024,
+        examType: examType,
         marksData: data,
         catConfigs
       });
@@ -218,6 +221,10 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         onConfigUpdate={handleConfigUpdate}
         onRemoveCat={handleRemoveCat}
         avatar={avatar}
+        term={term}
+        examType={examType}
+        onTermChange={setTerm}
+        onExamTypeChange={setExamType}
       />
     </div>
   );

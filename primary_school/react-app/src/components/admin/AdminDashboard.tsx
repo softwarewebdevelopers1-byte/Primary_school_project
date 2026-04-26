@@ -8,6 +8,7 @@ import { StudentsTab } from "./StudentsTab";
 import { SubjectsTab } from "./SubjectsTab";
 import { TeachersTab } from "./TeachersTab";
 import { TopBar } from "./TopBar";
+import { CycleTab } from "./CycleTab";
 import {
   ApiStudent,
   ApiTeacher,
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { id: "subjects", label: "Subjects", svg: "<path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/>" },
   { id: "teachers", label: "Staff", svg: "<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>" },
   { id: "assignments", label: "Assignments", svg: "<path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'/>" },
+  { id: "cycle", label: "Academic Cycle", svg: "<circle cx='12' cy='12' r='10'/><path d='M12 6v6l4 2'/>" },
 ];
 
 const teacherInitials = "AU";
@@ -93,6 +95,8 @@ const deriveClasses = (
       students: students.filter((current) => current.classId === student.classId).length,
       classTeacherId: classTeacher?.id || "",
       subjectAssignments: getAssignmentsForClass(grade, stream),
+      term: classTeacher?.term,
+      year: classTeacher?.year,
     });
   });
 
@@ -115,6 +119,8 @@ const deriveClasses = (
         students: 0,
         classTeacherId: teacher.id,
         subjectAssignments: getAssignmentsForClass(grade, stream),
+        term: teacher.term,
+        year: teacher.year,
       });
     });
 
@@ -418,6 +424,16 @@ const AdminDashboard: React.FC = () => {
       showError("Failed to unassign class teacher.");
     }
   };
+  
+  const handleBulkTermUpdate = async (term: number, year: number) => {
+    try {
+      await api.put("/users/bulk-update-term", { term, year });
+      await loadDashboardUsers();
+      showSuccess(`All classes have been updated to Term ${term}, ${year}.`);
+    } catch (err) {
+      showError("Failed to update all classes.");
+    }
+  };
 
   const showSuccess = (msg: string) => {
     showModal(
@@ -489,6 +505,8 @@ const AdminDashboard: React.FC = () => {
           subjects={subjects}
           onSaveClassTeacher={saveTeacher}
           onUnassignClassTeacher={unassignClassTeacher}
+          onBulkTermUpdate={handleBulkTermUpdate}
+          onSwitchTab={setActiveTab}
           pill={pill}
           avatar={avatar}
           showModal={showModal}
@@ -559,6 +577,10 @@ const AdminDashboard: React.FC = () => {
           showConfirm={showConfirm}
         />
       );
+    }
+
+    if (activeTab === "cycle") {
+      return <CycleTab onBulkTermUpdate={handleBulkTermUpdate} />;
     }
 
     return (

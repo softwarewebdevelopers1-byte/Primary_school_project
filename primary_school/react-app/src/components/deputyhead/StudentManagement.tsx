@@ -15,9 +15,9 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
   const [search, setSearch] = useState("");
   const filtered = students.filter(
     (s) =>
-      s.name?.toLowerCase().includes(search.toLowerCase()) ||
-      s.classGrade?.toString().includes(search.toLowerCase()) ||
-      s.classStream?.toLowerCase().includes(search.toLowerCase()),
+      (s.name || s.studentsName || "").toLowerCase().includes(search.toLowerCase()) ||
+      String(s.classGrade || "").toLowerCase().includes(search.toLowerCase()) ||
+      String(s.classStream || "").toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -170,7 +170,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                     >
                       <div
                         style={{
-                          width: `${avg(s.marks || {})} %`,
+                          width: `${avg(s.marks || {})}%`,
                           height: "100%",
                           background: gc(avg(s.marks || {})),
                           borderRadius: 3,

@@ -8,6 +8,7 @@ export interface Subject {
   avg: number;
   pushed: boolean;
   term: number;
+  year: number;
   lastAssess: string;
   classGrade: string;
   classStream: string;
@@ -85,4 +86,8 @@ export interface MarksTabProps {
   onSaveMarks: (subjectId: string, catConfigs?: any) => void;
   onPushMarks: (subjectId: string) => void;
   avatar: (name: string, size: number) => string;
+  term?: number;
+  examType?: string;
+  onTermChange?: (term: number) => void;
+  onExamTypeChange?: (type: string) => void;
 }

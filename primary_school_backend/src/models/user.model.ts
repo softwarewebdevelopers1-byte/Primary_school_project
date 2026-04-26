@@ -30,6 +30,14 @@ const UserSchema = new Schema<user>({
     type: String,
     default: null,
   },
+  term: {
+    type: Number,
+    default: 1,
+  },
+  year: {
+    type: Number,
+    default: () => new Date().getFullYear(),
+  },
 });
 const teachersSchema = new Schema<teachers>({
   password: {

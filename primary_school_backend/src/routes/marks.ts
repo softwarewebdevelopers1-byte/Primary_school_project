@@ -8,7 +8,7 @@ const router = Router();
 // GET marks for a specific subject and class
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const { subjectId, classGrade, classStream, term, year } = req.query;
+    const { subjectId, classGrade, classStream, term, year, examType } = req.query;
     
     if (!subjectId || !classGrade || !classStream) {
       return res.status(400).json({ message: "Missing required query parameters" });
@@ -17,6 +17,7 @@ router.get("/", async (req: Request, res: Response) => {
     const query: any = { subjectId, classGrade, classStream };
     if (term) query.term = Number(term);
     if (year) query.year = Number(year);
+    if (examType) query.examType = examType;
 
     const [marks, students] = await Promise.all([
       MarkModel.find(query),
@@ -64,9 +65,9 @@ router.get("/", async (req: Request, res: Response) => {
 // POST/PUT save marks
 router.post("/save", async (req: Request, res: Response) => {
   try {
-    const { subjectId, classGrade, classStream, term, year, marksData, catConfigs } = req.body;
+    const { subjectId, classGrade, classStream, term, year, examType, marksData, catConfigs } = req.body;
     
-    if (!subjectId || !classGrade || !classStream || !term || !year || !Array.isArray(marksData)) {
+    if (!subjectId || !classGrade || !classStream || !term || !year || !examType || !Array.isArray(marksData)) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -78,7 +79,8 @@ router.post("/save", async (req: Request, res: Response) => {
           classGrade: classGrade.toString(), 
           classStream: classStream || "", 
           term: Number(term), 
-          year: Number(year) 
+          year: Number(year),
+          examType: examType
         },
         update: { 
           $set: { 
@@ -110,9 +112,9 @@ router.post("/save", async (req: Request, res: Response) => {
 // POST save summary marks (finalScore) from Class Teacher
 router.post("/summary-save", async (req: Request, res: Response) => {
   try {
-    const { classGrade, classStream, term, year, marksData } = req.body;
+    const { classGrade, classStream, term, year, examType, marksData } = req.body;
     
-    if (!classGrade || !classStream || !term || !year || !Array.isArray(marksData)) {
+    if (!classGrade || !classStream || !term || !year || !examType || !Array.isArray(marksData)) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -124,7 +126,8 @@ router.post("/summary-save", async (req: Request, res: Response) => {
           classGrade: classGrade.toString(), 
           classStream: classStream || "", 
           term: Number(term), 
-          year: Number(year) 
+          year: Number(year),
+          examType: examType
         },
         update: { 
           $set: { 

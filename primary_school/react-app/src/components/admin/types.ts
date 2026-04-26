@@ -30,6 +30,8 @@ export interface Class {
   students: number;
   classTeacherId?: string;
   subjectAssignments: Record<string, string>;
+  term?: number;
+  year?: number;
 }
 
 export interface Student {
@@ -57,6 +59,8 @@ export interface ApiTeacher {
   classStream?: string;
   subjects?: string[];
   joinDate?: string;
+  term?: number;
+  year?: number;
 }
 
 export interface ApiStudent {
@@ -70,6 +74,8 @@ export interface ApiStudent {
   classGrade: string;
   classStream?: string;
   joinDate?: string;
+  term?: number;
+  year?: number;
 }
 
 export interface ApiAssignment {

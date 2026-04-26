@@ -217,6 +217,8 @@ interface ClassesTabProps {
   showModal: (content: React.ReactNode) => void;
   closeModal: () => void;
   showConfirm: (msg: string, onOk: () => void, danger?: boolean) => void;
+  onBulkTermUpdate?: (term: number, year: number) => Promise<void>;
+  onSwitchTab?: (tab: string) => void;
 }
 
 export const ClassesTab: React.FC<ClassesTabProps> = ({
@@ -230,6 +232,8 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   showModal,
   closeModal,
   showConfirm,
+  onBulkTermUpdate,
+  onSwitchTab,
 }) => {
   const [search, setSearch] = useState("");
 
@@ -289,12 +293,20 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
           <p style={eyebrowStyle}>Classes</p>
           <h2 style={pageTitleStyle}>Class management</h2>
         </div>
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by grade or stream"
-          style={{ ...inputStyle, width: 210 }}
-        />
+        <div style={{ display: "flex", gap: 10 }}>
+          <button 
+            onClick={() => onSwitchTab?.("cycle")}
+            style={{ ...primaryButtonStyle, background: "var(--gold)" }}
+          >
+            Manage Academic Cycle
+          </button>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by grade or stream"
+            style={{ ...inputStyle, width: 210 }}
+          />
+        </div>
       </div>
 
       <div style={noticeStyle}>
@@ -312,7 +324,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--sand)" }}>
-              {["Class", "Grade", "Students", "Class Teacher", "Subjects"].map((heading) => (
+              {["Class", "Grade", "Term", "Students", "Class Teacher", "Subjects"].map((heading) => (
                 <th key={heading} style={tableHeadingStyle}>
                   {heading}
                 </th>
@@ -334,6 +346,14 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                     </p>
                   </td>
                   <td style={bodyTextStyle}>{currentClass.grade}</td>
+                  <td style={bodyTextStyle}>
+                    <span style={{ fontWeight: 600, color: "var(--gold)" }}>
+                      T{currentClass.term || 1}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--textMut)", marginLeft: 4 }}>
+                      {currentClass.year || 2024}
+                    </span>
+                  </td>
                   <td style={{ ...bodyTextStyle, fontWeight: 700, color: "var(--text)" }}>
                     {currentClass.students}
                   </td>

@@ -32,6 +32,8 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [pushedStudents, setPushedStudents] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
+  const [term, setTerm] = useState<number>(user?.term || 1);
+  const [examType, setExamType] = useState<string>("EndTerm");
   const { theme, toggleTheme } = useDashboardTheme();
 
   const handleLogout = () => {
@@ -84,8 +86,9 @@ const SubjectTeacherDashboard: React.FC = () => {
         subjectId: currentSubject.subjectId, // Use the actual subject ID
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
-        term: 1,
-        year: 2024
+        term: term,
+        year: user?.year || 2024,
+        examType: examType
       });
 
       if (!Array.isArray(data)) {
@@ -122,7 +125,7 @@ const SubjectTeacherDashboard: React.FC = () => {
 
   useEffect(() => {
     if (activeSubjectId) loadStudentsAndMarks();
-  }, [activeSubjectId, loadStudentsAndMarks]);
+  }, [activeSubjectId, loadStudentsAndMarks, term, examType]);
 
   const teacherName = user?.name || "Teacher";
   const teacherInitials = initials(teacherName);
@@ -221,8 +224,9 @@ const SubjectTeacherDashboard: React.FC = () => {
         subjectId: currentSubject.subjectId,
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
-        term: 1,
-        year: 2024,
+        term: term,
+        year: user?.year || 2024,
+        examType: examType,
         marksData: data,
         catConfigs
       });
@@ -253,8 +257,9 @@ const SubjectTeacherDashboard: React.FC = () => {
         subjectId: currentSubject.subjectId,
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
-        term: 1,
-        year: 2024,
+        term: term,
+        year: user?.year || 2024,
+        examType: examType,
         marksData: data
       });
       setPushedSubjects((prev) => new Set(prev).add(subjectId));
@@ -280,7 +285,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       case "subjects":
         return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} />;
       case "marks":
-        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} />;
+        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} term={term} examType={examType} onTermChange={setTerm} onExamTypeChange={setExamType} />;
       case "assessments":
         return <AssessmentsTab assessments={[]} />;
       case "progress":

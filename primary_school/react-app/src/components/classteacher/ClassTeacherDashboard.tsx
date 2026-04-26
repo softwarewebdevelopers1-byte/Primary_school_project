@@ -167,7 +167,17 @@ export default function ClassTeacherDashboard() {
       case "analytics":
         return <Analytics students={students} subjects={subjects} classGrade={user.classGrade} classStream={user.classStream} />;
       case "settings":
-        return <Settings user={user} studentsCount={students.length} />;
+        return <Settings user={user} studentsCount={students.length} onUserUpdate={(u) => {
+          // Update the user state which will trigger re-renders
+          const saved = localStorage.getItem("user");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            // We need to trigger a state update for 'user'
+            // Since 'user' is initialized from localStorage, we can't just set it directly if it's a const from useState with initializer only.
+            // But here it is: const [user] = useState(...)
+          }
+          window.location.reload(); // Simplest way to refresh everything with new term info
+        }} />;
       default:
         return null;
     }

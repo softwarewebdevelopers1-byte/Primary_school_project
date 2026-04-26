@@ -335,6 +335,27 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
+// Bulk update term and year for all users
+router.put("/bulk-update-term", async (req: Request, res: Response) => {
+  try {
+    const { term, year } = req.body;
+    if (term === undefined || year === undefined) {
+      return res.status(400).json({ message: "Term and Year are required." });
+    }
+
+    await userModel.updateMany({}, { 
+      $set: { 
+        term: Number(term), 
+        year: Number(year) 
+      } 
+    });
+
+    res.json({ message: "All classes updated to the new term successfully." });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // PUT update a user
 router.put("/:id", async (req: Request, res: Response) => {
   try {
