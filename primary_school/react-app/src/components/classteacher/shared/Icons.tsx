@@ -80,3 +80,10 @@ export const ArchiveIcon = () => (
     d2="M1 3H23V8H1V3M10 12H14" 
   />
 );
+
+export const TimetableIcon = () => (
+  <Icon
+    d="M8 2v4M16 2v4M3 10h18"
+    d2="M3 4h18v18H3z"
+  />
+);

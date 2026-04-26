@@ -9,6 +9,7 @@ import { SubjectsTab } from "./SubjectsTab";
 import { TeachersTab } from "./TeachersTab";
 import { TopBar } from "./TopBar";
 import { CycleTab } from "./CycleTab";
+import { TimetableTab } from "./TimetableTab";
 import { ArchivesView } from "../shared/ArchivesView";
 import {
   ApiStudent,
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { id: "subjects", label: "Subjects", svg: "<path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/>" },
   { id: "teachers", label: "Staff", svg: "<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>" },
   { id: "assignments", label: "Assignments", svg: "<path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'/>" },
+  { id: "timetables", label: "Timetables", svg: "<path d='M8 2v4'/><path d='M16 2v4'/><rect x='3' y='4' width='18' height='18' rx='2'/><path d='M3 10h18'/><path d='M8 14h3'/><path d='M13 14h3'/><path d='M8 18h3'/><path d='M13 18h3'/>" },
   { id: "cycle", label: "Academic Cycle", svg: "<circle cx='12' cy='12' r='10'/><path d='M12 6v6l4 2'/>" },
   { id: "archives", label: "Archives", svg: "<path d='M21 8V21H3V8'/><path d='M1 3H23V8H1V3M10 12H14'/>" },
 ];
@@ -481,11 +483,16 @@ const AdminDashboard: React.FC = () => {
   
   const handleBulkTermUpdate = async (term: number, year: number, examType: string) => {
     try {
-      const res: any = await api.put("/users/bulk-update-term", { term, year, examType });
+      const res = await api.put<{ message?: string }>("/users/bulk-update-term", { term, year, examType });
       await loadDashboardUsers();
       showSuccess(res.message || `All classes have been updated to Term ${term}, ${year} (${examType}).`);
-    } catch (err: any) {
-      showError(err.response?.data?.message || "Failed to update academic cycle. Marks were not deleted.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to update academic cycle. Marks were not deleted.";
+
+      showError(message);
     }
   };
 
@@ -521,6 +528,9 @@ const AdminDashboard: React.FC = () => {
       subjects: "Subject management",
       teachers: "Staff directory",
       assignments: "Subject assignments",
+      timetables: "Timetable generator",
+      cycle: "Academic cycle",
+      archives: "Archives",
     };
     return titles[activeTab] || "Admin dashboard";
   }, [activeTab]);
@@ -638,6 +648,14 @@ const AdminDashboard: React.FC = () => {
         examType: teachers[0]?.examType || students[0]?.examType || "opener"
       };
       return <CycleTab onBulkTermUpdate={handleBulkTermUpdate} initialData={currentPeriod} />;
+    }
+
+    if (activeTab === "timetables") {
+      const currentPeriod = {
+        term: teachers[0]?.term || students[0]?.term || 1,
+        year: teachers[0]?.year || students[0]?.year || new Date().getFullYear(),
+      };
+      return <TimetableTab classes={classes} currentPeriod={currentPeriod} />;
     }
 
     if (activeTab === "archives") {

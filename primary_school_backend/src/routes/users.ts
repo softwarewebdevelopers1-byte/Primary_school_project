@@ -3,12 +3,35 @@ import type { Response, Request } from "express";
 import bcrypt from "bcrypt";
 import { userModel, studentModel, adminModel, classTeacherModel, subjectTeacher, deputyModel, headTeacherModel, rolesMapped } from "../models/user.model.js";
 import { SubjectModel, AssignmentModel, MarkModel } from "../models/school.model.js";
+import { archiveClassMarks, rollbackArchivedMarks, type ArchiveClassMarksResult } from "../utils/archiver.js";
 import jwt from "jsonwebtoken";
 import { authenticate } from "../middleware/auth.js";
 
 const SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 const router = Router();
+const allowedExamTypes = new Set(["opener", "midterm", "closing"]);
+
+const formatCycleLabel = (term: number, year: number, examType: string) =>
+  `Term ${term}, ${year} (${examType})`;
+
+const pluralize = (count: number, word: string) =>
+  `${count} ${word}${count === 1 ? "" : "s"}`;
+
+const shiftClassName = (className: string | null | undefined, offset: number) => {
+  if (!className || offset === 0) return className ?? null;
+
+  const match = className.match(/\d+/);
+  if (!match) return className;
+
+  const currentLevel = Number.parseInt(match[0], 10);
+  if (Number.isNaN(currentLevel)) return className;
+
+  const nextLevel = currentLevel + offset;
+  if (nextLevel <= 0) return className;
+
+  return className.replace(match[0], nextLevel.toString());
+};
 
 const extractRoles = async (user: any) => {
   const rolesSet = new Set<string>();
@@ -406,128 +429,198 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
 router.put("/bulk-update-term", authenticate, async (req: Request, res: Response) => {
   try {
     const { term, year, examType } = req.body;
-    if (term === undefined || year === undefined) {
-      return res.status(400).json({ message: "Term and Year are required." });
+    const normalizedExamType = typeof examType === "string" ? examType.trim().toLowerCase() : "";
+
+    if (term === undefined || year === undefined || !normalizedExamType) {
+      return res.status(400).json({ message: "Term, Year and Exam phase are required." });
     }
 
     const newYear = Number(year);
     const newTerm = Number(term);
 
-    // Promote or demote students and class teachers based on individual year change
-    const usersToProcess = await userModel.find({ 
+    if (!Number.isInteger(newTerm) || newTerm < 1 || newTerm > 3) {
+      return res.status(400).json({ message: "Term must be 1, 2 or 3." });
+    }
+
+    if (!Number.isInteger(newYear) || newYear < 1) {
+      return res.status(400).json({ message: "Year must be a valid positive number." });
+    }
+
+    if (!allowedExamTypes.has(normalizedExamType)) {
+      return res.status(400).json({ message: "Exam phase must be opener, midterm or closing." });
+    }
+
+    const sampleUser = await userModel.findOne({ term: { $ne: null } } as any);
+    const currentTerm = Number(sampleUser?.term ?? 1);
+    const currentYear = Number(sampleUser?.year ?? 2024);
+    const currentExamType = String(sampleUser?.examType ?? "opener").trim().toLowerCase();
+    const currentCycleLabel = formatCycleLabel(currentTerm, currentYear, currentExamType);
+
+    const classesWithMarks = await MarkModel.aggregate([
+      {
+        $match: {
+          term: currentTerm,
+          year: currentYear,
+          examType: currentExamType,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            classGrade: "$classGrade",
+            classStream: "$classStream",
+          },
+          markCount: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          "_id.classGrade": 1,
+          "_id.classStream": 1,
+        },
+      },
+    ]);
+
+    const archivedClasses: ArchiveClassMarksResult[] = [];
+
+    try {
+      for (const cls of classesWithMarks) {
+        const classGrade = cls?._id?.classGrade;
+        const classStream = cls?._id?.classStream;
+
+        if (!classGrade || !classStream) {
+          throw new Error("Some marks are missing class grade or class stream information.");
+        }
+
+        const archiveResult = await archiveClassMarks(
+          classGrade,
+          classStream,
+          currentTerm,
+          currentYear,
+          currentExamType,
+        );
+
+        if (!archiveResult) {
+          throw new Error(
+            `No PDF archive was created for ${classGrade} ${classStream} even though marks exist for ${currentCycleLabel}.`,
+          );
+        }
+
+        archivedClasses.push(archiveResult);
+      }
+    } catch (archiveError: any) {
+      if (archivedClasses.length > 0) {
+        try {
+          await rollbackArchivedMarks(archivedClasses);
+        } catch (cleanupError: any) {
+          return res.status(500).json({
+            message:
+              `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated. ` +
+              `Cleanup of partial archives also failed: ${cleanupError.message}`,
+          });
+        }
+      }
+
+      return res.status(500).json({
+        message: `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated.`,
+      });
+    }
+
+    const usersToProcess = await userModel.find({
       $or: [
         { __t: rolesMapped.ST },
         { "roles.role1": rolesMapped.CT },
         { "roles.role2": rolesMapped.CT },
-        { "roles.role3": rolesMapped.CT }
+        { "roles.role3": rolesMapped.CT },
       ],
-      class: { $ne: null }
+      class: { $ne: null },
     } as any);
 
-    for (const u of usersToProcess) {
-      const userYear = Number(u.year || 2024);
-      const currentClassStr = u.class;
+    const userClassUpdates = usersToProcess.flatMap((userDoc) => {
+      const currentClass = userDoc.class;
+      const userYear = Number(userDoc.year ?? currentYear);
+      const shiftedClass = shiftClassName(currentClass, newYear - userYear);
 
-      if (!currentClassStr) continue;
-
-      const match = currentClassStr.match(/\d+/);
-      if (!match) continue;
-
-      const num = parseInt(match[0]);
-      
-      if (newYear > userYear) {
-        // Advance
-        const nextClass = currentClassStr.replace(match[0], (num + 1).toString());
-        await userModel.findByIdAndUpdate(u._id, { 
-          $set: { class: nextClass } 
-        });
-      } else if (newYear < userYear) {
-        // Retreat
-        const prevNum = num - 1;
-        if (prevNum > 0) {
-          const prevClass = currentClassStr.replace(match[0], prevNum.toString());
-          await userModel.findByIdAndUpdate(u._id, { 
-            $set: { class: prevClass } 
-          });
-        }
-      }
-    }
-
-    // Update term, year and examType for all users (staff and students)
-    
-    // NEW: Archive marks before updating cycle and deleting them
-    try {
-      const { archiveClassMarks } = await import("../utils/archiver.js");
-      const { MarkModel } = await import("../models/school.model.js");
-      
-      // Get current cycle from the first student found (or fallback)
-      const sampleUser = await userModel.findOne({ term: { $ne: null } } as any);
-      const currentTerm = sampleUser?.term || 1;
-      const currentYear = sampleUser?.year || 2024;
-      const currentExamType = sampleUser?.examType || "opener";
-
-      // Find all unique classes that have students
-      const uniqueClasses = await studentModel.aggregate([
-        { $match: { class: { $ne: null }, classStream: { $ne: null } } },
-        { $group: { _id: { class: "$class", stream: "$classStream" } } }
-      ]);
-
-      // Archive each class to PDF and upload to Supabase
-      const archiveResults = [];
-      for (const cls of uniqueClasses) {
-        if (!cls._id.class) continue;
-        const result = await archiveClassMarks(
-          cls._id.class, 
-          cls._id.stream || "", 
-          currentTerm, 
-          currentYear, 
-          currentExamType
-        );
-        if (result) archiveResults.push(result);
+      if (!currentClass || !shiftedClass || shiftedClass === currentClass) {
+        return [];
       }
 
-      // 2. Advance assignments to next grade if year is advanced
-      const { AssignmentModel } = await import("../models/school.model.js");
-      const allAssignments = await AssignmentModel.find();
-      for (const assignment of allAssignments) {
-        const match = assignment.classGrade.match(/\d+/);
-        if (match) {
-          const num = parseInt(match[0]);
-          if (newYear > currentYear) {
-            const nextClassGrade = assignment.classGrade.replace(match[0], (num + 1).toString());
-            await AssignmentModel.findByIdAndUpdate(assignment._id, { classGrade: nextClassGrade });
-          } else if (newYear < currentYear) {
-            const prevNum = num - 1;
-            if (prevNum > 0) {
-              const prevClassGrade = assignment.classGrade.replace(match[0], prevNum.toString());
-              await AssignmentModel.findByIdAndUpdate(assignment._id, { classGrade: prevClassGrade });
-            }
-          }
-        }
-      }
-
-      // 3. Safe deletion: ONLY delete marks for the cycle we just archived
-      await MarkModel.deleteMany({
-        term: currentTerm,
-        year: currentYear,
-        examType: currentExamType
-      });
-      
-    } catch (archiveError: any) {
-      return res.status(500).json({ 
-        message: `Archiving failed: ${archiveError.message}. Marks have NOT been deleted. Please check your Supabase connection.` 
-      });
-    }
-
-    await userModel.updateMany({}, { 
-      $set: { 
-        term: newTerm, 
-        year: newYear,
-        examType: examType || "opener"
-      } 
+      return [
+        {
+          updateOne: {
+            filter: { _id: userDoc._id },
+            update: { $set: { class: shiftedClass } },
+          },
+        },
+      ];
     });
 
-    res.json({ message: "Marks archived successfully to Supabase and academic cycle updated." });
+    if (userClassUpdates.length > 0) {
+      await userModel.bulkWrite(userClassUpdates);
+    }
+
+    const assignmentClassOffset = newYear - currentYear;
+    if (assignmentClassOffset !== 0) {
+      const assignments = await AssignmentModel.find();
+      const assignmentUpdates = assignments.flatMap((assignment) => {
+        const shiftedClass = shiftClassName(assignment.classGrade, assignmentClassOffset);
+
+        if (!shiftedClass || shiftedClass === assignment.classGrade) {
+          return [];
+        }
+
+        return [
+          {
+            updateOne: {
+              filter: { _id: assignment._id },
+              update: { $set: { classGrade: shiftedClass } },
+            },
+          },
+        ];
+      });
+
+      if (assignmentUpdates.length > 0) {
+        await AssignmentModel.bulkWrite(assignmentUpdates);
+      }
+    }
+
+    await userModel.updateMany({}, {
+      $set: {
+        term: newTerm,
+        year: newYear,
+        examType: normalizedExamType,
+      },
+    });
+
+    const deletedMarks = await MarkModel.deleteMany({
+      term: currentTerm,
+      year: currentYear,
+      examType: currentExamType,
+    });
+
+    const deletedCount = deletedMarks.deletedCount ?? 0;
+    const message =
+      archivedClasses.length > 0
+        ? `Academic cycle updated. Uploaded ${pluralize(archivedClasses.length, "PDF archive")} to Supabase for ${currentCycleLabel} and deleted ${pluralize(deletedCount, "mark record")}.`
+        : `Academic cycle updated. No marks were found for ${currentCycleLabel}, so nothing was archived or deleted.`;
+
+    res.json({
+      message,
+      summary: {
+        archivedClasses: archivedClasses.length,
+        deletedMarks: deletedCount,
+        previousCycle: {
+          term: currentTerm,
+          year: currentYear,
+          examType: currentExamType,
+        },
+        newCycle: {
+          term: newTerm,
+          year: newYear,
+          examType: normalizedExamType,
+        },
+      },
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

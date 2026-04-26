@@ -19,6 +19,7 @@ interface SidebarProps {
 const navItems = [
   { id: "subjects", label: "Subjects", icon: "SB" },
   { id: "marks", label: "Marks", icon: "ME" },
+  { id: "timetable", label: "Timetable", icon: "TT" },
   { id: "assessments", label: "Assessments", icon: "AS" },
   { id: "progress", label: "Progress", icon: "PR" },
   { id: "resources", label: "Resources", icon: "RS" },

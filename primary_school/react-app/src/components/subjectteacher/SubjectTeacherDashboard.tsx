@@ -9,6 +9,7 @@ import { MarksTab } from "./MarksTab";
 import { AssessmentsTab } from "./AssessmentsTab";
 import { ProgressTab } from "./ProgressTab";
 import { ResourcesTab } from "./ResourcesTab";
+import { TimetableLibrary } from "../shared/TimetableLibrary";
 import { Subject, Student, MarksData } from "./types";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
 import { api } from "../../lib/api";
@@ -332,7 +333,7 @@ const SubjectTeacherDashboard: React.FC = () => {
   };
 
   const getTabTitle = () => {
-    const titles: Record<string, string> = { subjects: "My Subjects", marks: "Mark Entry", assessments: "Assessments", progress: "Student Progress", resources: "Resources" };
+    const titles: Record<string, string> = { subjects: "My Subjects", marks: "Mark Entry", timetable: "My Timetable", assessments: "Assessments", progress: "Student Progress", resources: "Resources" };
     return titles[activeTab] || "My Subjects";
   };
 
@@ -345,6 +346,17 @@ const SubjectTeacherDashboard: React.FC = () => {
         return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} term={term} year={year} />;
       case "marks":
         return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} term={term} year={year} examType={examType} onTermChange={setTerm} onExamTypeChange={setExamType} />;
+      case "timetable":
+        return (
+          <TimetableLibrary
+            fetchPath="/school/timetables/my"
+            fetchParams={{ view: "teacher" }}
+            title="My Teaching Timetable"
+            description="See the classes, days, and time slots assigned to you in the latest published timetable."
+            emptyMessage="No teacher timetable has been published for your current cycle yet."
+            highlightTeacherId={currentUser?.id}
+          />
+        );
       case "assessments":
         return <AssessmentsTab assessments={[]} term={term} year={year} />;
       case "progress":

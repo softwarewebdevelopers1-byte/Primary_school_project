@@ -23,7 +23,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm(`Are you sure you want to promote ALL classes to Term ${term}, ${year} (${examType})? This action is global.`)) return;
+    if (!window.confirm(`Are you sure you want to update ALL classes to Term ${term}, ${year} (${examType})? Existing marks will be archived to Supabase as PDFs first, and they will only be deleted if every upload succeeds.`)) return;
     
     setLoading(true);
     try {
@@ -43,7 +43,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
       <div style={noticeStyle}>
         <h4 style={{ margin: "0 0 8px", color: "var(--gold)", fontSize: 14 }}>⚠️ Critical Action</h4>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-          Updating the academic term and year is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> All teachers and students will be moved to the selected term and exam phase immediately.
+          Updating the academic cycle is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> Before the cycle changes, the system archives the current marks to Supabase PDF storage. Marks are only cleared after every archive upload succeeds.
         </p>
       </div>
 
@@ -97,7 +97,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
               cursor: loading ? "not-allowed" : "pointer"
             }}
           >
-            {loading ? "Updating All Classes..." : "Update All Classes Now"}
+            {loading ? "Archiving Marks & Updating Classes..." : "Archive Marks and Update Classes"}
           </button>
         </form>
       </div>
@@ -106,7 +106,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
         <h4 style={{ fontFamily: "var(--serif)", color: "var(--text)", fontSize: 18, marginBottom: 15 }}>Frequently Asked Questions</h4>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           {[
-            { q: "What happens to old marks?", a: "Marks are stored with their term and year. They will remain in the database and can still be accessed via reports." },
+            { q: "What happens to old marks?", a: "Current-cycle marks are uploaded to Supabase as PDF archives first. They are deleted from the database only after every archive upload succeeds." },
             { q: "Can teachers override this?", a: "Yes, Class Teachers can manually update their specific class term in their settings if needed." }
           ].map((faq, i) => (
             <div key={i} style={faqCardStyle}>

@@ -96,3 +96,95 @@ const ArchiveSchema = new Schema({
 }, { timestamps: true });
 
 export const ArchiveModel = mongoose.model<IArchive>("Archive", ArchiveSchema);
+
+export interface ITimetableBreak {
+  label: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface ITimetableEntry {
+  type: "lesson" | "break";
+  label?: string | null;
+  startTime: string;
+  endTime: string;
+  slotNumber?: number | null;
+  subjectId?: string | null;
+  subjectName?: string | null;
+  teacherId?: string | null;
+  teacherName?: string | null;
+}
+
+export interface ITimetableDay {
+  day: string;
+  entries: ITimetableEntry[];
+}
+
+export interface ITimetable extends Document {
+  batchId: string;
+  classGrade: string;
+  classStream: string;
+  classTeacherId?: string | null;
+  classTeacherName?: string | null;
+  term: number;
+  year: number;
+  schoolStartTime: string;
+  subjectsPerDay: number;
+  subjectDurationMinutes: number;
+  breaks: ITimetableBreak[];
+  days: ITimetableDay[];
+  teacherIds: string[];
+  pdfUrl: string;
+  storagePath: string;
+  generationMode: "ai" | "balanced-fallback";
+  aiSummary?: string | null;
+  generatedBy?: mongoose.Types.ObjectId | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const TimetableBreakSchema = new Schema<ITimetableBreak>({
+  label: { type: String, required: true },
+  startTime: { type: String, required: true },
+  endTime: { type: String, required: true },
+}, { _id: false });
+
+const TimetableEntrySchema = new Schema<ITimetableEntry>({
+  type: { type: String, enum: ["lesson", "break"], required: true },
+  label: { type: String, default: null },
+  startTime: { type: String, required: true },
+  endTime: { type: String, required: true },
+  slotNumber: { type: Number, default: null },
+  subjectId: { type: String, default: null },
+  subjectName: { type: String, default: null },
+  teacherId: { type: String, default: null },
+  teacherName: { type: String, default: null },
+}, { _id: false });
+
+const TimetableDaySchema = new Schema<ITimetableDay>({
+  day: { type: String, required: true },
+  entries: { type: [TimetableEntrySchema], default: [] },
+}, { _id: false });
+
+const TimetableSchema = new Schema<ITimetable>({
+  batchId: { type: String, required: true, index: true },
+  classGrade: { type: String, required: true, index: true },
+  classStream: { type: String, required: true, index: true },
+  classTeacherId: { type: String, default: null },
+  classTeacherName: { type: String, default: null },
+  term: { type: Number, required: true, index: true },
+  year: { type: Number, required: true, index: true },
+  schoolStartTime: { type: String, required: true },
+  subjectsPerDay: { type: Number, required: true },
+  subjectDurationMinutes: { type: Number, required: true },
+  breaks: { type: [TimetableBreakSchema], default: [] },
+  days: { type: [TimetableDaySchema], default: [] },
+  teacherIds: { type: [String], default: [], index: true },
+  pdfUrl: { type: String, required: true },
+  storagePath: { type: String, required: true },
+  generationMode: { type: String, enum: ["ai", "balanced-fallback"], default: "balanced-fallback" },
+  aiSummary: { type: String, default: null },
+  generatedBy: { type: Schema.Types.ObjectId, ref: "users", default: null },
+}, { timestamps: true });
+
+export const TimetableModel = mongoose.model<ITimetable>("Timetable", TimetableSchema);

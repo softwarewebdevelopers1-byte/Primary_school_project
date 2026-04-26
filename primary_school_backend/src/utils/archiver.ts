@@ -1,140 +1,259 @@
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import { MarkModel, ArchiveModel, SubjectModel } from "../models/school.model.js";
-import { studentModel } from "../models/user.model.js";
+import { autoTable } from "jspdf-autotable";
+import { ArchiveModel, MarkModel, SubjectModel } from "../models/school.model.js";
+import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const allowedExamTypes = new Set(["opener", "midterm", "closing"]);
+const SUPABASE_URL = process.env.SUPABASE_URL?.trim();
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET?.trim();
 
-const bucketName = process.env.SUPABASE_BUCKET || "Carlos'sWorkSpace";
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_BUCKET) {
+  throw new Error("Missing Supabase environment variables.");
+}
 
-export async function archiveClassMarks(classGrade: string, classStream: string, term: number, year: number, examType: string) {
-  // 1. Fetch students in this class
-  const students = await studentModel.find({ class: classGrade, classStream: classStream } as any);
-  if (students.length === 0) return null;
+const supabaseUrl = SUPABASE_URL;
+const supabaseServiceRoleKey = SUPABASE_SERVICE_ROLE_KEY;
+const supabaseBucket = SUPABASE_BUCKET;
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-  // 2. Fetch all marks for this class and period
-  const studentIds = students.map(s => s._id);
+export interface ArchiveClassMarksResult {
+  archiveId: string;
+  classGrade: string;
+  classStream: string;
+  fileName: string;
+  pdfUrl: string;
+  markCount: number;
+  studentCount: number;
+}
+
+const buildGrade = (average: number) => {
+  if (average >= 80) return "A";
+  if (average >= 70) return "B";
+  if (average >= 60) return "C";
+  if (average >= 50) return "D";
+  return "E";
+};
+
+const removeStoredFiles = async (fileNames: string[]) => {
+  if (fileNames.length === 0) return;
+
+  const { error } = await supabase.storage.from(supabaseBucket).remove(fileNames);
+
+  if (error) {
+    throw new Error(`Supabase cleanup failed: ${error.message}`);
+  }
+};
+
+export async function archiveClassMarks(
+  classGrade: string,
+  classStream: string,
+  term: number,
+  year: number,
+  examType: string,
+): Promise<ArchiveClassMarksResult | null> {
+  const normalizedExamType = examType.trim().toLowerCase();
+  const classLabel = `${classGrade} ${classStream}`.trim();
+
+  if (!classGrade?.trim() || !classStream?.trim()) {
+    throw new Error(`Class grade and stream are required to archive marks. Received "${classLabel || "unknown class"}".`);
+  }
+
+  if (!allowedExamTypes.has(normalizedExamType)) {
+    throw new Error(`Invalid exam phase "${examType}" for ${classLabel}.`);
+  }
+
   const marks = await MarkModel.find({
-    studentId: { $in: studentIds },
     classGrade,
     classStream,
     term,
     year,
-    examType
+    examType: normalizedExamType,
   } as any);
 
   if (marks.length === 0) return null;
 
-  // 3. Fetch subjects and Class Teacher
+  const markStudentIds = Array.from(new Set(marks.map((mark) => mark.studentId.toString())));
+  const students = await studentModel
+    .find({ class: classGrade, classStream } as any)
+    .sort({ studentsName: 1 });
+
+  const knownStudentIds = new Set(students.map((student) => student._id.toString()));
+  const missingStudentIds = markStudentIds.filter((studentId) => !knownStudentIds.has(studentId));
+
+  if (missingStudentIds.length > 0) {
+    const missingStudents = await studentModel
+      .find({ _id: { $in: missingStudentIds } } as any)
+      .sort({ studentsName: 1 });
+
+    for (const student of missingStudents) {
+      const studentId = student._id.toString();
+      if (!knownStudentIds.has(studentId)) {
+        students.push(student);
+        knownStudentIds.add(studentId);
+      }
+    }
+  }
+
+  if (students.length === 0) {
+    throw new Error(`Could not find student records for ${classLabel} while preparing the archive.`);
+  }
+
   const [subjects, classTeacher] = await Promise.all([
-    SubjectModel.find(),
-    studentModel.findOne({ 
-      class: classGrade, 
-      classStream: classStream,
+    SubjectModel.find({ _id: { $in: Array.from(new Set(marks.map((mark) => mark.subjectId.toString()))) } } as any),
+    userModel.findOne({
+      class: classGrade,
+      classStream,
       $or: [
-        { "roles.role1": "classteacher" },
-        { "roles.role2": "classteacher" },
-        { "roles.role3": "classteacher" }
-      ]
-    } as any)
+        { "roles.role1": rolesMapped.CT },
+        { "roles.role2": rolesMapped.CT },
+        { "roles.role3": rolesMapped.CT },
+      ],
+    } as any),
   ]);
 
   const teacherName = (classTeacher as any)?.teachersName || "N/A";
-  
-  // 4. Generate PDF
+  const subjectNameMap = new Map(subjects.map((subject) => [subject._id.toString(), subject.name]));
+  const subjectColumns = Array.from(new Set(marks.map((mark) => mark.subjectId.toString())))
+    .map((subjectId) => ({
+      id: subjectId,
+      name: subjectNameMap.get(subjectId) || `Subject ${subjectId.slice(-6)}`,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  const marksByStudent = new Map<string, Map<string, (typeof marks)[number]>>();
+  for (const mark of marks) {
+    const studentId = mark.studentId.toString();
+    const subjectId = mark.subjectId.toString();
+    const studentMarks = marksByStudent.get(studentId) || new Map<string, (typeof marks)[number]>();
+    studentMarks.set(subjectId, mark);
+    marksByStudent.set(studentId, studentMarks);
+  }
+
   const doc = new jsPDF("landscape");
-  
   doc.setFontSize(22);
   doc.setTextColor(20, 50, 40);
-  doc.text(`Primary School Academic Report`, 14, 15);
-  
+  doc.text("Primary School Academic Report", 14, 15);
+
   doc.setFontSize(14);
   doc.setTextColor(100);
-  doc.text(`Class: ${classGrade} ${classStream} | Teacher: ${teacherName}`, 14, 23);
-  doc.text(`Term ${term}, ${year} | Phase: ${examType.toUpperCase()}`, 14, 30);
+  doc.text(`Class: ${classLabel} | Teacher: ${teacherName}`, 14, 23);
+  doc.text(`Term ${term}, ${year} | Phase: ${normalizedExamType.toUpperCase()}`, 14, 30);
   doc.text(`Generated on ${new Date().toLocaleString()}`, 14, 37);
 
-  const tableColumn = ["Student", "ADM", ...subjects.map(s => s.name), "Average", "Grade"];
-  const tableRows = students.map(s => {
-    const studentMarks = marks.filter(m => m.studentId.toString() === s._id.toString());
-    
+  const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Average", "Grade"];
+  const tableRows = students.map((student) => {
+    const studentMarks = marksByStudent.get(student._id.toString()) || new Map();
     let total = 0;
     let count = 0;
-    const rowData = [s.studentsName, s.ADM || "-"];
-    
-    subjects.forEach(sub => {
-      const m = studentMarks.find(mark => mark.subjectId.toString() === sub._id.toString());
-      if (m && m.finalScore != null) {
-        rowData.push(m.finalScore.toString());
-        total += m.finalScore;
-        count++;
+    const rowData = [student.studentsName || "Unknown Student", student.ADM || "-"];
+
+    for (const subject of subjectColumns) {
+      const mark = studentMarks.get(subject.id);
+      if (mark?.finalScore != null) {
+        rowData.push(String(mark.finalScore));
+        total += Number(mark.finalScore);
+        count += 1;
       } else {
         rowData.push("-");
       }
-    });
+    }
 
-    const avg = count > 0 ? Math.round(total / count) : 0;
-    rowData.push(avg + "%");
-    
-    let grade = "E";
-    if (avg >= 80) grade = "A";
-    else if (avg >= 70) grade = "B";
-    else if (avg >= 60) grade = "C";
-    else if (avg >= 50) grade = "D";
-    
-    rowData.push(grade);
+    const average = count > 0 ? Math.round(total / count) : 0;
+    rowData.push(`${average}%`);
+    rowData.push(buildGrade(average));
     return rowData;
   });
 
   autoTable(doc, {
-    head: [tableColumn],
+    head: [tableColumns],
     body: tableRows,
     startY: 45,
-    theme: 'grid',
+    theme: "grid",
     styles: { fontSize: 8, cellPadding: 3 },
-    headStyles: { fillColor: [201, 150, 61], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [250, 248, 242] }
+    headStyles: { fillColor: [201, 150, 61], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [250, 248, 242] },
   });
 
   const pdfOutput = doc.output("arraybuffer");
-  const uint8Array = new Uint8Array(pdfOutput);
-  const fileName = `archives/${year}/Term${term}/${examType}/${classGrade}_${classStream}_${Date.now()}.pdf`.replace(/\s+/g, '_');
+  const pdfBuffer = Buffer.from(pdfOutput);
+  const fileName = `archives/${year}/Term${term}/${normalizedExamType}/${classGrade}_${classStream}_${Date.now()}.pdf`
+    .replace(/\s+/g, "_");
 
-  const sanitizedBucket = bucketName.replace(/['"]+/g, '');
-
-  // 5. Upload to Supabase
-  const { error: uploadError } = await supabase.storage
-    .from(sanitizedBucket)
-    .upload(fileName, uint8Array, {
-      contentType: "application/pdf",
-      upsert: true
-    });
-
-  if (uploadError) {
-    throw new Error(`Supabase Storage Error: ${uploadError.message} (Bucket: ${sanitizedBucket})`);
-  }
-
-  // 6. Get Public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from(sanitizedBucket)
-    .getPublicUrl(fileName);
-
-  // 7. Save to ArchiveModel
-  const archive = await ArchiveModel.create({
-    classGrade,
-    classStream,
-    term,
-    year,
-    examType,
-    pdfUrl: publicUrl
+  const { error: uploadError } = await supabase.storage.from(supabaseBucket).upload(fileName, pdfBuffer, {
+    cacheControl: "3600",
+    contentType: "application/pdf",
+    upsert: false,
   });
 
-  return archive;
+  if (uploadError) {
+    throw new Error(`Supabase upload failed for ${classLabel}: ${uploadError.message}`);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(supabaseBucket).getPublicUrl(fileName);
+
+  try {
+    const archive = await ArchiveModel.create({
+      classGrade,
+      classStream,
+      term,
+      year,
+      examType: normalizedExamType,
+      pdfUrl: publicUrl,
+    });
+
+    return {
+      archiveId: archive._id.toString(),
+      classGrade,
+      classStream,
+      fileName,
+      pdfUrl: publicUrl,
+      markCount: marks.length,
+      studentCount: students.length,
+    };
+  } catch (error: any) {
+    let cleanupNote = "";
+
+    try {
+      await removeStoredFiles([fileName]);
+    } catch (cleanupError: any) {
+      cleanupNote = ` Cleanup also failed: ${cleanupError.message}`;
+    }
+
+    throw new Error(
+      `The PDF for ${classLabel} uploaded to Supabase, but the archive record could not be saved. ${error?.message || "Unknown error."}${cleanupNote}`,
+    );
+  }
+}
+
+export async function rollbackArchivedMarks(archives: ArchiveClassMarksResult[]) {
+  if (archives.length === 0) return;
+
+  const fileNames = archives.map((archive) => archive.fileName).filter(Boolean);
+  const archiveIds = archives.map((archive) => archive.archiveId).filter(Boolean);
+  const cleanupProblems: string[] = [];
+
+  try {
+    await removeStoredFiles(fileNames);
+  } catch (error: any) {
+    cleanupProblems.push(`storage files could not be removed (${error.message})`);
+  }
+
+  if (cleanupProblems.length === 0 && archiveIds.length > 0) {
+    try {
+      await ArchiveModel.deleteMany({ _id: { $in: archiveIds } } as any);
+    } catch (error: any) {
+      cleanupProblems.push(`archive records could not be removed (${error.message})`);
+    }
+  }
+
+  if (cleanupProblems.length > 0) {
+    throw new Error(cleanupProblems.join("; "));
+  }
 }

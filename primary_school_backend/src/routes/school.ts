@@ -1,11 +1,61 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
 import mongoose from "mongoose";
-import { SubjectModel, AssignmentModel } from "../models/school.model.js";
-import { studentModel, rolesMapped } from "../models/user.model.js";
-import { authenticate } from "../middleware/auth.js";
+import { AssignmentModel, SubjectModel, TimetableModel } from "../models/school.model.js";
+import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
+import { authenticate, type AuthRequest } from "../middleware/auth.js";
+import { generateAndStoreSchoolTimetables } from "../utils/timetable.js";
 
 const router = Router();
+
+const mapTimetableRecord = (record: any, teacherId?: string) => {
+  const myLessons = teacherId
+    ? record.days.flatMap((day: any) =>
+        day.entries
+          .filter((entry: any) => entry.teacherId === teacherId)
+          .map((entry: any) => ({
+            day: day.day,
+            ...entry,
+          })),
+      )
+    : [];
+
+  return {
+    id: record._id.toString(),
+    batchId: record.batchId,
+    classGrade: record.classGrade,
+    classStream: record.classStream,
+    classTeacherId: record.classTeacherId,
+    classTeacherName: record.classTeacherName,
+    term: record.term,
+    year: record.year,
+    schoolStartTime: record.schoolStartTime,
+    subjectsPerDay: record.subjectsPerDay,
+    subjectDurationMinutes: record.subjectDurationMinutes,
+    breaks: record.breaks || [],
+    days: record.days || [],
+    teacherIds: record.teacherIds || [],
+    pdfUrl: record.pdfUrl,
+    storagePath: record.storagePath,
+    generationMode: record.generationMode,
+    aiSummary: record.aiSummary,
+    myLessons,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+};
+
+const getLatestByClass = (records: any[]) => {
+  const seen = new Set<string>();
+  return records.filter((record) => {
+    const classKey = `${record.classGrade}::${record.classStream}`;
+    if (seen.has(classKey)) return false;
+    seen.add(classKey);
+    return true;
+  });
+};
+
+const hasRole = (roles: string[], role: string) => roles.includes(role);
 
 router.use(authenticate);
 
@@ -114,6 +164,111 @@ router.delete("/assignments/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
     await AssignmentModel.findByIdAndDelete(id);
     res.json({ message: "Assignment deleted successfully" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Timetables
+router.post("/timetables/generate", async (req: AuthRequest, res: Response) => {
+  try {
+    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    if (!hasRole(roles, rolesMapped.ADM)) {
+      return res.status(403).json({ message: "Only admins can generate school timetables." });
+    }
+
+    const result = await generateAndStoreSchoolTimetables({
+      schoolStartTime: req.body.schoolStartTime,
+      subjectsPerDay: req.body.subjectsPerDay,
+      subjectDurationMinutes: req.body.subjectDurationMinutes,
+      breaks: req.body.breaks,
+      generatedByUserId: req.user?.id,
+    });
+
+    const modeLabel =
+      result.generationMode === "ai"
+        ? "Groq AI"
+        : "the balanced fallback scheduler";
+
+    res.status(201).json({
+      message: `Created and uploaded ${result.timetables.length} class timetable PDFs using ${modeLabel}.`,
+      batchId: result.batchId,
+      generationMode: result.generationMode,
+      aiSummary: result.aiSummary,
+      term: result.term,
+      year: result.year,
+      timetables: result.timetables.map((record: any) => mapTimetableRecord(record)),
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/timetables", async (req: Request, res: Response) => {
+  try {
+    const { classGrade, classStream, teacherId, latestOnly, term, year } = req.query;
+    const query: any = {};
+
+    if (classGrade) query.classGrade = String(classGrade);
+    if (classStream) query.classStream = String(classStream);
+    if (teacherId) query.teacherIds = String(teacherId);
+    if (term !== undefined) query.term = Number(term);
+    if (year !== undefined) query.year = Number(year);
+
+    let timetables = await TimetableModel.find(query).sort({ createdAt: -1 }).lean();
+    if (latestOnly !== "false") {
+      timetables = getLatestByClass(timetables);
+    }
+
+    res.json(timetables.map((record: any) => mapTimetableRecord(record, teacherId ? String(teacherId) : undefined)));
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/timetables/my", async (req: AuthRequest, res: Response) => {
+  try {
+    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    const view = String(req.query.view || "").trim().toLowerCase();
+    const currentUser: any = await userModel.findById(req.user?.id).lean();
+
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const query: any = {
+      term: Number(currentUser.term ?? 1),
+      year: Number(currentUser.year ?? new Date().getFullYear()),
+    };
+    let teacherId: string | undefined;
+
+    if (view === "class") {
+      if (!hasRole(roles, rolesMapped.CT)) {
+        return res.status(403).json({ message: "You do not have access to a class timetable view." });
+      }
+
+      if (!currentUser.class || !currentUser.classStream) {
+        return res.status(400).json({ message: "Your profile is not assigned to a class." });
+      }
+
+      query.classGrade = currentUser.class;
+      query.classStream = currentUser.classStream;
+    } else if (view === "teacher" || hasRole(roles, rolesMapped.SJ)) {
+      teacherId = req.user?.id;
+      query.teacherIds = teacherId;
+    } else if (hasRole(roles, rolesMapped.ADM)) {
+      // Admins can access current-cycle school timetables through this route without extra filters.
+    } else if (hasRole(roles, rolesMapped.CT) && currentUser.class && currentUser.classStream) {
+      query.classGrade = currentUser.class;
+      query.classStream = currentUser.classStream;
+    } else {
+      return res.status(403).json({ message: "No timetable view is available for your role." });
+    }
+
+    let timetables = await TimetableModel.find(query).sort({ createdAt: -1 }).lean();
+    timetables = getLatestByClass(timetables);
+
+    res.json(timetables.map((record: any) => mapTimetableRecord(record, teacherId)));
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

@@ -12,6 +12,7 @@ import { Analytics } from "./Analytics";
 import { Settings } from "./Settings";
 import { SubjectAssignments } from "./SubjectAssignments";
 import { ArchivesView } from "../shared/ArchivesView";
+import { TimetableLibrary } from "../shared/TimetableLibrary";
 import {
   UsersIcon,
   MarkIcon,
@@ -20,6 +21,7 @@ import {
   SettIcon,
   HomeIcon,
   ArchiveIcon,
+  TimetableIcon,
 } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
@@ -29,6 +31,7 @@ const NAV = [
   { id: "students", label: "Student records", desc: "Rosters, contacts, and learner profiles.", Icon: UsersIcon },
   { id: "marks", label: "Marks management", desc: "Capture marks and review class performance.", Icon: MarkIcon },
   { id: "assignments", label: "Subject assignments", desc: "See subjects and the assigned teachers.", Icon: HomeIcon },
+  { id: "timetable", label: "Timetable", desc: "View the published class timetable.", Icon: TimetableIcon },
   { id: "results", label: "Results & reports", desc: "Downloadable reports for this stream.", Icon: FileIcon },
   { id: "analytics", label: "Analytics", desc: "Averages, rankings, and class trends.", Icon: BarIcon },
   { id: "archives", label: "Archives", desc: "Past performance reports (PDF).", Icon: ArchiveIcon },
@@ -200,6 +203,16 @@ export default function ClassTeacherDashboard() {
             classTeacherName={currentUser.name}
             canSwitchToSubjectDashboard={canSwitchToSubjectDashboard}
             onSwitchToSubjectDashboard={() => navigate("/subjectTeacher")}
+          />
+        );
+      case "timetable":
+        return (
+          <TimetableLibrary
+            fetchPath="/school/timetables/my"
+            fetchParams={{ view: "class" }}
+            title="Class Timetable"
+            description="Review the published timetable for your class and open the uploaded PDF when needed."
+            emptyMessage="No class timetable has been published for your current academic cycle yet."
           />
         );
       case "results":
