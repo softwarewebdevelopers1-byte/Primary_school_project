@@ -187,8 +187,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
           >
             {[
-              ["Year", "2024"],
-              ["Term", "T1"],
+              ["Year", user?.year || 2024],
+              ["Term", `T${user?.term || 1}`],
               ["Status", "Active"],
             ].map(([k, v]) => (
               <div

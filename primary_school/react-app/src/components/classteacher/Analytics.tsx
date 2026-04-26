@@ -9,6 +9,8 @@ interface AnalyticsProps {
   subjects: any[];
   classGrade: string;
   classStream: string;
+  term?: number;
+  year?: number;
 }
 
 const MetricCard: React.FC<{
@@ -113,7 +115,14 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-export const Analytics: React.FC<AnalyticsProps> = ({ students, subjects, classGrade, classStream }) => {
+export const Analytics: React.FC<AnalyticsProps> = ({ 
+  students, 
+  subjects, 
+  classGrade, 
+  classStream,
+  term = 1,
+  year = 2024
+}) => {
   if (students.length === 0) {
     return <div style={{ padding: 40, textAlign: "center", color: C.textMuted }}>No analytics data available.</div>;
   }
@@ -143,7 +152,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ students, subjects, classG
       <SectionHeader
         eyebrow="Insights"
         title="Performance analytics"
-        sub={`Grade ${classGrade}${classStream} · Academic Year 2024`}
+        sub={`Grade ${classGrade}${classStream} · Academic Year ${year} · Term ${term}`}
       />
 
       {/* Metrics row */}

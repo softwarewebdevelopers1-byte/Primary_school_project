@@ -178,9 +178,9 @@ export default function ClassTeacherDashboard() {
           />
         );
       case "results":
-        return <ResultsReports students={students} subjects={subjects} />;
+        return <ResultsReports students={students} subjects={subjects} term={user.term} year={user.year} />;
       case "analytics":
-        return <Analytics students={students} subjects={subjects} classGrade={user.classGrade} classStream={user.classStream} />;
+        return <Analytics students={students} subjects={subjects} classGrade={user.classGrade} classStream={user.classStream} term={user.term} year={user.year} />;
       case "settings":
         return <Settings user={user} studentsCount={students.length} onUserUpdate={(u) => {
           // Update the user state which will trigger re-renders

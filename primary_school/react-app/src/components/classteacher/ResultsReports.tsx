@@ -10,6 +10,8 @@ import autoTable from "jspdf-autotable";
 interface ResultsReportsProps {
   students: any[];
   subjects: any[];
+  term?: number;
+  year?: number;
 }
 
 const SectionHeader: React.FC<{
@@ -58,7 +60,12 @@ const SectionHeader: React.FC<{
   </div>
 );
 
-export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjects }) => {
+export const ResultsReports: React.FC<ResultsReportsProps> = ({ 
+  students, 
+  subjects,
+  term = 1,
+  year = 2024
+}) => {
   const reports = [
     {
       title: "Full class report",
@@ -89,7 +96,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
         const doc = new jsPDF("landscape");
         
         doc.setFontSize(16);
-        doc.text("Class Merit List - Term 1, 2024", 14, 15);
+        doc.text(`Class Merit List - Term ${term}, ${year}`, 14, 15);
         doc.setFontSize(10);
         doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
@@ -113,7 +120,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
           headStyles: { fillColor: [201, 150, 61] } // var(--gold)
         });
 
-        doc.save(`Term1_Report_${Date.now()}.pdf`);
+        doc.save(`Term${term}_Report_${Date.now()}.pdf`);
       } else if (type === "Report Slip" || type === "Individual result slips") {
         if (!studentName) {
            setMsg({ text: "Individual slip download requires student selection from the Merit List table.", type: "error" });
@@ -134,7 +141,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
         doc.setTextColor(50, 50, 50);
         doc.text(`Name: ${slip.name}`, 20, 40);
         doc.text(`Admission No: ${slip.adm || "-"}`, 20, 48);
-        doc.text(`Term: 1 | Year: 2024`, 20, 56);
+        doc.text(`Term: ${term} | Year: ${year}`, 20, 56);
         
         doc.setLineWidth(0.5);
         doc.line(20, 62, 190, 62);
@@ -180,7 +187,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
         <SectionHeader
           eyebrow="Reports"
           title="Results & reports"
-          sub={`Download and review performance summaries for Term 1, 2024.`}
+          sub={`Download and review performance summaries for Term ${term}, ${year}.`}
         />
         {msg && (
           <div style={{ 
