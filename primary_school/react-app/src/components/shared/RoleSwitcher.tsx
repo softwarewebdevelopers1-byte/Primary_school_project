@@ -49,8 +49,22 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
     roles.push(user.role);
   }
 
-  // Remove duplicates
-  roles = Array.from(new Set(roles));
+  // Remove duplicates and filter to valid dashboard roles
+  const validRoles = Array.from(new Set(roles)).filter(r => rolePaths[r]);
+
+  // Keep only one role per unique path (e.g. if admin and superadmin both point to /admin)
+  const uniquePathRoles: string[] = [];
+  const seenPaths = new Set<string>();
+  
+  for (const r of validRoles) {
+    const path = rolePaths[r];
+    if (path && !seenPaths.has(path)) {
+      uniquePathRoles.push(r);
+      seenPaths.add(path);
+    }
+  }
+
+  roles = uniquePathRoles;
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
