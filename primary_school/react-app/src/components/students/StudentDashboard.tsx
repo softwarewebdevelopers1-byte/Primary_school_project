@@ -413,9 +413,9 @@ function AppOverview({
 function StudentDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-  const [materials, setMaterials] = useState(initialMaterials);
-  const [assessments, setAssessments] = useState(initialAssessments);
-  const [questions, setQuestions] = useState(initialQuestions);
+  const [materials] = useState(initialMaterials);
+  const [assessments] = useState(initialAssessments);
+  const [questions] = useState(initialQuestions);
 
   const portfolio = useMemo(() => {
     const scores = [
@@ -435,10 +435,6 @@ function StudentDashboard() {
       totalQuestions: questions.reduce((sum, item) => sum + item.questions.length, 0),
     };
   }, [assessments, questions]);
-
-  const pendingCount =
-    assessments.filter((item) => item.status === "pending").length +
-    questions.filter((item) => item.status === "pending").length;
 
   const handleLogout = () => {
     localStorage.removeItem("user");

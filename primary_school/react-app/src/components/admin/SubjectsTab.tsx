@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Class, Subject, Teacher } from "./types";
+import { Class, Subject } from "./types";
 
 const miniButtonStyle: React.CSSProperties = {
   padding: "5px 10px",
@@ -227,7 +227,6 @@ interface SubjectsTabProps {
   classes: Class[];
   onSaveSubject: (name: string, department: string, subjectId?: string) => Promise<void>;
   onDeleteSubject: (subjectId: string) => Promise<void>;
-  pill: (text: string, color: string) => string;
   showModal: (content: React.ReactNode) => void;
   closeModal: () => void;
   showConfirm: (msg: string, onOk: () => void, danger?: boolean) => void;
@@ -238,7 +237,6 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   classes,
   onSaveSubject,
   onDeleteSubject,
-  pill,
   showModal,
   closeModal,
   showConfirm,

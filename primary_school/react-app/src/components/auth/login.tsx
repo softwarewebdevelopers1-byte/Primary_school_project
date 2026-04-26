@@ -4,14 +4,7 @@ import React, { useState, useEffect } from "react";
 import styles from "./LoginPage.module.css";
 import { api } from "../../lib/api";
 
-const roleLabels: Record<string, string> = {
-  superadmin: "Super Admin",
-  admin: "Admin",
-  headteacher: "Head Teacher",
-  deputyteacher: "Deputy Head",
-  classteacher: "Class Teacher",
-  subjectteacher: "Subject Teacher",
-};
+// Role labels removed
 
 // SVG Icon Components
 const EyeIcon: React.FC<{ open: boolean }> = ({ open }) => (
@@ -132,7 +125,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [activeDemo, setActiveDemo] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 50);
@@ -176,15 +168,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
-  const handleDemoLogin = (role: string) => {
-    const user = mockUsers.find((x) => x.role === role);
-    if (user) {
-      setEmail(user.email);
-      setPassword(user.password);
-      setActiveDemo(role);
-      setError("");
-    }
-  };
+  // Demo login removed
 
   const features = [
     { icon: "M18 20V10M12 20V4M6 20v-6", label: "Real-time Analytics" },

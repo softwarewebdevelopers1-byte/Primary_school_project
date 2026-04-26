@@ -1,6 +1,6 @@
 // components/classteacher/TopBar.tsx
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React from "react";
+// import { useNavigate } from "react-router-dom";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 import { DashboardTheme } from "../../lib/useDashboardTheme";
@@ -25,12 +25,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   onLogout,
   user,
 }) => {
-  const navigate = useNavigate();
-
-  const rolesArray = Array.isArray(user?.roles) ? user.roles : [];
-  const isSubjectTeacher = rolesArray.includes("subjectteacher");
-  const teachesSubjects = isSubjectTeacher;
-
   return (
     <header
       className="ct-topBar"

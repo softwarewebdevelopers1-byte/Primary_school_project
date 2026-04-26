@@ -212,12 +212,11 @@ interface ClassesTabProps {
   subjects: Subject[];
   onSaveClassTeacher: (payload: any, teacherId?: string) => Promise<void>;
   onUnassignClassTeacher: (teacherId: string) => Promise<void>;
-  pill: (text: string, color: string) => string;
   avatar: (name: string, size: number) => string;
   showModal: (content: React.ReactNode) => void;
   closeModal: () => void;
   showConfirm: (msg: string, onOk: () => void, danger?: boolean) => void;
-  onBulkTermUpdate?: (term: number, year: number) => Promise<void>;
+  onBulkTermUpdate?: (term: number, year: number, examType: string) => Promise<void>;
   onSwitchTab?: (tab: string) => void;
 }
 
@@ -227,12 +226,10 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
   subjects,
   onSaveClassTeacher,
   onUnassignClassTeacher,
-  pill,
   avatar,
   showModal,
   closeModal,
   showConfirm,
-  onBulkTermUpdate,
   onSwitchTab,
 }) => {
   const [search, setSearch] = useState("");
@@ -241,7 +238,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
     showModal(
       <ClassTeacherModal
         currentClass={currentClass}
-        teachers={teachers.filter(t => t.role === "classteacher" || t.role === "subjectteacher" || t.role === "admin")}
+        teachers={teachers.filter(t => t.roles.includes("classteacher") || t.roles.includes("subjectteacher") || t.roles.includes("admin"))}
         onClose={closeModal}
         onSave={async (teacherId) => {
           const teacher = teachers.find(t => t.id === teacherId);

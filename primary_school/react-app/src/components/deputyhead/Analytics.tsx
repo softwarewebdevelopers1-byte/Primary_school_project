@@ -16,7 +16,6 @@ interface AnalyticsProps {
 export const Analytics: React.FC<AnalyticsProps> = ({ 
   classes = [], 
   staff = [], 
-  students = [],
   term = 1,
   year = 2024
 }) => {

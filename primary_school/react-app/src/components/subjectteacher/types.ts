@@ -10,6 +10,7 @@ export interface Subject {
   term: number;
   year: number;
   lastAssess: string;
+  subjectId: string;
   classGrade: string;
   classStream: string;
 }

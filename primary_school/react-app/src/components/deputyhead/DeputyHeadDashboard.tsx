@@ -36,7 +36,6 @@ export default function DeputyHeadDashboard({
   const [students, setStudents] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [storedUser, setStoredUser] = useState(() => {
@@ -72,7 +71,6 @@ export default function DeputyHeadDashboard({
       const data: any = await api.get("/users");
       setStudents(data.students || []);
       setSubjects(data.subjects || []);
-      setAssignments(data.assignments || []);
 
       // Calculate teacher averages from their assignments
       const staffWithAvgs = (data.staff || []).map((t: any) => {

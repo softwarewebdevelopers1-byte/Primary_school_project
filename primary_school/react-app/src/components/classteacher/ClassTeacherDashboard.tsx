@@ -37,9 +37,15 @@ const NAV = [
 
 export default function ClassTeacherDashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(() => {
+  const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.user || parsed;
+      } catch (e) {}
+    }
+    return null;
   });
 
   const [tab, setTab] = useState("students");
@@ -55,8 +61,7 @@ export default function ClassTeacherDashboard() {
   const { theme, toggleTheme } = useDashboardTheme();
 
   const loadData = useCallback(async () => {
-    if (!user?.classGrade || !user?.classStream) {
-      console.warn("ClassTeacherDashboard: Missing class info in user profile", user);
+    if (!currentUser?.classGrade || !currentUser?.classStream) {
       setError("No class assigned to your profile.");
       setLoading(false);
       return;
@@ -65,9 +70,9 @@ export default function ClassTeacherDashboard() {
       setLoading(true);
       setError(null);
       const [studentsData, subjectsData, staffData] = (await Promise.all([
-        api.get(`/users/class/${user.classGrade}/${user.classStream}`, {
-          term: user.term,
-          year: user.year
+        api.get(`/users/class/${currentUser.classGrade}/${currentUser.classStream}`, {
+          term: currentUser.term,
+          year: currentUser.year
         }),
         api.get("/school/subjects"),
         api.get("/users") // Get assignments and staff names
@@ -78,7 +83,7 @@ export default function ClassTeacherDashboard() {
     
       // Filter assignments for THIS class
       const classAssignments = (staffData.assignments || []).filter(
-        (a: any) => a.classGrade === user.classGrade && a.classStream === user.classStream
+        (a: any) => a.classGrade === currentUser.classGrade && a.classStream === currentUser.classStream
       ).map((a: any) => {
         const teacher = staffData.staff.find((s: any) => s.id === a.teacherId);
         return {
@@ -93,28 +98,28 @@ export default function ClassTeacherDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [currentUser]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const refreshUser = useCallback(async () => {
-    if (!user?.id) return;
+    if (!currentUser?.id) return;
     try {
-      const freshUser: any = await api.get(`/users/${user.id}`);
+      const freshUser: any = await api.get(`/users/${currentUser.id}`);
       if (freshUser) {
         // Ensure roles is always an array (backend may return object from DB)
         let rolesArr = freshUser.roles;
         if (rolesArr && !Array.isArray(rolesArr)) {
           rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
         }
-        const updated = { ...user, ...freshUser, id: freshUser._id || freshUser.id, roles: rolesArr || user.roles || [] };
+        const updated = { ...currentUser, ...freshUser, id: freshUser._id || freshUser.id, roles: rolesArr || currentUser.roles || [] };
         localStorage.setItem("user", JSON.stringify(updated));
-        setUser(updated);
+        setCurrentUser(updated);
       }
     } catch (e) {}
-  }, [user?.id]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     refreshUser();
@@ -128,16 +133,16 @@ export default function ClassTeacherDashboard() {
   };
 
   // Roles check — guard against roles being a non-array
-  const rolesArray = Array.isArray(user?.roles) ? user.roles : [];
+  const rolesArray = Array.isArray(currentUser?.roles) ? currentUser.roles : [];
   const isSubjectTeacher = rolesArray.includes("subjectteacher");
-  const hasSubjectAssignments = user?.subjects?.length > 0;
+  const hasSubjectAssignments = currentUser?.subjects?.length > 0;
   const canSwitchToSubjectDashboard = isSubjectTeacher && hasSubjectAssignments;
 
   useEffect(() => {
-    if (!user || !rolesArray.includes("classteacher")) {
+    if (!currentUser || !rolesArray.includes("classteacher")) {
       navigate("/login");
     }
-  }, [user, navigate, rolesArray]);
+  }, [currentUser, navigate, rolesArray]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
@@ -177,37 +182,29 @@ export default function ClassTeacherDashboard() {
     }
     switch (tab) {
       case "students":
-        return <StudentRecords students={students} subjects={subjects} onViewStudent={setSelectedStudent} classInfo={`Grade ${user?.classGrade}${user?.classStream}`} />;
+        return <StudentRecords students={students} subjects={subjects} onViewStudent={setSelectedStudent} classInfo={`Grade ${currentUser?.classGrade}${currentUser?.classStream}`} />;
       case "marks":
-        return <MarksManagement students={students} subjects={subjects} onRefresh={loadData} user={user} />;
+        return <MarksManagement students={students} subjects={subjects} onRefresh={loadData} user={currentUser} />;
       case "assignments":
         return (
           <SubjectAssignments
             subjects={subjects}
             assignments={assignments}
-            classGrade={user.classGrade}
-            classStream={user.classStream}
-            classTeacherName={user.name}
+            classGrade={currentUser.classGrade}
+            classStream={currentUser.classStream}
+            classTeacherName={currentUser.name}
             canSwitchToSubjectDashboard={canSwitchToSubjectDashboard}
             onSwitchToSubjectDashboard={() => navigate("/subjectTeacher")}
           />
         );
       case "results":
-        return <ResultsReports students={students} subjects={subjects} term={user.term} year={user.year} examType={user.examType} />;
+        return <ResultsReports students={students} subjects={subjects} term={currentUser.term} year={currentUser.year} examType={currentUser.examType} />;
       case "analytics":
-        return <Analytics students={students} subjects={subjects} classGrade={user.classGrade} classStream={user.classStream} term={user.term} year={user.year} />;
+        return <Analytics students={students} subjects={subjects} classGrade={currentUser.classGrade} classStream={currentUser.classStream} term={currentUser.term} year={currentUser.year} />;
       case "archives":
-        return <ArchivesView classGrade={user.classGrade} classStream={user.classStream} title="Class Performance Archives" />;
+        return <ArchivesView classGrade={currentUser.classGrade} classStream={currentUser.classStream} title="Class Performance Archives" />;
       case "settings":
-        return <Settings user={user} studentsCount={students.length} onUserUpdate={(u) => {
-          // Update the user state which will trigger re-renders
-          const saved = localStorage.getItem("user");
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            // We need to trigger a state update for 'user'
-            // Since 'user' is initialized from localStorage, we can't just set it directly if it's a const from useState with initializer only.
-            // But here it is: const [user] = useState(...)
-          }
+        return <Settings user={currentUser} studentsCount={students.length} onUserUpdate={() => {
           window.location.reload(); // Simplest way to refresh everything with new term info
         }} />;
       default:
@@ -250,7 +247,7 @@ export default function ClassTeacherDashboard() {
           }}
           onSelectTab={handleSelectTab}
           classAvg={classAvg}
-          user={user}
+          user={currentUser}
           onLogout={handleLogout}
         />
 
@@ -271,7 +268,7 @@ export default function ClassTeacherDashboard() {
             theme={theme}
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
-            user={user}
+            user={currentUser}
           />
 
           {/* Hero panel */}
@@ -348,7 +345,7 @@ export default function ClassTeacherDashboard() {
                       lineHeight: 1.25,
                     }}
                   >
-                    Keep Grade {user?.classGrade || ""} {user?.classStream || ""} organized and
+                    Keep Grade {currentUser?.classGrade || ""} {currentUser?.classStream || ""} organized and
                     ready for reporting.
                   </h1>
                   <p
@@ -360,7 +357,7 @@ export default function ClassTeacherDashboard() {
                       maxWidth: 520,
                     }}
                   >
-                    {students.length} learners enrolled · Term {user?.term || 1} well underway
+                    {students.length} learners enrolled · Term {currentUser?.term || 1} well underway
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -436,7 +433,7 @@ export default function ClassTeacherDashboard() {
                 },
                 {
                   label: "Active roles",
-                  value: user?.roles?.length || 0,
+                  value: currentUser?.roles?.length || 0,
                   note: "Management scope",
                 },
                 {

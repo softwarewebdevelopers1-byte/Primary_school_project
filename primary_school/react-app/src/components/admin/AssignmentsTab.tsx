@@ -284,7 +284,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
     showConfirm(
       `Unassign <strong>${teacher.name}</strong> from teaching <strong>${subject.name}</strong> in <strong>${currentClass.name}</strong>?`,
       async () => {
-        await onUnassignTeacher(currentClass.grade, currentClass.stream, subject.id);
+        await onUnassignTeacher(currentClass.grade, currentClass.stream || "", subject.id);
       },
       true
     );

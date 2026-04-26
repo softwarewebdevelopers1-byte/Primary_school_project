@@ -15,7 +15,6 @@ interface ClassManagementProps {
 export const ClassManagement: React.FC<ClassManagementProps> = ({ 
   classes = [], 
   students = [], 
-  staff = [],
   term = 1,
   year = 2024
 }) => {

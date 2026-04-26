@@ -97,7 +97,7 @@ export const ProgressTab: React.FC<ProgressTabProps> = ({
                 };
                 const pct =
                   marks.cat1 !== null
-                    ? Math.round((marks.cat1 / 40) * 100)
+                    ? Math.round((Number(marks.cat1) / 40) * 100)
                     : null;
                 const trend =
                   marks.cat1 !== null && marks.cat2 !== null
@@ -150,7 +150,7 @@ export const ProgressTab: React.FC<ProgressTabProps> = ({
                           fontWeight: 600,
                           color:
                             marks.cat1 !== null
-                              ? gc(Math.round((marks.cat1 / 40) * 100))
+                              ? gc(Math.round((Number(marks.cat1) / 40) * 100))
                               : "var(--textF)",
                         }}
                       >
@@ -165,7 +165,7 @@ export const ProgressTab: React.FC<ProgressTabProps> = ({
                           fontWeight: 600,
                           color:
                             marks.cat2 !== null
-                              ? gc(Math.round((marks.cat2 / 40) * 100))
+                              ? gc(Math.round((Number(marks.cat2) / 40) * 100))
                               : "var(--textF)",
                         }}
                       >

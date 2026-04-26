@@ -1,6 +1,6 @@
 // components/subjectteacher/SubjectTeacherDashboard.tsx
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import styles from "./SubjectTeacherDashboard.module.css";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -9,15 +9,14 @@ import { MarksTab } from "./MarksTab";
 import { AssessmentsTab } from "./AssessmentsTab";
 import { ProgressTab } from "./ProgressTab";
 import { ResourcesTab } from "./ResourcesTab";
-import { Subject, Student, Assessment, Resource, MarksData } from "./types";
+import { Subject, Student, MarksData } from "./types";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
 import { api } from "../../lib/api";
 
 import { initials, avatarColor, avatar, gc } from "../../lib/dashboardHelpers";
 
 const SubjectTeacherDashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(() => {
+  const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("user");
     if (saved) {
       try {
@@ -38,9 +37,9 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [pushedStudents, setPushedStudents] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
-  const [term, setTerm] = useState<number>(user?.term || 1);
-  const [year, setYear] = useState<number>(user?.year || 2024);
-  const [examType, setExamType] = useState<string>(user?.examType || "opener");
+  const [term, setTerm] = useState<number>(currentUser?.term || 1);
+  const [year, setYear] = useState<number>(currentUser?.year || 2024);
+  const [examType, setExamType] = useState<string>(currentUser?.examType || "opener");
   const { theme, toggleTheme } = useDashboardTheme();
 
   const handleLogout = () => {
@@ -49,13 +48,13 @@ const SubjectTeacherDashboard: React.FC = () => {
   };
 
   const loadAssignments = useCallback(async () => {
-    if (!user?.id) {
+    if (!currentUser?.id) {
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      const data: any[] = await api.get(`/school/assignments/teacher/${user.id}`);
+      const data: any[] = await api.get(`/school/assignments/teacher/${currentUser.id}`);
       const mapped: Subject[] = data.map((a: any) => ({
         id: a._id, // Use assignment ID
         subjectId: a.subjectId._id,
@@ -67,6 +66,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         avg: 0,
         pushed: false,
         term: 1,
+        year: 2024,
         lastAssess: "N/A"
       }));
       setSubjects(mapped);
@@ -77,32 +77,33 @@ const SubjectTeacherDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     const refreshUser = async () => {
       try {
-        const freshUser: any = await api.get(`/users/${user.id}`);
+        const freshUser: any = await api.get(`/users/${currentUser.id}`);
         if (freshUser) {
            // Ensure roles is always an array
            let rolesArr = freshUser.roles;
            if (rolesArr && !Array.isArray(rolesArr)) {
              rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
            }
-           const updated = { ...user, ...freshUser, id: freshUser._id, roles: rolesArr || user.roles || [] };
+           const updated = { ...currentUser, ...freshUser, id: freshUser._id, roles: rolesArr || currentUser.roles || [] };
            localStorage.setItem("user", JSON.stringify(updated));
+           setCurrentUser(updated);
            setTerm(freshUser.term || 1);
            setYear(freshUser.year || 2024);
            setExamType(freshUser.examType || "opener");
         }
       } catch (e) {}
     };
-    if (user?.id) {
+    if (currentUser?.id) {
       refreshUser();
       const interval = setInterval(refreshUser, 15000); // Poll every 15 seconds
       return () => clearInterval(interval);
     }
-  }, [user?.id]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     loadAssignments();
@@ -170,14 +171,10 @@ const SubjectTeacherDashboard: React.FC = () => {
     setPushedStudents(new Set());
   }, [term, examType]);
 
-  const teacherName = user?.name || "Teacher";
+  const teacherName = currentUser?.name || "Teacher";
   const teacherInitials = initials(teacherName);
   const teacherAvatarColor = avatarColor(teacherName);
   
-  const rolesArray = Array.isArray(user?.roles) ? user.roles : [];
-  const isClassTeacher = rolesArray.includes("classteacher");
-  const canSwitchToClassDashboard = isClassTeacher;
-
   const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
     setMarksData((prev) => {
       const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
@@ -207,7 +204,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         }
       }
 
-      updatedStudentMarks[key as any] = n as any;
+      (updatedStudentMarks as any)[key] = n;
       updatedSubjectMarks[studentId] = updatedStudentMarks;
 
       return {
@@ -353,7 +350,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         teacherAvatarColor={teacherAvatarColor}
         streamsCount={subjects.length}
         totalStudents={students.length}
-        department={user?.department || "General"}
+        department={currentUser?.department || "General"}
         onLogout={handleLogout}
       />
 
@@ -366,7 +363,7 @@ const SubjectTeacherDashboard: React.FC = () => {
           theme={theme}
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}
-          user={user}
+          user={currentUser}
         />
         <div className={styles.contentArea}>
           {msg && (

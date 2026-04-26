@@ -24,6 +24,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   theme,
   onToggleTheme,
   onLogout,
+  user,
 }) => {
   const date = new Date().toLocaleDateString("en-GB", {
     weekday: "short",

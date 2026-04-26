@@ -1,6 +1,6 @@
 // components/subjectteacher/TopBar.tsx
 import React from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import styles from "./SubjectTeacherDashboard.module.css";
 import { DashboardTheme } from "../../lib/useDashboardTheme";
 import { RoleSwitcher } from "../shared/RoleSwitcher";
@@ -21,13 +21,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   teacherName,
   teacherInitials,
   teacherAvatarColor,
-  role,
-  canSwitchToClassDashboard = false,
   theme,
   onToggleTheme,
   onLogout,
+  user,
 }) => {
-  const navigate = useNavigate();
   const date = new Date().toLocaleDateString("en-GB", {
     weekday: "short",
     day: "numeric",

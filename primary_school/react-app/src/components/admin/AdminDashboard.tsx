@@ -69,7 +69,7 @@ const mapStudentsFromApi = (students: ApiStudent[]): Student[] =>
 const deriveClasses = (
   students: Student[],
   teachers: Teacher[],
-  subjects: Subject[],
+  _subjects: Subject[],
   assignments: ApiAssignment[],
 ): Class[] => {
   const classMap = new Map<string, Class>();
@@ -524,7 +524,6 @@ const AdminDashboard: React.FC = () => {
           onUnassignClassTeacher={unassignClassTeacher}
           onBulkTermUpdate={handleBulkTermUpdate}
           onSwitchTab={setActiveTab}
-          pill={pill}
           avatar={avatar}
           showModal={showModal}
           closeModal={closeModal}
@@ -555,7 +554,6 @@ const AdminDashboard: React.FC = () => {
           classes={classes}
           onSaveSubject={saveSubject}
           onDeleteSubject={deleteSubject}
-          pill={pill}
           showModal={showModal}
           closeModal={closeModal}
           showConfirm={showConfirm}

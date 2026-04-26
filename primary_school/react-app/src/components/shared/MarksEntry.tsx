@@ -24,6 +24,7 @@ interface MarksEntryProps {
   onRemoveCat?: (subjectId: string, catIndex: number) => void;
   avatar: (name: string, size: number) => string;
   term?: number;
+  year?: number;
   examType?: string;
   onTermChange?: (term: number) => void;
   onExamTypeChange?: (type: string) => void;
@@ -73,7 +74,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
             cat5Max: firstStudentMarks.cat5Max !== undefined ? firstStudentMarks.cat5Max : 40,
             examMax: firstStudentMarks.examMax !== undefined ? firstStudentMarks.examMax : 100
           };
-          setCatConfigs(prev => {
+          setCatConfigs((prev: any) => {
             if (JSON.stringify(prev) === JSON.stringify(newConfigs)) return prev;
             return newConfigs;
           });
@@ -93,7 +94,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
         });
         // Only update if we found marks, otherwise keep current (don't reset to 0 if we already added columns)
         if (maxCat > 0) {
-          setCatsCount(prev => prev === maxCat ? prev : maxCat);
+          setCatsCount((prev: number) => prev === maxCat ? prev : maxCat);
         }
       }
     }, [students, activeSubjectId, subjectMarks]);
@@ -105,13 +106,13 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
     });
   
     const addCat = () => {
-      if (catsCount < 5) setCatsCount(prev => prev + 1);
+      if (catsCount < 5) setCatsCount((prev: number) => prev + 1);
     };
   
     const removeCat = () => {
       if (catsCount > 0) {
         if (onRemoveCat) onRemoveCat(activeSubjectId, catsCount);
-        setCatsCount(prev => prev - 1);
+        setCatsCount((prev: number) => prev - 1);
       }
     };
   
@@ -127,7 +128,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
           n = null;
         }
       }
-      setCatConfigs(prev => ({ ...prev, [key]: n }));
+      setCatConfigs((prev: any) => ({ ...prev, [key]: n }));
       if (onConfigUpdate) onConfigUpdate(activeSubjectId, key, n as any);
     };
   
@@ -321,14 +322,14 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                           className={styles.markInput}
                           type="number" min="0" max="100"
                           value={marks.finalScore ?? ""}
-                          placeholder={(total !== null && maxTotal > 0) ? Math.round((total / maxTotal) * 100).toString() : "–"}
+                          placeholder={(total !== null && maxTotal > 0) ? Math.round(((total as number) / maxTotal) * 100).toString() : "–"}
                           onChange={(e) => onMarkUpdate(activeSubjectId, student.id, "finalScore", e.target.value)}
                           style={{ borderColor: "var(--gold)", fontWeight: 700 }}
                         />
                       ) : (
                         (marks.finalScore !== null || (total !== null && maxTotal > 0)) ? (
                           <span style={{ fontFamily: "var(--serif)", fontSize: "15px", fontWeight: 700, color: "var(--gold)" }}>
-                            {marks.finalScore !== null ? marks.finalScore : Math.round((total / maxTotal) * 100)}%
+                            {marks.finalScore !== null ? marks.finalScore : Math.round(((total as number) / maxTotal) * 100)}%
                           </span>
                         ) : (
                           <span style={{ color: "var(--textF)", fontSize: "11px" }}>Pending</span>

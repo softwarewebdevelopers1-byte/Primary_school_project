@@ -99,7 +99,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         }
       }
 
-      updatedStudentMarks[key as any] = n as any;
+      (updatedStudentMarks as any)[key] = n;
       updatedSubjectMarks[studentId] = updatedStudentMarks;
 
       return {
