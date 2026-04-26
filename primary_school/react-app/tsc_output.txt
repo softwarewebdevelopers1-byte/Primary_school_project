@@ -1,0 +1,31 @@
+src/components/admin/AdminDashboard.tsx(65,3): error TS6133: 'subjects' is declared but its value is never read.
+src/components/admin/AssignmentsTab.tsx(287,53): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/admin/ClassesTab.tsx(228,3): error TS6133: 'pill' is declared but its value is never read.
+src/components/admin/ClassesTab.tsx(240,42): error TS2551: Property 'role' does not exist on type 'Teacher'. Did you mean 'roles'?
+src/components/admin/ClassesTab.tsx(240,71): error TS2551: Property 'role' does not exist on type 'Teacher'. Did you mean 'roles'?
+src/components/admin/ClassesTab.tsx(240,102): error TS2551: Property 'role' does not exist on type 'Teacher'. Did you mean 'roles'?
+src/components/admin/SubjectsTab.tsx(2,26): error TS6133: 'Teacher' is declared but its value is never read.
+src/components/admin/SubjectsTab.tsx(241,3): error TS6133: 'pill' is declared but its value is never read.
+src/components/classteacher/MarksManagement.tsx(85,7): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ cat1: string | number | null; cat2: string | number | null; cat3: string | number | null; cat4: string | number | null; cat5: string | number | null; cat1Max: number; cat2Max: number; ... 5 more ...; finalScore: string | ... 1 more ... | null; }'.
+src/components/deputyhead/DeputyHeadDashboard.tsx(36,10): error TS6133: 'subjects' is declared but its value is never read.
+src/components/deputyhead/DeputyHeadDashboard.tsx(37,10): error TS6133: 'assignments' is declared but its value is never read.
+src/components/deputyhead/StudentManagement.tsx(6,14): error TS2305: Module '"./shared/helpers"' has no exported member 'avg'.
+src/components/shared/MarksEntry.tsx(67,23): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/components/shared/MarksEntry.tsx(121,19): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/components/shared/MarksEntry.tsx(294,89): error TS18047: 'total' is possibly 'null'.
+src/components/students/StudentDashboard.tsx(416,21): error TS6133: 'setMaterials' is declared but its value is never read.
+src/components/students/StudentDashboard.tsx(417,23): error TS6133: 'setAssessments' is declared but its value is never read.
+src/components/students/StudentDashboard.tsx(418,21): error TS6133: 'setQuestions' is declared but its value is never read.
+src/components/students/StudentDashboard.tsx(439,9): error TS6133: 'pendingCount' is declared but its value is never read.
+src/components/subjectteacher/ProgressTab.tsx(100,35): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/components/subjectteacher/ProgressTab.tsx(153,48): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/components/subjectteacher/ProgressTab.tsx(168,48): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(12,28): error TS6133: 'Assessment' is declared but its value is never read.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(12,40): error TS6133: 'Resource' is declared but its value is never read.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(19,9): error TS6133: 'navigate' is declared but its value is never read.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(32,26): error TS6133: 'setPushedStudents' is declared but its value is never read.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(84,35): error TS2339: Property 'subjectId' does not exist on type 'Subject'.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(163,7): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ cat1: string | number | null; cat2: string | number | null; cat3: string | number | null; cat4: string | number | null; cat5: string | number | null; cat1Max: number; cat2Max: number; ... 5 more ...; finalScore: string | ... 1 more ... | null; }'.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(221,35): error TS2339: Property 'subjectId' does not exist on type 'Subject'.
+src/components/subjectteacher/SubjectTeacherDashboard.tsx(253,35): error TS2339: Property 'subjectId' does not exist on type 'Subject'.

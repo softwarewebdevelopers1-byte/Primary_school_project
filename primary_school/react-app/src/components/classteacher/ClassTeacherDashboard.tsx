@@ -69,7 +69,7 @@ export default function ClassTeacherDashboard() {
       setStudents(studentsData);
       setSubjects(subjectsData.map((s: any) => ({ ...s, id: s._id })));
 
-      
+    
       // Filter assignments for THIS class
       const classAssignments = (staffData.assignments || []).filter(
         (a: any) => a.classGrade === user.classGrade && a.classStream === user.classStream

@@ -61,27 +61,47 @@ router.post("/login", async (req: Request, res: Response) => {
 // GET all users (staff and students) + subjects and assignments
 router.get("/", async (req: Request, res: Response) => {
   try {
-    const [allUsers, allSubjects, allAssignments] = await Promise.all([
+    const [allUsers, allSubjects, allAssignments, allMarks] = await Promise.all([
       userModel.find(),
       SubjectModel.find(),
       AssignmentModel.find(),
+      MarkModel.find(),
     ]);
     
     const students = allUsers.filter((u: any) => u.__t === rolesMapped.ST);
     const staff = allUsers.filter((u: any) => u.__t !== rolesMapped.ST);
 
     // Map backend models to frontend expected format if necessary
-    const mappedStudents = students.map((s: any) => ({
-      id: s._id,
-      admissionNo: s.ADM,
-      name: s.studentsName,
-      gender: s.gender,
-      guardianName: s.guardianName,
-      guardianPhone: s.guardianPhone,
-      classGrade: s.class,
-      classStream: s.classStream,
-      status: s.status,
-    }));
+    const mappedStudents = students.map((s: any) => {
+      // Find marks for this student
+      const studentMarksList = allMarks.filter((m: any) => m.studentId.toString() === s._id.toString());
+      const marksObj: Record<string, number> = {};
+      studentMarksList.forEach((m: any) => {
+        if (m.finalScore != null) {
+          marksObj[m.subjectId.toString()] = Number(m.finalScore);
+        } else {
+           // Basic fallback if finalScore isn't saved yet
+           const total = (m.cat1 || 0) + (m.cat2 || 0) + (m.cat3 || 0) + (m.cat4 || 0) + (m.cat5 || 0) + (m.exam || 0);
+           const possible = (m.cat1Max || 0) + (m.cat2Max || 0) + (m.cat3Max || 0) + (m.cat4Max || 0) + (m.cat5Max || 0) + (m.examMax || 0);
+           if (possible > 0) {
+             marksObj[m.subjectId.toString()] = Math.round((total / possible) * 100);
+           }
+        }
+      });
+
+      return {
+        id: s._id,
+        admissionNo: s.ADM,
+        name: s.studentsName,
+        gender: s.gender,
+        guardianName: s.guardianName,
+        guardianPhone: s.guardianPhone,
+        classGrade: s.class,
+        classStream: s.classStream,
+        status: s.status,
+        marks: marksObj,
+      };
+    });
 
     const mappedStaff = staff.map((t: any) => ({
       id: t._id,

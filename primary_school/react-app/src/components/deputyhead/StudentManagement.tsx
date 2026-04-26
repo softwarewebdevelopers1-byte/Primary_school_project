@@ -7,9 +7,11 @@ import { gc, avg } from "./shared/helpers";
 
 interface StudentManagementProps {
   students?: any[];
+  subjects?: any[];
 }
 
-export const StudentManagement: React.FC<StudentManagementProps> = ({ students = [] }) => {
+export const StudentManagement: React.FC<StudentManagementProps> = ({ students = [], subjects = [] }) => {
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [search, setSearch] = useState("");
   const filtered = students.filter(
     (s) =>
@@ -190,6 +192,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                 <td style={{ padding: "11px 14px" }}>
                   <button
                     className="dh-pill"
+                    onClick={() => setSelectedStudent(s)}
                     style={{
                       padding: "4px 12px",
                       background: "transparent",
@@ -211,6 +214,86 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
           </tbody>
         </table>
       </div>
+
+      {selectedStudent && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 20,
+          }}
+          onClick={() => setSelectedStudent(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: C.white,
+              borderRadius: 16,
+              width: "100%",
+              maxWidth: 500,
+              maxHeight: "85vh",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div style={{ padding: "24px 24px 16px", borderBottom: `1px solid ${C.borderLight}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                <h2 style={{ margin: 0, fontFamily: F.serif, fontSize: 24, color: C.text }}>{selectedStudent.name}</h2>
+                <button 
+                  onClick={() => setSelectedStudent(null)}
+                  style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: C.textMuted }}
+                >
+                  ×
+                </button>
+              </div>
+              <p style={{ margin: 0, fontFamily: F.sans, fontSize: 14, color: C.textMid }}>
+                <strong>Adm No:</strong> {selectedStudent.admissionNo || selectedStudent.adm || "-"} | <strong>Class:</strong> Grade {selectedStudent.classGrade}{selectedStudent.classStream || ""}
+              </p>
+            </div>
+            <div style={{ padding: 24, overflowY: "auto" }}>
+              <h4 style={{ margin: "0 0 12px", fontFamily: F.sans, color: C.text }}>Subject Performance</h4>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: C.sand, textAlign: "left" }}>
+                    <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted }}>Subject</th>
+                    <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted }}>Score (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjects.map((sub, i) => {
+                    const mark = (selectedStudent.marks || {})[sub.id];
+                    return (
+                      <tr key={sub.id || i} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
+                        <td style={{ padding: "10px 12px", fontFamily: F.sans, fontSize: 13, color: C.text }}>{sub.name}</td>
+                        <td style={{ padding: "10px 12px", fontFamily: F.serif, fontSize: 13, fontWeight: 600, color: mark != null ? gc(mark) : C.textMid }}>
+                          {mark != null ? mark : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {subjects.length === 0 && (
+                    <tr>
+                      <td colSpan={2} style={{ padding: 20, textAlign: "center", color: C.textMuted, fontFamily: F.sans }}>No subjects loaded.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", padding: 16, background: C.cream, borderRadius: 8 }}>
+                <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: C.textMid }}>Average Score</span>
+                <span style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 700, color: gc(avg(selectedStudent.marks || {})) }}>
+                  {avg(selectedStudent.marks || {})}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

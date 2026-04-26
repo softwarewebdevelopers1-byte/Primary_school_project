@@ -70,7 +70,10 @@ export default function DeputyHeadDashboard({
 
       // Find class teachers from staff
       (data.staff || []).forEach((t: any) => {
-        if (t.roleLabel === "ClassTeacher" && t.classGrade) {
+        if (
+          (t.roleLabel?.toLowerCase() === "classteacher" || t.role === "classTeacher") &&
+          t.classGrade
+        ) {
           const key = `${t.classGrade}${t.classStream || ""}`;
           if (classMap.has(key)) {
             classMap.get(key).teacher = t.name;
@@ -153,9 +156,9 @@ export default function DeputyHeadDashboard({
       case "teachers":
         return <TeacherManagement staff={staff} />;
       case "classes":
-        return <ClassManagement classes={classes} />;
+        return <ClassManagement classes={classes} students={students} staff={staff} />;
       case "students":
-        return <StudentManagement students={students} />;
+        return <StudentManagement students={students} subjects={subjects} />;
       case "analytics":
         return <Analytics />;
       case "reports":
