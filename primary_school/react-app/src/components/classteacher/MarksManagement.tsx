@@ -44,7 +44,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         classGrade: user.classGrade,
         classStream: user.classStream,
         term: term,
-        year: user.year || 2024,
+        year: year,
         examType: examType
       });
 
@@ -154,7 +154,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         classGrade: user.classGrade,
         classStream: user.classStream,
         term: term,
-        year: user.year || 2024,
+        year: year,
         examType: examType,
         marksData: data,
         catConfigs

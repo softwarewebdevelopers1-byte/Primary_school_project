@@ -107,7 +107,7 @@ export default function ClassTeacherDashboard() {
 
   useEffect(() => {
     refreshUser();
-    const interval = setInterval(refreshUser, 60000); // Sync every minute
+    const interval = setInterval(refreshUser, 15000); // Sync every 15 seconds
     return () => clearInterval(interval);
   }, [refreshUser]);
 

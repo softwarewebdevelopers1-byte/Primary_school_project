@@ -88,7 +88,7 @@ const SubjectTeacherDashboard: React.FC = () => {
     };
     if (user?.id) {
       refreshUser();
-      const interval = setInterval(refreshUser, 60000); // Poll every minute
+      const interval = setInterval(refreshUser, 15000); // Poll every 15 seconds
       return () => clearInterval(interval);
     }
   }, [user?.id]);
