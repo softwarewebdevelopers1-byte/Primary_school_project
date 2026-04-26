@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { MarkModel, ArchiveModel, SubjectModel } from "../models/school.model.js";
 import { studentModel } from "../models/user.model.js";
 import dotenv from "dotenv";
@@ -49,7 +49,7 @@ export async function archiveClassMarks(classGrade: string, classStream: string,
   const teacherName = (classTeacher as any)?.teachersName || "N/A";
   
   // 4. Generate PDF
-  const doc = new jsPDF("landscape") as any;
+  const doc = new jsPDF("landscape");
   
   doc.setFontSize(22);
   doc.setTextColor(20, 50, 40);
@@ -93,7 +93,7 @@ export async function archiveClassMarks(classGrade: string, classStream: string,
     return rowData;
   });
 
-  doc.autoTable({
+  autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
     startY: 45,
@@ -117,7 +117,9 @@ export async function archiveClassMarks(classGrade: string, classStream: string,
       upsert: true
     });
 
-  if (uploadError) throw new Error(`Supabase Upload Error: ${uploadError.message}`);
+  if (uploadError) {
+    throw new Error(`Supabase Storage Error: ${uploadError.message} (Bucket: ${sanitizedBucket})`);
+  }
 
   // 6. Get Public URL
   const { data: { publicUrl } } = supabase.storage
