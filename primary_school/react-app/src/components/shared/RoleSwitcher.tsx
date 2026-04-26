@@ -52,11 +52,6 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
   // Remove duplicates
   roles = Array.from(new Set(roles));
 
-  if (roles.length <= 1) return null;
-
-  const currentPath = window.location.pathname;
-  const currentRole = roles.find(r => rolePaths[r]?.toLowerCase() === currentPath.toLowerCase()) || roles[0];
-
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -67,6 +62,11 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  if (roles.length <= 1) return null;
+
+  const currentPath = window.location.pathname;
+  const currentRole = roles.find(r => rolePaths[r]?.toLowerCase() === currentPath.toLowerCase()) || roles[0];
 
   return (
     <div ref={dropdownRef} style={{ position: "relative", zIndex: 100 }}>
