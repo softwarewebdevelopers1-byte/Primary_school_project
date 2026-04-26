@@ -14,6 +14,7 @@ interface TopBarProps {
   onToggleTheme: () => void;
   onLogout: () => void;
   user: any;
+  onRefresh?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -25,6 +26,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleTheme,
   onLogout,
   user,
+  onRefresh,
 }) => {
   const date = new Date().toLocaleDateString("en-GB", {
     weekday: "short",
@@ -61,6 +63,30 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           {theme === "dark" ? "Light" : "Dark"}
         </button>
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "var(--white)",
+              color: "var(--gold)",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+            </svg>
+            Sync
+          </button>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div
             className={styles.sbAvatar}

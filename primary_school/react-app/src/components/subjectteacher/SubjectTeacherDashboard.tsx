@@ -79,31 +79,49 @@ const SubjectTeacherDashboard: React.FC = () => {
     }
   }, [currentUser?.id]);
 
-  useEffect(() => {
-    const refreshUser = async () => {
-      try {
-        const freshUser: any = await api.get(`/users/${currentUser.id}`);
-        if (freshUser) {
-           // Ensure roles is always an array
-           let rolesArr = freshUser.roles;
-           if (rolesArr && !Array.isArray(rolesArr)) {
-             rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
-           }
-           const updated = { ...currentUser, ...freshUser, id: freshUser._id, roles: rolesArr || currentUser.roles || [] };
-           const savedItem = localStorage.getItem("user"); if (savedItem) { const parsed = JSON.parse(savedItem); parsed.user = updated; localStorage.setItem("user", JSON.stringify(parsed)); }
-           setCurrentUser(updated);
-           setTerm(freshUser.term || 1);
-           setYear(freshUser.year || 2024);
-           setExamType(freshUser.examType || "opener");
+  const refreshUser = useCallback(async () => {
+    if (!currentUser?.id) return;
+    try {
+      const freshUser: any = await api.get(`/users/${currentUser.id}`);
+      if (freshUser) {
+        // Ensure roles is always an array
+        let rolesArr = freshUser.roles;
+        if (rolesArr && !Array.isArray(rolesArr)) {
+          rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
         }
-      } catch (e) {}
-    };
-    if (currentUser?.id) {
-      refreshUser();
-      const interval = setInterval(refreshUser, 15000); // Poll every 15 seconds
-      return () => clearInterval(interval);
-    }
+        const updated = {
+          ...currentUser,
+          ...freshUser,
+          id: freshUser._id,
+          roles: rolesArr || currentUser.roles || [],
+        };
+        const savedItem = localStorage.getItem("user");
+        if (savedItem) {
+          const parsed = JSON.parse(savedItem);
+          parsed.user = updated;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        }
+        setCurrentUser(updated);
+        setTerm(freshUser.term || 1);
+        setYear(freshUser.year || 2024);
+        setExamType(freshUser.examType || "opener");
+      }
+    } catch (e) {}
   }, [currentUser?.id]);
+
+  const handleManualRefresh = async () => {
+    setLoading(true);
+    await refreshUser();
+    await loadAssignments();
+    await loadStudentsAndMarks();
+    setLoading(false);
+    setMsg({ text: "Dashboard synchronized.", type: "success" });
+    setTimeout(() => setMsg(null), 3000);
+  };
+
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
 
   useEffect(() => {
     loadAssignments();
@@ -364,6 +382,7 @@ const SubjectTeacherDashboard: React.FC = () => {
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}
           user={currentUser}
+          onRefresh={handleManualRefresh}
         />
         <div className={styles.contentArea}>
           {msg && (

@@ -121,10 +121,15 @@ export default function ClassTeacherDashboard() {
     } catch (e) {}
   }, [currentUser?.id]);
 
+  const handleManualRefresh = async () => {
+    setLoading(true);
+    await refreshUser();
+    await loadData();
+    setLoading(false);
+  };
+
   useEffect(() => {
     refreshUser();
-    const interval = setInterval(refreshUser, 15000);
-    return () => clearInterval(interval);
   }, [refreshUser]);
 
   const handleLogout = () => {
@@ -269,6 +274,7 @@ export default function ClassTeacherDashboard() {
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
             user={currentUser}
+            onRefresh={handleManualRefresh}
           />
 
           {/* Hero panel */}
