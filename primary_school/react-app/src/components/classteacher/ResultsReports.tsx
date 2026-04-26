@@ -2,7 +2,7 @@
 import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { avg, sum, gradeColor } from "./shared/helpers";
+import { avg, sum, gradeColor, grade } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 
 interface ResultsReportsProps {
@@ -85,14 +85,15 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({ students, subjec
     try {
       if (type === "Full Merit List" || type === "Full class report" || type === "Subject summary") {
         const csvContent = [
-          ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg"],
+          ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg", "Grade"],
           ...sortedStudents.map((s, i) => [
             i + 1,
             `"${s.name}"`,
             s.adm || "-",
             ...subjects.map(sub => (s.marks || {})[sub.id] ?? "-"),
             sum(s.marks || {}),
-            avg(s.marks || {}) + "%"
+            avg(s.marks || {}) + "%",
+            grade(avg(s.marks || {}))
           ])
         ].map(row => row.join(",")).join("\n");
 
@@ -117,10 +118,10 @@ Name: ${slip.name}
 Admission No: ${slip.adm || "-"}
 Term: 1 | Year: 2024
 -----------------------------------
-${subjects.map(sub => `${sub.name.padEnd(20)}: ${(slip.marks || {})[sub.id] ?? "-"}%`).join("\n")}
+${subjects.map(sub => `${sub.name.padEnd(20)}: ${((slip.marks || {})[sub.id] ?? "-").toString().padEnd(4)}  ${(slip.marks || {})[sub.id] != null ? `(${grade((slip.marks || {})[sub.id])})` : ""}`).join("\n")}
 -----------------------------------
 Total Marks: ${sum(slip.marks || {})}
-Average: ${avg(slip.marks || {})}%
+Average: ${avg(slip.marks || {})}%  (${grade(avg(slip.marks || {}))})
 `;
         const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
