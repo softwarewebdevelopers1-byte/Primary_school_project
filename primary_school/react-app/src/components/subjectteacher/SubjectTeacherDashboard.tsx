@@ -228,6 +228,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       });
       setMsg({ text: "Marks saved successfully!", type: "success" });
       setTimeout(() => setMsg(null), 3000);
+      loadStudentsAndMarks();
     } catch (err) {
       setMsg({ text: "Failed to save marks.", type: "error" });
       setTimeout(() => setMsg(null), 3000);
@@ -259,6 +260,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       setPushedSubjects((prev) => new Set(prev).add(subjectId));
       setMsg({ text: `Marks saved and pushed for ${currentSubject.grade}`, type: "success" });
       setTimeout(() => setMsg(null), 3000);
+      loadStudentsAndMarks();
     } catch (err) {
       setMsg({ text: "Failed to push marks.", type: "error" });
       setTimeout(() => setMsg(null), 3000);

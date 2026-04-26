@@ -149,7 +149,7 @@ export default function ClassTeacherDashboard() {
       case "students":
         return <StudentRecords students={students} subjects={subjects} onViewStudent={setSelectedStudent} classInfo={`Grade ${user?.classGrade}${user?.classStream}`} />;
       case "marks":
-        return <MarksManagement students={students} subjects={subjects} />;
+        return <MarksManagement students={students} subjects={subjects} onRefresh={loadData} />;
       case "assignments":
         return (
           <SubjectAssignments

@@ -9,9 +9,10 @@ import { MarksData, Subject, Student } from "../subjectteacher/types";
 interface MarksManagementProps {
   students: any[];
   subjects: any[];
+  onRefresh?: () => void;
 }
 
-export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects }) => {
+export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects, onRefresh }) => {
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
@@ -146,6 +147,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         catConfigs
       });
       setMsg({ text: "Marks saved successfully!", type: "success" });
+      if (onRefresh) onRefresh();
     } catch (err: any) {
       setMsg({ text: "Failed to save: " + err.message, type: "error" });
     }
