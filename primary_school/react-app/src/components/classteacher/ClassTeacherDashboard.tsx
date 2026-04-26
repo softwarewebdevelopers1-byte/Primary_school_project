@@ -61,11 +61,11 @@ export default function ClassTeacherDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const [studentsData, subjectsData, staffData]: [any[], any[], any] = await Promise.all([
+      const [studentsData, subjectsData, staffData] = (await Promise.all([
         api.get(`/users/class/${user.classGrade}/${user.classStream}`),
         api.get("/school/subjects"),
         api.get("/users") // Get assignments and staff names
-      ]);
+      ])) as [any[], any[], any];
       setStudents(studentsData);
       setSubjects(subjectsData.map((s: any) => ({ ...s, id: s._id })));
 
