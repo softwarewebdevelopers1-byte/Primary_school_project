@@ -12,6 +12,7 @@ interface TopBarProps {
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
+  user: any;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -21,12 +22,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   theme,
   onToggleTheme,
   onLogout,
+  user,
 }) => {
   const navigate = useNavigate();
-  const [user] = useState(() => {
-    const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
-  });
 
   const isSubjectTeacher = user?.roles?.includes("subjectteacher");
   const teachesSubjects = isSubjectTeacher;

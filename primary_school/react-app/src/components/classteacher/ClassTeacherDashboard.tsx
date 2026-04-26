@@ -260,6 +260,7 @@ export default function ClassTeacherDashboard() {
             theme={theme}
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
+            user={user}
           />
 
           {/* Hero panel */}
