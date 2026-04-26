@@ -472,17 +472,21 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
         { $group: { _id: { class: "$class", stream: "$classStream" } } }
       ]);
 
+      // Archive each class to PDF and upload to Supabase
+      const archiveResults = [];
       for (const cls of uniqueClasses) {
-        await archiveClassMarks(
+        if (!cls._id.class) continue;
+        const result = await archiveClassMarks(
           cls._id.class, 
-          cls._id.stream, 
+          cls._id.stream || "", 
           currentTerm, 
           currentYear, 
           currentExamType
         );
+        if (result) archiveResults.push(result);
       }
 
-      // Advance assignments to next grade if year is advanced
+      // 2. Advance assignments to next grade if year is advanced
       const { AssignmentModel } = await import("../models/school.model.js");
       const allAssignments = await AssignmentModel.find();
       for (const assignment of allAssignments) {
@@ -502,15 +506,17 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
         }
       }
 
-      // Safe deletion: only delete marks for the cycle we just archived
+      // 3. Safe deletion: ONLY delete marks for the cycle we just archived
       await MarkModel.deleteMany({
         term: currentTerm,
         year: currentYear,
         examType: currentExamType
       });
       
-    } catch (archiveError) {
-      // Silently continue or log if needed, but don't break the promo flow
+    } catch (archiveError: any) {
+      return res.status(500).json({ 
+        message: `Archiving failed: ${archiveError.message}. Marks have NOT been deleted. Please check your Supabase connection.` 
+      });
     }
 
     await userModel.updateMany({}, { 
@@ -521,7 +527,7 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
       } 
     });
 
-    res.json({ message: "Academic cycle updated. Students and assignments promoted where applicable." });
+    res.json({ message: "Marks archived successfully to Supabase and academic cycle updated." });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

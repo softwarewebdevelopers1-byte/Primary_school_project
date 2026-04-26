@@ -481,11 +481,11 @@ const AdminDashboard: React.FC = () => {
   
   const handleBulkTermUpdate = async (term: number, year: number, examType: string) => {
     try {
-      await api.put("/users/bulk-update-term", { term, year, examType });
+      const res: any = await api.put("/users/bulk-update-term", { term, year, examType });
       await loadDashboardUsers();
-      showSuccess(`All classes have been updated to Term ${term}, ${year} (${examType}).`);
-    } catch (err) {
-      showError("Failed to update all classes.");
+      showSuccess(res.message || `All classes have been updated to Term ${term}, ${year} (${examType}).`);
+    } catch (err: any) {
+      showError(err.response?.data?.message || "Failed to update academic cycle. Marks were not deleted.");
     }
   };
 
