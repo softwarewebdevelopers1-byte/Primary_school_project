@@ -1,13 +1,6 @@
 export interface LoginResponse {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-    roleLabel: string;
-    dashboardPath: string;
-    availableDashboards: string[];
-  };
+  token: string;
+  user: any;
 }
 
 const API_BASE_URL =
@@ -18,9 +11,21 @@ const request = async <T>(
   init?: RequestInit,
 ): Promise<T> => {
   const target = input.startsWith("http") ? input : `${API_BASE_URL}${input}`;
+  
+  // Get token from localStorage
+  const saved = localStorage.getItem("user");
+  let token = "";
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      token = parsed.token || "";
+    } catch (e) {}
+  }
+
   const response = await fetch(target, {
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers || {}),
     },
     ...init,
@@ -29,6 +34,11 @@ const request = async <T>(
   const data = await response.json();
 
   if (!response.ok) {
+    if (response.status === 401 && !input.includes("/login")) {
+      // Optional: Handle token expiration/unauthorized
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
     throw new Error(data.message || "Request failed.");
   }
 

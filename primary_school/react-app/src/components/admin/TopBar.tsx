@@ -1,6 +1,7 @@
 // components/admin/TopBar.tsx
 import React from "react";
 import { DashboardTheme } from "../../lib/useDashboardTheme";
+import { RoleSwitcher } from "../shared/RoleSwitcher";
 
 interface TopBarProps {
   title: string;
@@ -11,6 +12,7 @@ interface TopBarProps {
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
+  user: any;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -109,6 +111,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             </span>
           </button>
         )}
+        <RoleSwitcher user={user} />
         <button
           onClick={onToggleTheme}
           style={{

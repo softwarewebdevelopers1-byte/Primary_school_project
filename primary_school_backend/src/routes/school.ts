@@ -3,8 +3,11 @@ import type { Response, Request } from "express";
 import mongoose from "mongoose";
 import { SubjectModel, AssignmentModel } from "../models/school.model.js";
 import { studentModel, rolesMapped } from "../models/user.model.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
+
+router.use(authenticate);
 
 // Subjects
 router.get("/subjects", async (req: Request, res: Response) => {

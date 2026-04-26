@@ -30,7 +30,7 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({ classGrade, classStr
         const data: Archive[] = await api.get("/school/archives", { classGrade, classStream });
         setArchives(data);
       } catch (err) {
-        console.error("Failed to fetch archives", err);
+        
       } finally {
         setLoading(false);
       }

@@ -41,7 +41,13 @@ export default function DeputyHeadDashboard({
   const [loading, setLoading] = useState(true);
   const [storedUser, setStoredUser] = useState(() => {
     const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.user || parsed;
+      } catch (e) {}
+    }
+    return null;
   });
 
   const refreshUser = async () => {
@@ -155,7 +161,7 @@ export default function DeputyHeadDashboard({
 
       setClasses(Array.from(classMap.values()));
     } catch (err) {
-      console.error("Failed to load dashboard data", err);
+      
     } finally {
       setLoading(false);
     }
@@ -182,7 +188,7 @@ export default function DeputyHeadDashboard({
 
   const isHT = roleToggle === "headteacher";
   const user = {
-    name: isHT ? "Mr. John Mwangi" : "Mrs. Jane Wanjiku",
+    name: storedUser?.name || (isHT ? "Head Teacher" : "Deputy Head"),
     role: isHT ? "Head Teacher" : "Deputy Head Teacher",
   };
 
@@ -289,14 +295,14 @@ export default function DeputyHeadDashboard({
         >
           <TopBar
             activeLabel={active.label}
-            userName={user.name}
-            userRole={user.role}
+            userName={storedUser?.name || ""}
             date={date}
             isMobile={isMobile}
             onOpenMenu={() => setMobileMenuOpen(true)}
             theme={theme}
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
+            user={storedUser}
           />
 
           {/* Hero — only on overview */}

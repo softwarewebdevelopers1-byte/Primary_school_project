@@ -2,8 +2,11 @@ import { Router } from "express";
 import type { Response, Request } from "express";
 import { MarkModel } from "../models/school.model.js";
 import { userModel, rolesMapped, studentModel } from "../models/user.model.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = Router();
+
+router.use(authenticate);
 
 // GET marks for a specific subject and class
 router.get("/", async (req: Request, res: Response) => {

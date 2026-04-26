@@ -4,73 +4,13 @@ import React, { useState, useEffect } from "react";
 import styles from "./LoginPage.module.css";
 import { api } from "../../lib/api";
 
-// Mock user database
-const mockUsers = [
-  {
-    id: "1",
-    email: "superadmin@school.com",
-    password: "admin123",
-    role: "superadmin",
-    name: "Super Admin",
-    avatar:
-      "https://ui-avatars.com/api/?name=Super+Admin&background=EF4444&color=fff",
-  },
-  {
-    id: "2",
-    email: "admin@school.com",
-    password: "admin123",
-    role: "admin",
-    name: "School Admin",
-    avatar:
-      "https://ui-avatars.com/api/?name=School+Admin&background=4F46E5&color=fff",
-  },
-  {
-    id: "3",
-    email: "headteacher@school.com",
-    password: "head123",
-    role: "headteacher",
-    name: "John Mwangi",
-    avatar:
-      "https://ui-avatars.com/api/?name=John+Mwangi&background=10B981&color=fff",
-  },
-  {
-    id: "4",
-    email: "deputy@school.com",
-    password: "deputy123",
-    role: "deputy",
-    name: "Jane Wanjiku",
-    avatar:
-      "https://ui-avatars.com/api/?name=Jane+Wanjiku&background=F59E0B&color=fff",
-  },
-  {
-    id: "5",
-    email: "teacher@school.com",
-    password: "teacher123",
-    role: "teacher",
-    name: "Peter Otieno",
-    subject: "Mathematics",
-    avatar:
-      "https://ui-avatars.com/api/?name=Peter+Otieno&background=8B5CF6&color=fff",
-  },
-  {
-    id: "6",
-    email: "classteacher@school.com",
-    password: "class123",
-    role: "classteacher",
-    name: "Mary Achieng",
-    class: "Grade 7A",
-    avatar:
-      "https://ui-avatars.com/api/?name=Mary+Achieng&background=EC4899&color=fff",
-  },
-];
-
 const roleLabels: Record<string, string> = {
   superadmin: "Super Admin",
   admin: "Admin",
   headteacher: "Head Teacher",
-  deputy: "Deputy Head",
+  deputyteacher: "Deputy Head",
   classteacher: "Class Teacher",
-  teacher: "Subject Teacher",
+  subjectteacher: "Subject Teacher",
 };
 
 // SVG Icon Components
@@ -205,16 +145,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const response = await api.post("/users/login", { email, password });
-      const user: any = response;
-      console.log(response)
-
+      const response: any = await api.post("/users/login", { email, password });
+      
       // Store user data in localStorage
       localStorage.setItem(
         "user",
-        JSON.stringify(user),
+        JSON.stringify(response),
       );
 
+      const user = response.user;
       if (onLogin) {
         onLogin(user);
       } else {
@@ -231,7 +170,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         window.location.href = paths[primaryRole] || "/dashboard";
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Invalid email or password. Please try again.");
+      setError(err.message || "Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -416,30 +355,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </button>
             </form>
 
-            {/* Demo Section */}
-            <div className={styles.demoSection}>
-              <div className={styles.demoDivider}>
-                <div className={styles.dividerLine} />
-                <span className={styles.dividerText}>Quick Demo Access</span>
-                <div className={styles.dividerLine} />
-              </div>
-              <div className={styles.demoButtons}>
-                {Object.entries(roleLabels).map(([role, label]) => (
-                  <button
-                    key={role}
-                    onClick={() => handleDemoLogin(role)}
-                    className={`${styles.demoButton} ${activeDemo === role ? styles.demoButtonActive : ""}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {activeDemo && (
-                <p className={styles.demoMessage}>
-                  Credentials filled — click Sign In to continue
-                </p>
-              )}
-            </div>
           </div>
         </div>
       </div>

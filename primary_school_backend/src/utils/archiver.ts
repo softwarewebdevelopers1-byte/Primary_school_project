@@ -16,7 +16,7 @@ const bucketName = process.env.SUPABASE_BUCKET || "Carlos'sWorkSpace";
 
 export async function archiveClassMarks(classGrade: string, classStream: string, term: number, year: number, examType: string) {
   try {
-    console.log(`Archiving marks for ${classGrade} ${classStream} - Term ${term}, ${year} (${examType})...`);
+
 
     // 1. Fetch students in this class
     const students = await studentModel.find({ class: classGrade, classStream: classStream } as any);
@@ -119,7 +119,7 @@ export async function archiveClassMarks(classGrade: string, classStream: string,
 
     return archive;
   } catch (error) {
-    console.error(`Error archiving class ${classGrade} ${classStream}:`, error);
+
     return null;
   }
 }

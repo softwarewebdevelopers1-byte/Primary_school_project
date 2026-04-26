@@ -57,7 +57,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         }, {} as any)
       }));
     } catch (err) {
-      console.error("Failed to load detailed marks", err);
+      
     }
   }, [activeSubjectId, user.classGrade, user.classStream, term, year, examType]);
 

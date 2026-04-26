@@ -3,29 +3,30 @@ import React from "react";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
 import { DashboardTheme } from "../../lib/useDashboardTheme";
+import { RoleSwitcher } from "../shared/RoleSwitcher";
 
 interface TopBarProps {
   activeLabel: string;
   userName: string;
-  userRole: string;
   date: string;
   isMobile: boolean;
   onOpenMenu: () => void;
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
+  user: any;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   activeLabel,
   userName,
-  userRole,
   date,
   isMobile,
   onOpenMenu,
   theme,
   onToggleTheme,
   onLogout,
+  user,
 }) => (
   <header
     className="dh-topBar"
@@ -123,29 +124,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       >
         {date}
       </p>
-      <div style={{ textAlign: "right" }}>
-        <p
-          style={{
-            fontFamily: F.sans,
-            fontSize: 10.5,
-            color: C.textFaint,
-            margin: 0,
-          }}
-        >
-          Signed in as
-        </p>
-        <p
-          style={{
-            fontFamily: F.sans,
-            fontSize: 12.5,
-            fontWeight: 700,
-            color: C.textMid,
-            margin: 0,
-          }}
-        >
-          {userRole}
-        </p>
-      </div>
+      <RoleSwitcher user={user} />
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <Avatar name={userName} size={33} />
         <div>

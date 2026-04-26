@@ -17,9 +17,15 @@ import { initials, avatarColor, avatar, gc } from "../../lib/dashboardHelpers";
 
 const SubjectTeacherDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [user] = useState(() => {
+  const [user, setUser] = useState(() => {
     const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.user || parsed;
+      } catch (e) {}
+    }
+    return null;
   });
 
   const [collapsed, setCollapsed] = useState(false);
@@ -67,7 +73,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       if (mapped.length > 0) setActiveSubjectId(mapped[0].id);
 
     } catch (err) {
-      console.error("Failed to load assignments", err);
+      
     } finally {
       setLoading(false);
     }
@@ -118,7 +124,7 @@ const SubjectTeacherDashboard: React.FC = () => {
       });
 
       if (!Array.isArray(data)) {
-        console.error("Unexpected response from /marks:", data);
+        
         setStudents([]);
         return;
       }
@@ -144,7 +150,6 @@ const SubjectTeacherDashboard: React.FC = () => {
         }, {} as any)
       }));
     } catch (err) {
-      console.error("Failed to load students and marks", err);
       setStudents([]);
     }
   }, [activeSubjectId, subjects, term, year, examType]);
@@ -358,11 +363,10 @@ const SubjectTeacherDashboard: React.FC = () => {
           teacherName={teacherName}
           teacherInitials={teacherInitials}
           teacherAvatarColor={teacherAvatarColor}
-          role="Subject Teacher"
-          canSwitchToClassDashboard={canSwitchToClassDashboard}
           theme={theme}
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}
+          user={user}
         />
         <div className={styles.contentArea}>
           {msg && (

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 import { DashboardTheme } from "../../lib/useDashboardTheme";
+import { RoleSwitcher } from "../shared/RoleSwitcher";
 
 interface TopBarProps {
   activeLabel: string;
@@ -100,26 +101,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         className="ct-topBarMeta"
         style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}
       >
-        {teachesSubjects && (
-          <button
-            type="button"
-            onClick={() => navigate("/subjectTeacher")}
-            style={{
-              padding: "9px 14px",
-              borderRadius: 10,
-              border: `1px solid ${C.border}`,
-              background: C.goldPale,
-              color: C.text,
-              fontFamily: FONT.sans,
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Subject Dashboard
-          </button>
-        )}
+        <RoleSwitcher user={user} />
         <button
           type="button"
           onClick={onToggleTheme}

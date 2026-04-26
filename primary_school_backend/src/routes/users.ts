@@ -3,6 +3,10 @@ import type { Response, Request } from "express";
 import bcrypt from "bcrypt";
 import { userModel, studentModel, adminModel, classTeacherModel, subjectTeacher, deputyModel, headTeacherModel, rolesMapped } from "../models/user.model.js";
 import { SubjectModel, AssignmentModel, MarkModel } from "../models/school.model.js";
+import jwt from "jsonwebtoken";
+import { authenticate } from "../middleware/auth.js";
+
+const SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 const router = Router();
 
@@ -42,16 +46,24 @@ router.post("/login", async (req: Request, res: Response) => {
       }
     }
 
+    const token = jwt.sign({ id: user._id, email: user.email || user.ADM, roles }, SECRET, { expiresIn: "1d" });
+
     res.json({
-      id: user._id,
-      name: user.teachersName || user.studentsName,
-      email: user.email || user.ADM,
-      roles,
-      primaryRole: roles[0],
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.teachersName || user.studentsName)}&background=random&color=fff`,
-      classGrade: user.class,
-      classStream: user.classStream,
-      subjects: user.subjects ? [user.subjects.subject1, user.subjects.subject2].filter(Boolean) : [],
+      token,
+      user: {
+        id: user._id,
+        name: user.teachersName || user.studentsName,
+        email: user.email || user.ADM,
+        roles,
+        primaryRole: roles[0],
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.teachersName || user.studentsName)}&background=random&color=fff`,
+        classGrade: user.class,
+        classStream: user.classStream,
+        subjects: user.subjects ? [user.subjects.subject1, user.subjects.subject2].filter(Boolean) : [],
+        term: user.term,
+        year: user.year,
+        examType: user.examType
+      }
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -59,7 +71,7 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 // GET all users (staff and students) + subjects and assignments
-router.get("/", async (req: Request, res: Response) => {
+router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
     const [allUsers, allSubjects, allAssignments, allMarks] = await Promise.all([
       userModel.find(),
@@ -182,7 +194,7 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/:id", async (req: Request, res: Response) => {
+router.get("/:id", authenticate, async (req: Request, res: Response) => {
   try {
     const user: any = await userModel.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -213,7 +225,7 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
+router.get("/class/:grade/:stream", authenticate, async (req: Request, res: Response) => {
   try {
     const { grade, stream } = req.params;
     const { term, year } = req.query;
@@ -308,7 +320,7 @@ router.get("/class/:grade/:stream", async (req: Request, res: Response) => {
 });
 
 // POST a new user
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", authenticate, async (req: Request, res: Response) => {
   try {
     const { role } = req.body;
     if (role !== rolesMapped.ST) {
@@ -375,7 +387,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // Bulk update term and year for all users
-router.put("/bulk-update-term", async (req: Request, res: Response) => {
+router.put("/bulk-update-term", authenticate, async (req: Request, res: Response) => {
   try {
     const { term, year, examType } = req.body;
     if (term === undefined || year === undefined) {
@@ -389,7 +401,9 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
     const usersToProcess = await userModel.find({ 
       $or: [
         { __t: rolesMapped.ST },
-        { "roles.role1": rolesMapped.CT }
+        { "roles.role1": rolesMapped.CT },
+        { "roles.role2": rolesMapped.CT },
+        { "roles.role3": rolesMapped.CT }
       ],
       class: { $ne: null }
     } as any);
@@ -442,8 +456,6 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
         { $group: { _id: { class: "$class", stream: "$classStream" } } }
       ]);
 
-      console.log(`Starting bulk archiving for ${uniqueClasses.length} classes...`);
-      
       for (const cls of uniqueClasses) {
         await archiveClassMarks(
           cls._id.class, 
@@ -454,15 +466,29 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
         );
       }
 
-      // Delete all marks as requested
-      console.log("Archiving complete. Deleting all marks from database...");
+      // Advance assignments
+      const allAssignments = await AssignmentModel.find();
+      for (const assignment of allAssignments) {
+        const match = assignment.classGrade.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0]);
+          if (newYear > currentYear) {
+            const nextClassGrade = assignment.classGrade.replace(match[0], (num + 1).toString());
+            await AssignmentModel.findByIdAndUpdate(assignment._id, { classGrade: nextClassGrade });
+          } else if (newYear < currentYear) {
+            const prevNum = num - 1;
+            if (prevNum > 0) {
+              const prevClassGrade = assignment.classGrade.replace(match[0], prevNum.toString());
+              await AssignmentModel.findByIdAndUpdate(assignment._id, { classGrade: prevClassGrade });
+            }
+          }
+        }
+      }
+
       await MarkModel.deleteMany({});
       
     } catch (archiveError) {
-      console.error("Critical error during archiving process:", archiveError);
-      // We continue with the update even if archiving fails, or should we abort?
-      // User said "all the users marks should be deleted", so archiving is a prerequisite.
-      // For now, we log and proceed, but in a real app we might want to transactionally rollback.
+      // Archive error caught silently for flow
     }
 
     await userModel.updateMany({}, { 
@@ -473,14 +499,14 @@ router.put("/bulk-update-term", async (req: Request, res: Response) => {
       } 
     });
 
-    res.json({ message: "Academic cycle updated. Students promoted where applicable." });
+    res.json({ message: "Academic cycle updated. Students and assignments promoted where applicable." });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 });
 
 // PUT update a user
-router.put("/:id", async (req: Request, res: Response) => {
+router.put("/:id", authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
@@ -532,7 +558,7 @@ router.put("/:id", async (req: Request, res: Response) => {
 });
 
 // DELETE a user
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete("/:id", authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const deletedUser = await userModel.findByIdAndDelete(id);

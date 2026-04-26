@@ -180,6 +180,16 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { theme, toggleTheme } = useDashboardTheme();
+  const [user] = useState(() => {
+    const saved = localStorage.getItem("user");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.user || parsed;
+      } catch (e) {}
+    }
+    return null;
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -642,6 +652,7 @@ const AdminDashboard: React.FC = () => {
           theme={theme}
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}
+          user={user}
         />
 
         <div
