@@ -83,7 +83,9 @@ export interface IArchive extends Document {
   year: number;
   examType: string;
   pdfUrl: string;
+  storagePath?: string | null;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const ArchiveSchema = new Schema({
@@ -93,6 +95,7 @@ const ArchiveSchema = new Schema({
   year: { type: Number, required: true },
   examType: { type: String, required: true },
   pdfUrl: { type: String, required: true },
+  storagePath: { type: String, default: null },
 }, { timestamps: true });
 
 export const ArchiveModel = mongoose.model<IArchive>("Archive", ArchiveSchema);

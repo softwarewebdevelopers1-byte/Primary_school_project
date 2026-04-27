@@ -1,9 +1,9 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
-import mongoose from "mongoose";
-import { AssignmentModel, SubjectModel, TimetableModel } from "../models/school.model.js";
+import { ArchiveModel, AssignmentModel, SubjectModel, TimetableModel } from "../models/school.model.js";
 import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
 import { authenticate, type AuthRequest } from "../middleware/auth.js";
+import { buildArchiveSearchQuery, deleteStoredArchiveById } from "../utils/archiver.js";
 import { deleteStoredTimetableById, generateAndStoreSchoolTimetables } from "../utils/timetable.js";
 
 const router = Router();
@@ -300,17 +300,46 @@ router.delete("/timetables/:id", async (req: AuthRequest, res: Response) => {
 // Archives
 router.get("/archives", async (req: Request, res: Response) => {
   try {
-    const { classGrade, classStream } = req.query;
-    const { ArchiveModel } = await import("../models/school.model.js");
-    
-    let query: any = {};
-    if (classGrade) query.classGrade = classGrade;
-    if (classStream) query.classStream = classStream;
+    const { classGrade, classStream, search } = req.query;
+    const query: any = {};
 
-    const archives = await ArchiveModel.find(query).sort({ createdAt: -1 });
+    if (classGrade) query.classGrade = String(classGrade).trim();
+    if (classStream !== undefined && classStream !== null) {
+      query.classStream = String(classStream).trim();
+    }
+
+    const searchQuery = typeof search === "string" ? buildArchiveSearchQuery(search) : {};
+    if (Object.keys(searchQuery).length > 0) {
+      Object.assign(query, searchQuery);
+    }
+
+    const archives = await ArchiveModel.find(query).sort({ createdAt: -1 }).lean();
     res.json(archives);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete("/archives/:id", async (req: AuthRequest, res: Response) => {
+  try {
+    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    if (!hasRole(roles, rolesMapped.ADM)) {
+      return res.status(403).json({ message: "Only admins can delete archived reports." });
+    }
+
+    const archiveId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    if (!archiveId) {
+      return res.status(400).json({ message: "Archive id is required." });
+    }
+
+    const result = await deleteStoredArchiveById(archiveId);
+
+    res.json({
+      message: `Deleted archive for ${result.classLabel} from Supabase and removed its database record.`,
+    });
+  } catch (error: any) {
+    const statusCode = error?.message === "Archive not found." ? 404 : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 });
 

@@ -18,6 +18,174 @@ const formatCycleLabel = (term: number, year: number, examType: string) =>
 const pluralize = (count: number, word: string) =>
   `${count} ${word}${count === 1 ? "" : "s"}`;
 
+const normalizeClassValue = (value: string | null | undefined) =>
+  typeof value === "string" ? value.trim() : "";
+
+const buildClassKey = (classGrade: string | null | undefined, classStream: string | null | undefined) =>
+  `${normalizeClassValue(classGrade)}::${normalizeClassValue(classStream)}`;
+
+const formatClassLabel = (classGrade: string | null | undefined, classStream: string | null | undefined) =>
+  `${normalizeClassValue(classGrade)} ${normalizeClassValue(classStream)}`.trim() || "Unknown class";
+
+const hasRecordedScore = (mark: any) =>
+  [mark?.cat1, mark?.cat2, mark?.cat3, mark?.cat4, mark?.cat5, mark?.exam, mark?.finalScore]
+    .some((value) => value !== null && value !== undefined);
+
+type CycleCompletionIssue =
+  | {
+      type: "missing-assignment";
+      classGrade: string;
+      classStream: string;
+      totalStudents: number;
+    }
+  | {
+      type: "missing-marks";
+      classGrade: string;
+      classStream: string;
+      subjectName: string;
+      missingStudents: number;
+      totalStudents: number;
+    };
+
+const buildCycleCompletionMessage = (
+  issues: CycleCompletionIssue[],
+  currentCycleLabel: string,
+) => {
+  const issueSummaries = issues.slice(0, 8).map((issue) => {
+    if (issue.type === "missing-assignment") {
+      return `${formatClassLabel(issue.classGrade, issue.classStream)} has ${pluralize(issue.totalStudents, "student")} but no subject assignments.`;
+    }
+
+    return `${formatClassLabel(issue.classGrade, issue.classStream)} - ${issue.subjectName}: ${pluralize(issue.missingStudents, "student")} missing marks out of ${issue.totalStudents}.`;
+  });
+
+  const remainingCount = Math.max(issues.length - issueSummaries.length, 0);
+  const suffix =
+    remainingCount > 0
+      ? ` ${pluralize(remainingCount, "additional class-subject issue")} still need attention.`
+      : "";
+
+  return (
+    `Cannot update the academic cycle yet. Marks for ${currentCycleLabel} are still incomplete. ` +
+    `${issueSummaries.join(" ")}${suffix} Complete all assigned class subject marks before changing term, exam, or year.`
+  );
+};
+
+const collectCycleCompletionIssues = async (
+  term: number,
+  year: number,
+  examType: string,
+) => {
+  const activeStudents = await studentModel
+    .find({
+      status: { $ne: "inactive" },
+      class: { $ne: null },
+    } as any)
+    .select("_id class classStream")
+    .lean();
+
+  if (activeStudents.length === 0) {
+    return [];
+  }
+
+  const studentsByClass = new Map<string, string[]>();
+  for (const student of activeStudents as any[]) {
+    const classGrade = normalizeClassValue(student.class);
+    if (!classGrade) continue;
+
+    const classStream = normalizeClassValue(student.classStream);
+    const classKey = buildClassKey(classGrade, classStream);
+    const classStudents = studentsByClass.get(classKey) || [];
+    classStudents.push(student._id.toString());
+    studentsByClass.set(classKey, classStudents);
+  }
+
+  if (studentsByClass.size === 0) {
+    return [];
+  }
+
+  const assignments = (await AssignmentModel.find().lean()).filter((assignment: any) =>
+    studentsByClass.has(buildClassKey(assignment.classGrade, assignment.classStream)),
+  );
+
+  const subjectIds = Array.from(
+    new Set(assignments.map((assignment: any) => assignment.subjectId?.toString()).filter(Boolean)),
+  );
+  const subjects = await SubjectModel.find({ _id: { $in: subjectIds } } as any).lean();
+  const subjectNameById = new Map(subjects.map((subject: any) => [subject._id.toString(), subject.name]));
+
+  const assignmentsByClass = new Map<string, any[]>();
+  for (const assignment of assignments as any[]) {
+    const classKey = buildClassKey(assignment.classGrade, assignment.classStream);
+    const classAssignments = assignmentsByClass.get(classKey) || [];
+    classAssignments.push(assignment);
+    assignmentsByClass.set(classKey, classAssignments);
+  }
+
+  const relevantMarks = await MarkModel.find({
+    term,
+    year,
+    examType,
+    studentId: { $in: activeStudents.map((student: any) => student._id) },
+    subjectId: { $in: subjectIds },
+  } as any).lean();
+
+  const marksByStudentAndSubject = new Map<string, any>();
+  for (const mark of relevantMarks as any[]) {
+    const key = `${mark.studentId.toString()}::${mark.subjectId.toString()}`;
+    if (!marksByStudentAndSubject.has(key) || hasRecordedScore(mark)) {
+      marksByStudentAndSubject.set(key, mark);
+    }
+  }
+
+  const issues: CycleCompletionIssue[] = [];
+  const sortedClassKeys = Array.from(studentsByClass.keys()).sort((left, right) => left.localeCompare(right));
+
+  for (const classKey of sortedClassKeys) {
+    const [rawClassGrade = "", rawClassStream = ""] = classKey.split("::");
+    const classGrade = normalizeClassValue(rawClassGrade);
+    const classStream = normalizeClassValue(rawClassStream);
+    const classStudentIds = studentsByClass.get(classKey) || [];
+    const classAssignments = assignmentsByClass.get(classKey) || [];
+
+    if (classAssignments.length === 0) {
+      issues.push({
+        type: "missing-assignment",
+        classGrade,
+        classStream,
+        totalStudents: classStudentIds.length,
+      });
+      continue;
+    }
+
+    for (const assignment of classAssignments) {
+      const subjectId = assignment.subjectId?.toString();
+      if (!subjectId) continue;
+
+      let missingStudents = 0;
+      for (const studentId of classStudentIds) {
+        const mark = marksByStudentAndSubject.get(`${studentId}::${subjectId}`);
+        if (!mark || !hasRecordedScore(mark)) {
+          missingStudents += 1;
+        }
+      }
+
+      if (missingStudents > 0) {
+        issues.push({
+          type: "missing-marks",
+          classGrade,
+          classStream,
+          subjectName: subjectNameById.get(subjectId) || "Assigned subject",
+          missingStudents,
+          totalStudents: classStudentIds.length,
+        });
+      }
+    }
+  }
+
+  return issues;
+};
+
 const shiftClassName = (className: string | null | undefined, offset: number) => {
   if (!className || offset === 0) return className ?? null;
 
@@ -455,6 +623,19 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
     const currentYear = Number(sampleUser?.year ?? 2024);
     const currentExamType = String(sampleUser?.examType ?? "opener").trim().toLowerCase();
     const currentCycleLabel = formatCycleLabel(currentTerm, currentYear, currentExamType);
+
+    const cycleCompletionIssues = await collectCycleCompletionIssues(
+      currentTerm,
+      currentYear,
+      currentExamType,
+    );
+
+    if (cycleCompletionIssues.length > 0) {
+      return res.status(400).json({
+        message: buildCycleCompletionMessage(cycleCompletionIssues, currentCycleLabel),
+        issues: cycleCompletionIssues,
+      });
+    }
 
     const classesWithMarks = await MarkModel.aggregate([
       {

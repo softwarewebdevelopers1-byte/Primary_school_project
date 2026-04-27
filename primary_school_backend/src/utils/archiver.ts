@@ -26,6 +26,7 @@ export interface ArchiveClassMarksResult {
   classGrade: string;
   classStream: string;
   fileName: string;
+  storagePath: string;
   pdfUrl: string;
   markCount: number;
   studentCount: number;
@@ -49,6 +50,72 @@ const removeStoredFiles = async (fileNames: string[]) => {
   }
 };
 
+const getClassLabel = (classGrade: string, classStream: string) =>
+  `${classGrade} ${classStream}`.trim();
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const resolveArchiveStoragePath = (archive: { storagePath?: string | null; pdfUrl?: string | null }) => {
+  const directPath = archive.storagePath?.trim();
+  if (directPath) {
+    return directPath;
+  }
+
+  const pdfUrl = archive.pdfUrl?.trim();
+  if (!pdfUrl) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(pdfUrl);
+    const decodedPathname = decodeURIComponent(parsedUrl.pathname);
+    const marker = `/object/public/${supabaseBucket}/`;
+    const markerIndex = decodedPathname.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return null;
+    }
+
+    const storagePath = decodedPathname.slice(markerIndex + marker.length).replace(/^\/+/, "");
+    return storagePath || null;
+  } catch (_error) {
+    return null;
+  }
+};
+
+export function buildArchiveSearchQuery(searchValue: string) {
+  const trimmedSearch = searchValue.trim();
+  if (!trimmedSearch) {
+    return {};
+  }
+
+  const regex = new RegExp(escapeRegExp(trimmedSearch), "i");
+  const numericSearch = Number(trimmedSearch);
+  const queryParts: any[] = [
+    { classGrade: regex },
+    { classStream: regex },
+    { examType: regex },
+  ];
+
+  if (Number.isInteger(numericSearch)) {
+    queryParts.push({ term: numericSearch });
+    queryParts.push({ year: numericSearch });
+  }
+
+  const termMatch = trimmedSearch.match(/term\s*(\d+)/i);
+  if (termMatch) {
+    queryParts.push({ term: Number(termMatch[1]) });
+  }
+
+  const yearMatch = trimmedSearch.match(/\b(20\d{2}|19\d{2})\b/);
+  if (yearMatch) {
+    queryParts.push({ year: Number(yearMatch[1]) });
+  }
+
+  return { $or: queryParts };
+}
+
 export async function archiveClassMarks(
   classGrade: string,
   classStream: string,
@@ -57,7 +124,7 @@ export async function archiveClassMarks(
   examType: string,
 ): Promise<ArchiveClassMarksResult | null> {
   const normalizedExamType = examType.trim().toLowerCase();
-  const classLabel = `${classGrade} ${classStream}`.trim();
+  const classLabel = getClassLabel(classGrade, classStream);
 
   if (!classGrade?.trim() || !classStream?.trim()) {
     throw new Error(`Class grade and stream are required to archive marks. Received "${classLabel || "unknown class"}".`);
@@ -183,8 +250,9 @@ export async function archiveClassMarks(
   const pdfBuffer = Buffer.from(pdfOutput);
   const fileName = `archives/${year}/Term${term}/${normalizedExamType}/${classGrade}_${classStream}_${Date.now()}.pdf`
     .replace(/\s+/g, "_");
+  const storagePath = fileName;
 
-  const { error: uploadError } = await supabase.storage.from(supabaseBucket).upload(fileName, pdfBuffer, {
+  const { error: uploadError } = await supabase.storage.from(supabaseBucket).upload(storagePath, pdfBuffer, {
     cacheControl: "3600",
     contentType: "application/pdf",
     upsert: false,
@@ -196,7 +264,7 @@ export async function archiveClassMarks(
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from(supabaseBucket).getPublicUrl(fileName);
+  } = supabase.storage.from(supabaseBucket).getPublicUrl(storagePath);
 
   try {
     const archive = await ArchiveModel.create({
@@ -206,13 +274,15 @@ export async function archiveClassMarks(
       year,
       examType: normalizedExamType,
       pdfUrl: publicUrl,
+      storagePath,
     });
 
     return {
       archiveId: archive._id.toString(),
       classGrade,
       classStream,
-      fileName,
+      fileName: storagePath,
+      storagePath,
       pdfUrl: publicUrl,
       markCount: marks.length,
       studentCount: students.length,
@@ -221,7 +291,7 @@ export async function archiveClassMarks(
     let cleanupNote = "";
 
     try {
-      await removeStoredFiles([fileName]);
+      await removeStoredFiles([storagePath]);
     } catch (cleanupError: any) {
       cleanupNote = ` Cleanup also failed: ${cleanupError.message}`;
     }
@@ -235,7 +305,9 @@ export async function archiveClassMarks(
 export async function rollbackArchivedMarks(archives: ArchiveClassMarksResult[]) {
   if (archives.length === 0) return;
 
-  const fileNames = archives.map((archive) => archive.fileName).filter(Boolean);
+  const fileNames = archives
+    .map((archive) => archive.storagePath || archive.fileName)
+    .filter(Boolean);
   const archiveIds = archives.map((archive) => archive.archiveId).filter(Boolean);
   const cleanupProblems: string[] = [];
 
@@ -256,4 +328,53 @@ export async function rollbackArchivedMarks(archives: ArchiveClassMarksResult[])
   if (cleanupProblems.length > 0) {
     throw new Error(cleanupProblems.join("; "));
   }
+}
+
+export async function deleteStoredArchiveById(archiveId: string) {
+  const deletedArchive = await ArchiveModel.findByIdAndDelete(archiveId);
+
+  if (!deletedArchive) {
+    throw new Error("Archive not found.");
+  }
+
+  const deletedSnapshot = deletedArchive.toObject();
+  const classLabel = getClassLabel(deletedSnapshot.classGrade, deletedSnapshot.classStream);
+  const storagePath = resolveArchiveStoragePath(deletedSnapshot);
+
+  if (!storagePath) {
+    try {
+      await ArchiveModel.create(deletedSnapshot);
+    } catch (restoreError: any) {
+      throw new Error(
+        `The archive for ${classLabel} could not be deleted because its Supabase path is missing, and the database record could not be restored. ${restoreError.message}`,
+      );
+    }
+
+    throw new Error(
+      `The archive for ${classLabel} could not be deleted because its Supabase path is missing. The database record was restored to prevent broken links.`,
+    );
+  }
+
+  try {
+    await removeStoredFiles([storagePath]);
+  } catch (error: any) {
+    try {
+      await ArchiveModel.create({
+        ...deletedSnapshot,
+        storagePath,
+      });
+    } catch (restoreError: any) {
+      throw new Error(
+        `Supabase deletion failed for ${classLabel}, and the archive record could not be restored. ${restoreError.message}`,
+      );
+    }
+
+    throw new Error(
+      `Supabase deletion failed for ${classLabel}. The database record was restored to prevent broken links. ${error.message}`,
+    );
+  }
+
+  return {
+    classLabel,
+  };
 }
