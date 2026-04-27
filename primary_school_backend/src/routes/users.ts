@@ -860,7 +860,11 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
       }
     }
 
-    const updatedUser = await userModel.findByIdAndUpdate(id, updateData, { new: true });
+    const user = await userModel.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.set(updateData);
+    const updatedUser = await user.save();
     if (!updatedUser) return res.status(404).json({ message: "User not found" });
 
     res.json(updatedUser);

@@ -78,21 +78,9 @@ export let newStaff = async () => {
     status: "active",
     teachersName: "Carlos Maina",
     email: "carlosmaina198@gmail.com",
-    roles: { role1: rolesMapped.CT },
+    roles: { role1: rolesMapped.ADM },
     teacherNumber: "CT001",
     password: hashedPassword,
-    class: "7",
-    classStream: "North"
-  };
-
-  // Subject Teacher
-  const sjData = {
-    status: "active",
-    teachersName: "John Doe",
-    email: "john@gmail.com",
-    roles: { role1: rolesMapped.SJ },
-    teacherNumber: "SJ001",
-    password: hashedPassword
   };
 
   try {
@@ -102,32 +90,6 @@ export let newStaff = async () => {
       { $set: ctData },
       { upsert: true }
     );
-    
-
-    // Update or create Subject Teacher
-    const sj = await subjectTeacher.findOneAndUpdate(
-      { email: "john@gmail.com" },
-      { $set: sjData },
-      { upsert: true, new: true }
-    );
-    
-      
-    // Assign a subject to this teacher if not assigned
-    const subject = await SubjectModel.findOne();
-    if (subject && sj) {
-      await AssignmentModel.findOneAndUpdate(
-        { teacherId: sj._id },
-        { 
-          $set: {
-            subjectId: subject._id,
-            classGrade: "7",
-            classStream: "North"
-          }
-        },
-        { upsert: true }
-      );
-      
-    }
   } catch (error) {
     
   }

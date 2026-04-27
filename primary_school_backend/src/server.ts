@@ -2,7 +2,7 @@ import express, { type Response, type Request } from "express";
 import cors from "cors";
 import DotEnvFile from "./config/env.js";
 import dbConnection from "./database/db.js";
-import { newStudent, newStaff } from "./data/seed.js";
+import {  newStaff } from "./data/seed.js";
 import userRoutes from "./routes/users.js";
 import schoolRoutes from "./routes/school.js";
 import marksRoutes from "./routes/marks.js";
@@ -26,7 +26,6 @@ app.use((req, res, next) => {
 });
 
 dbConnection();
-newStudent();
 newStaff();
 
 app.use("/api/users", userRoutes);

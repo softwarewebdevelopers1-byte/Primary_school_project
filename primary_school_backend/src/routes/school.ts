@@ -83,7 +83,7 @@ router.put("/subjects/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, department } = req.body;
-    const updatedSubject = await SubjectModel.findByIdAndUpdate(id, { name, department }, { new: true });
+    const updatedSubject = await SubjectModel.findByIdAndUpdate(id, { name, department }, { returnDocument: 'after' });
     res.json(updatedSubject);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -143,20 +143,6 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/assignments", async (req: Request, res: Response) => {
-  try {
-    const { subjectId, teacherId, classGrade, classStream } = req.body;
-    
-    // Upsert assignment
-    const assignment = await AssignmentModel.findOneAndUpdate(
-      { subjectId, classGrade, classStream } as any,
-      { teacherId },
-      { new: true, upsert: true }
-    );
-    
-    res.status(201).json(assignment);
-  } catch (error: any) {
-    res.status(400).json({ message: error.message });
-  }
 });
 
 router.delete("/assignments/:id", async (req: Request, res: Response) => {
