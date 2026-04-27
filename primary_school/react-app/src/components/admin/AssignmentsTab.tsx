@@ -240,6 +240,12 @@ interface AssignmentsTabProps {
   subjects: Subject[];
   onSaveAssignment: (payload: any) => Promise<void>;
   onUnassignTeacher: (classGrade: string, classStream: string, subjectId: string) => Promise<void>;
+  onToggleSubjectOffering: (
+    subjectId: string,
+    classGrade: string,
+    classStream: string,
+    isOffered: boolean,
+  ) => Promise<void>;
   avatar: (name: string, size: number) => string;
   pill: (text: string, color: string) => string;
   showModal: (content: React.ReactNode) => void;
@@ -253,6 +259,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
   subjects,
   onSaveAssignment,
   onUnassignTeacher,
+  onToggleSubjectOffering,
   avatar,
   pill,
   showModal,
@@ -314,6 +321,13 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
       return true;
     }
 
+    const availableSubjects = subjects.filter((subject) =>
+      currentClass.offeredSubjectIds.includes(subject.id),
+    );
+    const droppedSubjects = subjects.filter((subject) =>
+      currentClass.droppedSubjectIds.includes(subject.id),
+    );
+
     const assignmentText = Object.entries(currentClass.subjectAssignments || {})
       .map(([subjectId, teacherId]) => {
         const subject = subjectLookup[subjectId];
@@ -322,18 +336,27 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
       })
       .join(" ")
       .toLowerCase();
+    const subjectText = [...availableSubjects, ...droppedSubjects]
+      .map((subject) => `${subject.name} ${subject.department}`)
+      .join(" ")
+      .toLowerCase();
 
     return (
       currentClass.name.toLowerCase().includes(query) ||
       currentClass.grade.toLowerCase().includes(query) ||
       (currentClass.stream || "").toLowerCase().includes(query) ||
-      assignmentText.includes(query)
+      assignmentText.includes(query) ||
+      subjectText.includes(query)
     );
   });
 
   const totalAssignments = classes.reduce(
     (count, currentClass) =>
       count + Object.keys(currentClass.subjectAssignments || {}).length,
+    0,
+  );
+  const totalDroppedSubjects = classes.reduce(
+    (count, currentClass) => count + currentClass.droppedSubjectIds.length,
     0,
   );
 
@@ -376,53 +399,68 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
         <StatCard label="Classes" value={classes.length} />
         <StatCard label="Subjects" value={subjects.length} accent="#1a4a99" />
         <StatCard label="Live assignments" value={totalAssignments} accent="var(--sText)" />
+        <StatCard label="Dropped subjects" value={totalDroppedSubjects} accent="var(--dText)" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
-        {filteredClasses.map((currentClass) => (
-          <div
-            key={currentClass.id}
-            style={{
-              background: "var(--white)",
-              border: "1px solid var(--border)",
-              borderRadius: 13,
-              overflow: "hidden",
-            }}
-          >
+        {filteredClasses.map((currentClass) => {
+          const availableSubjects = subjects.filter((subject) =>
+            currentClass.offeredSubjectIds.includes(subject.id),
+          );
+          const droppedSubjects = subjects.filter((subject) =>
+            currentClass.droppedSubjectIds.includes(subject.id),
+          );
+          const assignedCount = Object.keys(currentClass.subjectAssignments || {}).length;
+          const statusText =
+            availableSubjects.length === 0
+              ? "No active subjects"
+              : assignedCount === availableSubjects.length
+                ? "Complete"
+                : "In progress";
+          const statusColor =
+            availableSubjects.length === 0
+              ? "gray"
+              : assignedCount === availableSubjects.length
+                ? "green"
+                : "amber";
+
+          return (
             <div
+              key={currentClass.id}
               style={{
-                padding: "14px 16px",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 10,
+                background: "var(--white)",
+                border: "1px solid var(--border)",
+                borderRadius: 13,
+                overflow: "hidden",
               }}
             >
-              <div>
-                <p style={cardTitleStyle}>{currentClass.name}</p>
-                <p style={rowMetaTextStyle}>
-                  {currentClass.stream
-                    ? `Grade ${currentClass.grade} - Stream ${currentClass.stream}`
-                    : `Grade ${currentClass.grade}`}
-                </p>
-              </div>
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: pill(
-                    Object.keys(currentClass.subjectAssignments || {}).length === subjects.length
-                      ? "Complete"
-                      : "In progress",
-                    Object.keys(currentClass.subjectAssignments || {}).length === subjects.length
-                      ? "green"
-                      : "amber",
-                  ),
+              <div
+                style={{
+                  padding: "14px 16px",
+                  borderBottom: "1px solid var(--border)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
                 }}
-              />
-            </div>
+              >
+                <div>
+                  <p style={cardTitleStyle}>{currentClass.name}</p>
+                  <p style={rowMetaTextStyle}>
+                    {currentClass.stream
+                      ? `Grade ${currentClass.grade} - Stream ${currentClass.stream}`
+                      : `Grade ${currentClass.grade}`}
+                  </p>
+                </div>
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: pill(statusText, statusColor),
+                  }}
+                />
+              </div>
 
-            <div style={{ padding: "14px 16px" }}>
-              {subjects.map((subject) => {
+              <div style={{ padding: "14px 16px" }}>
+                {availableSubjects.map((subject) => {
                 const assignedTeacherId = currentClass.subjectAssignments?.[subject.id] || "";
                 const assignedTeacher = assignedTeacherId
                   ? teacherLookup[assignedTeacherId]
@@ -462,22 +500,113 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                           >
                             Unassign
                           </button>
+                          <button
+                            onClick={() =>
+                              showConfirm(
+                                `Drop <strong>${subject.name}</strong> for <strong>${currentClass.name}</strong>? Teacher assignment for this class subject will be removed until the subject is added back.`,
+                                async () => {
+                                  await onToggleSubjectOffering(subject.id, currentClass.grade, currentClass.stream || "", false);
+                                },
+                                true,
+                              )
+                            }
+                            style={{ ...miniButtonStyle, background: "#fff8ef", color: "var(--gold)", border: "1px solid var(--gold)" }}
+                          >
+                            Drop subject
+                          </button>
                         </div>
                       ) : (
-                        <button 
-                          onClick={() => openAssignmentModal(currentClass, subject)}
-                          style={miniButtonStyle}
-                        >
-                          Assign teacher
-                        </button>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button 
+                            onClick={() => openAssignmentModal(currentClass, subject)}
+                            style={miniButtonStyle}
+                          >
+                            Assign teacher
+                          </button>
+                          <button
+                            onClick={() =>
+                              showConfirm(
+                                `Drop <strong>${subject.name}</strong> for <strong>${currentClass.name}</strong>?`,
+                                async () => {
+                                  await onToggleSubjectOffering(subject.id, currentClass.grade, currentClass.stream || "", false);
+                                },
+                                true,
+                              )
+                            }
+                            style={{ ...miniButtonStyle, background: "#fff8ef", color: "var(--gold)", border: "1px solid var(--gold)" }}
+                          >
+                            Drop subject
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
                 );
               })}
+
+                {availableSubjects.length === 0 && (
+                  <div style={{ ...noticeStyle, marginTop: 0 }}>
+                    No subjects are currently active for this class. Add one back below to resume assignments and marks entry.
+                  </div>
+                )}
+
+                {droppedSubjects.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      paddingTop: 14,
+                      borderTop: "1px dashed var(--border)",
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <p style={smallLabelStyle}>Dropped for this class</p>
+                      <p style={rowMetaTextStyle}>
+                        These subjects stay hidden from assignments and marks entry until they are added back.
+                      </p>
+                    </div>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {droppedSubjects.map((subject) => (
+                        <div
+                          key={`${currentClass.id}-${subject.id}-dropped`}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 10,
+                            background: "var(--sand)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                          }}
+                        >
+                          <div>
+                            <p style={rowPrimaryTextStyle}>{subject.name}</p>
+                            <p style={rowMetaTextStyle}>{subject.department}</p>
+                          </div>
+                          <button
+                            onClick={() =>
+                              showConfirm(
+                                `Add <strong>${subject.name}</strong> back to <strong>${currentClass.name}</strong>?`,
+                                async () => {
+                                  await onToggleSubjectOffering(subject.id, currentClass.grade, currentClass.stream || "", true);
+                                },
+                              )
+                            }
+                            style={{ ...miniButtonStyle, background: "var(--sBg)", color: "var(--sText)", border: "1px solid var(--sText)" }}
+                          >
+                            Add back
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {filteredClasses.length === 0 && (

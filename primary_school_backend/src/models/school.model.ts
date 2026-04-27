@@ -28,6 +28,32 @@ const AssignmentSchema: Schema = new Schema({
 
 export const AssignmentModel = mongoose.model<IAssignment>("Assignment", AssignmentSchema);
 
+export interface IClassSubjectSetting extends Document {
+  subjectId: mongoose.Types.ObjectId;
+  classGrade: string;
+  classStream: string;
+  isOffered: boolean;
+  updatedBy?: string | null;
+}
+
+const ClassSubjectSettingSchema: Schema = new Schema({
+  subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
+  classGrade: { type: String, required: true },
+  classStream: { type: String, required: true, default: "" },
+  isOffered: { type: Boolean, default: false },
+  updatedBy: { type: String, default: null },
+}, { timestamps: true });
+
+ClassSubjectSettingSchema.index(
+  { subjectId: 1, classGrade: 1, classStream: 1 },
+  { unique: true },
+);
+
+export const ClassSubjectSettingModel = mongoose.model<IClassSubjectSetting>(
+  "ClassSubjectSetting",
+  ClassSubjectSettingSchema,
+);
+
 export interface IMark extends Document {
   studentId: mongoose.Types.ObjectId;
   subjectId: mongoose.Types.ObjectId;

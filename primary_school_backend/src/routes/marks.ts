@@ -13,11 +13,11 @@ router.get("/", async (req: Request, res: Response) => {
   try {
     const { subjectId, classGrade, classStream, term, year, examType } = req.query;
     
-    if (!subjectId || !classGrade || !classStream) {
+    if (!subjectId || !classGrade || classStream === undefined || classStream === null) {
       return res.status(400).json({ message: "Missing required query parameters" });
     }
 
-    const query: any = { subjectId, classGrade, classStream };
+    const query: any = { subjectId, classGrade, classStream: String(classStream || "") };
     if (term) query.term = Number(term);
     if (year) query.year = Number(year);
     if (examType) query.examType = examType;
@@ -70,7 +70,16 @@ router.post("/save", async (req: Request, res: Response) => {
   try {
     const { subjectId, classGrade, classStream, term, year, examType, marksData, catConfigs } = req.body;
     
-    if (!subjectId || !classGrade || !classStream || !term || !year || !examType || !Array.isArray(marksData)) {
+    if (
+      !subjectId ||
+      !classGrade ||
+      classStream === undefined ||
+      classStream === null ||
+      !term ||
+      !year ||
+      !examType ||
+      !Array.isArray(marksData)
+    ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -117,7 +126,15 @@ router.post("/summary-save", async (req: Request, res: Response) => {
   try {
     const { classGrade, classStream, term, year, examType, marksData } = req.body;
     
-    if (!classGrade || !classStream || !term || !year || !examType || !Array.isArray(marksData)) {
+    if (
+      !classGrade ||
+      classStream === undefined ||
+      classStream === null ||
+      !term ||
+      !year ||
+      !examType ||
+      !Array.isArray(marksData)
+    ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 

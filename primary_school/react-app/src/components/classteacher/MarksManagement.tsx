@@ -6,6 +6,19 @@ import { MarksEntry } from "../shared/MarksEntry";
 import { avatar } from "../../lib/dashboardHelpers";
 import { MarksData, Subject, Student } from "../subjectteacher/types";
 
+const hasAnyStoredValue = (marks: {
+  cat1: number | string | null;
+  cat2: number | string | null;
+  cat3: number | string | null;
+  cat4: number | string | null;
+  cat5: number | string | null;
+  exam: number | string | null;
+  finalScore: number | string | null;
+}) =>
+  [marks.cat1, marks.cat2, marks.cat3, marks.cat4, marks.cat5, marks.exam, marks.finalScore].some(
+    (value) => value !== null && value !== "",
+  );
+
 interface MarksManagementProps {
   students: any[];
   subjects: any[];
@@ -153,6 +166,13 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         studentId,
         ...marks
       }));
+      const summaryData = data
+        .filter((marks) => hasAnyStoredValue(marks))
+        .map((marks) => ({
+          studentId: marks.studentId,
+          subjectId,
+          finalScore: marks.finalScore,
+        }));
 
       await api.post("/marks/save", {
         subjectId,
@@ -164,6 +184,16 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         marksData: data,
         catConfigs
       });
+      if (summaryData.length > 0) {
+        await api.post("/marks/summary-save", {
+          classGrade: user.classGrade,
+          classStream: user.classStream,
+          term: term,
+          year: year,
+          examType: examType,
+          marksData: summaryData,
+        });
+      }
       setMsg({ text: "Marks saved successfully!", type: "success" });
       if (onRefresh) onRefresh();
     } catch (err: any) {

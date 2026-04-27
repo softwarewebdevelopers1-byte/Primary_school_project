@@ -10,6 +10,7 @@ import { TeachersTab } from "./TeachersTab";
 import { TopBar } from "./TopBar";
 import { CycleTab } from "./CycleTab";
 import { TimetableTab } from "./TimetableTab";
+import { AdminMarksTab } from "./AdminMarksTab";
 import { ArchivesView } from "../shared/ArchivesView";
 import {
   ApiStudent,
@@ -17,6 +18,7 @@ import {
   Teacher,
   UsersDashboardResponse,
   ApiAssignment,
+  ClassSubjectSetting,
   NavItem,
   Class,
   Subject,
@@ -29,6 +31,7 @@ const navItems: NavItem[] = [
   { id: "overview", label: "Overview", svg: "<path d='M3 13h8V3H3v10z'/><path d='M13 21h8V11h-8v10z'/><path d='M13 3h8v6h-8V3z'/><path d='M3 17h8v4H3v-4z'/>" },
   { id: "classes", label: "Classes", svg: "<path d='M4 19.5V8.5a2 2 0 0 1 1.2-1.83l6-2.67a2 2 0 0 1 1.6 0l6 2.67A2 2 0 0 1 20 8.5v11'/><path d='M8 10h8'/><path d='M8 14h8'/><path d='M10 19.5v-3h4v3'/>" },
   { id: "students", label: "Students", svg: "<path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>" },
+  { id: "marks", label: "Marks", svg: "<path d='M3 3v18h18'/><path d='M7 14l3-3 3 2 5-6'/>" },
   { id: "subjects", label: "Subjects", svg: "<path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/>" },
   { id: "teachers", label: "Staff", svg: "<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>" },
   { id: "assignments", label: "Assignments", svg: "<path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'/>" },
@@ -71,15 +74,31 @@ const mapStudentsFromApi = (students: ApiStudent[]): Student[] =>
 const deriveClasses = (
   students: Student[],
   teachers: Teacher[],
-  _subjects: Subject[],
+  subjects: Subject[],
   assignments: ApiAssignment[],
+  classSubjectSettings: ClassSubjectSetting[],
 ): Class[] => {
   const classMap = new Map<string, Class>();
+  const allSubjectIds = subjects.map((subject) => subject.id);
 
-  const getAssignmentsForClass = (grade: string, stream: string) => {
+  const getDroppedSubjectIdsForClass = (grade: string, stream: string) =>
+    classSubjectSettings
+      .filter(
+        (setting) =>
+          setting.classGrade === grade &&
+          (setting.classStream || "") === stream &&
+          setting.isOffered === false,
+      )
+      .map((setting) => setting.subjectId);
+
+  const getAssignmentsForClass = (grade: string, stream: string, offeredSubjectIds: string[]) => {
     const res: Record<string, string> = {};
     assignments.forEach((a) => {
-      if (a.classGrade === grade && a.classStream === stream) {
+      if (
+        a.classGrade === grade &&
+        a.classStream === stream &&
+        offeredSubjectIds.includes(a.subjectId)
+      ) {
         res[a.subjectId] = a.teacherId;
       }
     });
@@ -93,6 +112,8 @@ const deriveClasses = (
         (teacher.classGrade || "").trim() === grade &&
         (teacher.classStream || "").trim() === stream,
     );
+    const droppedSubjectIds = getDroppedSubjectIdsForClass(grade, stream);
+    const offeredSubjectIds = allSubjectIds.filter((subjectId) => !droppedSubjectIds.includes(subjectId));
 
     classMap.set(student.classId, {
       id: student.classId,
@@ -101,7 +122,9 @@ const deriveClasses = (
       stream,
       students: students.filter((current) => current.classId === student.classId).length,
       classTeacherId: classTeacher?.id || "",
-      subjectAssignments: getAssignmentsForClass(grade, stream),
+      subjectAssignments: getAssignmentsForClass(grade, stream, offeredSubjectIds),
+      offeredSubjectIds,
+      droppedSubjectIds,
       term: classTeacher?.term || student.term || 1,
       year: classTeacher?.year || student.year || 2024,
       examType: classTeacher?.examType || student.examType || "opener",
@@ -114,6 +137,8 @@ const deriveClasses = (
       const grade = teacher.classGrade || "";
       const stream = teacher.classStream || "";
       const classId = buildClassId(grade, stream);
+      const droppedSubjectIds = getDroppedSubjectIdsForClass(grade, stream);
+      const offeredSubjectIds = allSubjectIds.filter((subjectId) => !droppedSubjectIds.includes(subjectId));
 
       if (classMap.has(classId)) {
         return;
@@ -126,7 +151,9 @@ const deriveClasses = (
         stream,
         students: 0,
         classTeacherId: teacher.id,
-        subjectAssignments: getAssignmentsForClass(grade, stream),
+        subjectAssignments: getAssignmentsForClass(grade, stream, offeredSubjectIds),
+        offeredSubjectIds,
+        droppedSubjectIds,
         term: teacher.term || 1,
         year: teacher.year || 2024,
         examType: teacher.examType || "opener",
@@ -178,6 +205,7 @@ const AdminDashboard: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assignments, setAssignments] = useState<ApiAssignment[]>([]);
+  const [classSubjectSettings, setClassSubjectSettings] = useState<ClassSubjectSetting[]>([]);
   const [modalContent, setModalContent] = useState<React.ReactNode | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -199,19 +227,23 @@ const AdminDashboard: React.FC = () => {
   };
 
   const classes = useMemo(
-    () => deriveClasses(students, teachers, subjects, assignments),
-    [students, teachers, subjects, assignments],
+    () => deriveClasses(students, teachers, subjects, assignments, classSubjectSettings),
+    [students, teachers, subjects, assignments, classSubjectSettings],
   );
 
   const loadDashboardUsers = async () => {
     try {
       setLoading(true);
       setError("");
-      const response = await api.get<UsersDashboardResponse>("/users");
+      const [response, subjectSettings] = await Promise.all([
+        api.get<UsersDashboardResponse>("/users"),
+        api.get<ClassSubjectSetting[]>("/school/class-subjects"),
+      ]);
       setTeachers(mapStaffToTeachers(response.staff));
       setStudents(mapStudentsFromApi(response.students));
       setSubjects(response.subjects || []);
       setAssignments(response.assignments || []);
+      setClassSubjectSettings(subjectSettings || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load dashboard data.");
     } finally {
@@ -442,6 +474,35 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const toggleSubjectOffering = async (
+    subjectId: string,
+    classGrade: string,
+    classStream: string,
+    isOffered: boolean,
+  ) => {
+    try {
+      const response = await api.put<{ message?: string }>("/school/class-subjects", {
+        subjectId,
+        classGrade,
+        classStream,
+        isOffered,
+      });
+      await loadDashboardUsers();
+      showSuccess(
+        response.message ||
+          (isOffered
+            ? "Subject restored for the selected class."
+            : "Subject dropped for the selected class."),
+      );
+    } catch (err) {
+      showError(
+        isOffered
+          ? "Failed to add the subject back to this class."
+          : "Failed to drop this subject from the class.",
+      );
+    }
+  };
+
   const unassignSubjectTeacher = async (classGrade: string, classStream: string, subjectId: string) => {
     const assignment = assignments.find(
       (a) => a.classGrade === classGrade && a.classStream === classStream && a.subjectId === subjectId
@@ -530,6 +591,7 @@ const AdminDashboard: React.FC = () => {
       overview: "School overview",
       classes: "Class management",
       students: "Student management",
+      marks: "Marks management",
       subjects: "Subject management",
       teachers: "Staff directory",
       assignments: "Subject assignments",
@@ -571,7 +633,6 @@ const AdminDashboard: React.FC = () => {
         <ClassesTab
           classes={classes}
           teachers={teachers}
-          subjects={subjects}
           onSaveClassTeacher={saveTeacher}
           onUnassignClassTeacher={unassignClassTeacher}
           onBulkTermUpdate={handleBulkTermUpdate}
@@ -613,6 +674,18 @@ const AdminDashboard: React.FC = () => {
       );
     }
 
+    if (activeTab === "marks") {
+      return (
+        <AdminMarksTab
+          classes={classes}
+          students={students}
+          subjects={subjects}
+          onRefresh={loadDashboardUsers}
+          avatar={avatar}
+        />
+      );
+    }
+
     if (activeTab === "teachers") {
       return (
         <TeachersTab
@@ -637,6 +710,7 @@ const AdminDashboard: React.FC = () => {
           subjects={subjects}
           onSaveAssignment={saveAssignment}
           onUnassignTeacher={unassignSubjectTeacher}
+          onToggleSubjectOffering={toggleSubjectOffering}
           avatar={avatar}
           pill={pill}
           showModal={showModal}

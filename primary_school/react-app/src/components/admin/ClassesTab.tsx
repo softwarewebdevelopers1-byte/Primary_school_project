@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styles from "./AdminDashboard.module.css";
-import { Class, Subject, Teacher } from "./types";
+import { Class, Teacher } from "./types";
 
 const miniButtonStyle: React.CSSProperties = {
   padding: "5px 10px",
@@ -234,7 +234,6 @@ const ClassTeacherModal: React.FC<{
 interface ClassesTabProps {
   classes: Class[];
   teachers: Teacher[];
-  subjects: Subject[];
   onSaveClassTeacher: (payload: any, teacherId?: string) => Promise<void>;
   onUnassignClassTeacher: (teacherId: string) => Promise<void>;
   avatar: (name: string, size: number) => string;
@@ -248,7 +247,6 @@ interface ClassesTabProps {
 export const ClassesTab: React.FC<ClassesTabProps> = ({
   classes,
   teachers,
-  subjects,
   onSaveClassTeacher,
   onUnassignClassTeacher,
   avatar,
@@ -418,7 +416,7 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                       </button>
                     )}
                   </td>
-                  <td style={bodyTextStyle}>{subjects.length}</td>
+                  <td style={bodyTextStyle}>{currentClass.offeredSubjectIds.length}</td>
                 </tr>
               );
             })}

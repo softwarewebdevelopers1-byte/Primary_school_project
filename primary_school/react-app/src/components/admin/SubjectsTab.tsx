@@ -276,7 +276,7 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   const getUsageCount = (subjectId: string) =>
     classes.reduce(
       (count, currentClass) =>
-        count + (currentClass.subjectAssignments?.[subjectId] ? 1 : 0),
+        count + (currentClass.offeredSubjectIds.includes(subjectId) ? 1 : 0),
       0,
     );
 
@@ -310,7 +310,7 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
       </div>
 
       <div style={noticeStyle}>
-        Manage all subjects offered in the school. These can be assigned to teachers per class in the Assignments tab.
+        New subjects are available to every class by default. Admins and class teachers can drop a subject for a specific class, then add it back later from the Assignments view.
       </div>
 
       <div
@@ -357,12 +357,12 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
 
               <div style={{ display: "flex", gap: 9, marginTop: 10 }}>
                 <div style={metricBoxStyle}>
-                  <p style={smallLabelStyle}>Assigned Classes</p>
+                  <p style={smallLabelStyle}>Offered Classes</p>
                   <p style={cardValueStyle}>{usageCount}</p>
                 </div>
                 <div style={metricBoxStyle}>
-                  <p style={smallLabelStyle}>Status</p>
-                  <p style={cardValueStyle}>Active</p>
+                  <p style={smallLabelStyle}>Dropped elsewhere</p>
+                  <p style={cardValueStyle}>{Math.max(classes.length - usageCount, 0)}</p>
                 </div>
               </div>
             </div>

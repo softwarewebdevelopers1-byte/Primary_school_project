@@ -58,6 +58,7 @@ export default function ClassTeacherDashboard() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [students, setStudents] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [classSubjectCatalog, setClassSubjectCatalog] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,11 +78,19 @@ export default function ClassTeacherDashboard() {
           term: currentUser.term,
           year: currentUser.year
         }),
-        api.get("/school/subjects"),
+        api.get("/school/class-subjects", {
+          classGrade: currentUser.classGrade,
+          classStream: currentUser.classStream,
+        }),
         api.get("/users") // Get assignments and staff names
       ])) as [any[], any[], any];
       setStudents(studentsData);
-      setSubjects(subjectsData.map((s: any) => ({ ...s, id: s._id })));
+      const mappedSubjects = subjectsData.map((subject: any) => ({
+        ...subject,
+        id: subject.id || subject._id,
+      }));
+      setClassSubjectCatalog(mappedSubjects);
+      setSubjects(mappedSubjects.filter((subject: any) => subject.isOffered !== false));
 
     
       // Filter assignments for THIS class
@@ -102,6 +111,20 @@ export default function ClassTeacherDashboard() {
       setLoading(false);
     }
   }, [currentUser]);
+
+  const toggleSubjectOffering = useCallback(async (subjectId: string, isOffered: boolean) => {
+    if (!currentUser?.classGrade) {
+      throw new Error("No class is assigned to your profile.");
+    }
+
+    await api.put("/school/class-subjects", {
+      subjectId,
+      classGrade: currentUser.classGrade,
+      classStream: currentUser.classStream || "",
+      isOffered,
+    });
+    await loadData();
+  }, [currentUser, loadData]);
 
   useEffect(() => {
     loadData();
@@ -196,13 +219,14 @@ export default function ClassTeacherDashboard() {
       case "assignments":
         return (
           <SubjectAssignments
-            subjects={subjects}
+            subjects={classSubjectCatalog}
             assignments={assignments}
             classGrade={currentUser.classGrade}
             classStream={currentUser.classStream}
             classTeacherName={currentUser.name}
             canSwitchToSubjectDashboard={canSwitchToSubjectDashboard}
             onSwitchToSubjectDashboard={() => navigate("/subjectTeacher")}
+            onToggleSubjectOffering={toggleSubjectOffering}
           />
         );
       case "timetable":

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
-import { ArchiveModel, AssignmentModel, SubjectModel, TimetableModel } from "../models/school.model.js";
+import { ArchiveModel, AssignmentModel, ClassSubjectSettingModel, SubjectModel, TimetableModel } from "../models/school.model.js";
 import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
 import { authenticate, type AuthRequest } from "../middleware/auth.js";
 import { buildArchiveSearchQuery, deleteStoredArchiveById } from "../utils/archiver.js";
@@ -56,6 +56,30 @@ const getLatestByClass = (records: any[]) => {
 };
 
 const hasRole = (roles: string[], role: string) => roles.includes(role);
+const normalizeClassValue = (value: unknown) =>
+  typeof value === "string" ? value.trim() : "";
+
+const canManageClassSubjects = async (
+  req: AuthRequest,
+  classGrade: string,
+  classStream: string,
+) => {
+  const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+
+  if (hasRole(roles, rolesMapped.ADM)) {
+    return true;
+  }
+
+  if (!hasRole(roles, rolesMapped.CT) || !req.user?.id) {
+    return false;
+  }
+
+  const currentUser: any = await userModel.findById(req.user.id).select("class classStream").lean();
+  return (
+    normalizeClassValue(currentUser?.class) === classGrade &&
+    normalizeClassValue(currentUser?.classStream) === classStream
+  );
+};
 
 router.use(authenticate);
 
@@ -96,7 +120,118 @@ router.delete("/subjects/:id", async (req: Request, res: Response) => {
     await SubjectModel.findByIdAndDelete(id);
     // Also delete assignments for this subject
     await AssignmentModel.deleteMany({ subjectId: id } as any);
+    await ClassSubjectSettingModel.deleteMany({ subjectId: id } as any);
     res.json({ message: "Subject deleted successfully" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/class-subjects", async (req: AuthRequest, res: Response) => {
+  try {
+    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    const classGrade = normalizeClassValue(req.query.classGrade);
+    const classStream = normalizeClassValue(req.query.classStream);
+
+    if (classGrade) {
+      const isAllowed = await canManageClassSubjects(req, classGrade, classStream);
+      if (!isAllowed) {
+        return res.status(403).json({ message: "You do not have access to manage subjects for this class." });
+      }
+
+      const [subjects, settings] = await Promise.all([
+        SubjectModel.find().sort({ name: 1 }).lean(),
+        ClassSubjectSettingModel.find({ classGrade, classStream }).lean(),
+      ]);
+
+      const droppedSubjectIds = new Set(
+        settings
+          .filter((setting: any) => setting.isOffered === false)
+          .map((setting: any) => setting.subjectId.toString()),
+      );
+
+      return res.json(
+        subjects.map((subject: any) => ({
+          id: subject._id.toString(),
+          name: subject.name,
+          department: subject.department,
+          isOffered: !droppedSubjectIds.has(subject._id.toString()),
+        })),
+      );
+    }
+
+    if (!hasRole(roles, rolesMapped.ADM)) {
+      return res.status(403).json({ message: "Only admins can view school-wide class subject settings." });
+    }
+
+    const settings = await ClassSubjectSettingModel.find().lean();
+    res.json(
+      settings.map((setting: any) => ({
+        id: setting._id.toString(),
+        subjectId: setting.subjectId.toString(),
+        classGrade: setting.classGrade,
+        classStream: setting.classStream || "",
+        isOffered: Boolean(setting.isOffered),
+      })),
+    );
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put("/class-subjects", async (req: AuthRequest, res: Response) => {
+  try {
+    const subjectId = typeof req.body.subjectId === "string" ? req.body.subjectId.trim() : "";
+    const classGrade = normalizeClassValue(req.body.classGrade);
+    const classStream = normalizeClassValue(req.body.classStream);
+    const isOffered = req.body.isOffered;
+
+    if (!subjectId || !classGrade || typeof isOffered !== "boolean") {
+      return res.status(400).json({ message: "subjectId, classGrade, classStream and isOffered are required." });
+    }
+
+    const isAllowed = await canManageClassSubjects(req, classGrade, classStream);
+    if (!isAllowed) {
+      return res.status(403).json({ message: "You do not have access to update subjects for this class." });
+    }
+
+    const subjectExists = await SubjectModel.exists({ _id: subjectId } as any);
+    if (!subjectExists) {
+      return res.status(404).json({ message: "Subject not found." });
+    }
+
+    if (isOffered) {
+      await ClassSubjectSettingModel.findOneAndDelete({
+        subjectId,
+        classGrade,
+        classStream,
+      } as any);
+
+      return res.json({
+        message: "Subject restored for this class. You can now assign a teacher and enter marks again.",
+      });
+    }
+
+    await ClassSubjectSettingModel.findOneAndUpdate(
+      { subjectId, classGrade, classStream },
+      {
+        $set: {
+          isOffered: false,
+          updatedBy: req.user?.id || null,
+        },
+      },
+      {
+        upsert: true,
+        returnDocument: "after",
+        setDefaultsOnInsert: true,
+      },
+    );
+
+    await AssignmentModel.deleteMany({ subjectId, classGrade, classStream } as any);
+
+    res.json({
+      message: "Subject dropped for this class. Any teacher assignment for it has been cleared.",
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -145,8 +280,21 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
 router.post("/assignments", async (req: Request, res: Response) => {
   try {
     const { subjectId, teacherId, classGrade, classStream } = req.body;
-    if (!subjectId || !teacherId || !classGrade || !classStream) {
+    if (!subjectId || !teacherId || !classGrade || classStream === undefined || classStream === null) {
       return res.status(400).json({ message: "subjectId, teacherId, classGrade and classStream are required." });
+    }
+
+    const droppedSetting = await ClassSubjectSettingModel.findOne({
+      subjectId,
+      classGrade: String(classGrade).trim(),
+      classStream: String(classStream).trim(),
+      isOffered: false,
+    } as any).lean();
+
+    if (droppedSetting) {
+      return res.status(400).json({
+        message: "This subject is currently dropped for the selected class. Add it back before assigning a teacher.",
+      });
     }
 
     const assignment = await AssignmentModel.findOneAndUpdate(

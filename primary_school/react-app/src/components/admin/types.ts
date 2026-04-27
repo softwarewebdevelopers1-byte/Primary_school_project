@@ -23,6 +23,7 @@ export interface Subject {
   id: string;
   name: string;
   department: string;
+  isOffered?: boolean;
 }
 
 export interface Class {
@@ -33,6 +34,8 @@ export interface Class {
   students: number;
   classTeacherId?: string;
   subjectAssignments: Record<string, string>;
+  offeredSubjectIds: string[];
+  droppedSubjectIds: string[];
   term?: number;
   year?: number;
   examType?: string;
@@ -93,6 +96,14 @@ export interface ApiAssignment {
   teacherId: string;
   classGrade: string;
   classStream: string;
+}
+
+export interface ClassSubjectSetting {
+  id: string;
+  subjectId: string;
+  classGrade: string;
+  classStream: string;
+  isOffered: boolean;
 }
 
 export interface UsersDashboardResponse {

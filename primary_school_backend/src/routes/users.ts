@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Response, Request } from "express";
 import bcrypt from "bcrypt";
 import { userModel, studentModel, adminModel, classTeacherModel, subjectTeacher, deputyModel, headTeacherModel, rolesMapped } from "../models/user.model.js";
-import { SubjectModel, AssignmentModel, MarkModel } from "../models/school.model.js";
+import { SubjectModel, AssignmentModel, ClassSubjectSettingModel, MarkModel } from "../models/school.model.js";
 import { archiveClassMarks, rollbackArchivedMarks, type ArchiveClassMarksResult } from "../utils/archiver.js";
 import jwt from "jsonwebtoken";
 import { authenticate } from "../middleware/auth.js";
@@ -773,6 +773,28 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
 
       if (assignmentUpdates.length > 0) {
         await AssignmentModel.bulkWrite(assignmentUpdates);
+      }
+
+      const classSubjectSettings = await ClassSubjectSettingModel.find();
+      const classSubjectUpdates = classSubjectSettings.flatMap((setting) => {
+        const shiftedClass = shiftClassName(setting.classGrade, assignmentClassOffset);
+
+        if (!shiftedClass || shiftedClass === setting.classGrade) {
+          return [];
+        }
+
+        return [
+          {
+            updateOne: {
+              filter: { _id: setting._id },
+              update: { $set: { classGrade: shiftedClass } },
+            },
+          },
+        ];
+      });
+
+      if (classSubjectUpdates.length > 0) {
+        await ClassSubjectSettingModel.bulkWrite(classSubjectUpdates);
       }
     }
 
