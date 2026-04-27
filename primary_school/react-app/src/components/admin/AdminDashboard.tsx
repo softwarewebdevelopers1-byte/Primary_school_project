@@ -467,7 +467,12 @@ const AdminDashboard: React.FC = () => {
         if (newRoles.length === 0) newRoles.push("subjectteacher");
 
         await api.put(`/users/${teacherId}`, {
-          ...teacher,
+          name: teacher.name,
+          email: teacher.email,
+          phone: teacher.phone,
+          department: teacher.department,
+          status: (teacher.status || "active").toLowerCase(),
+          subjects: teacher.subjects || [],
           classGrade: null,
           classStream: null,
           roles: newRoles,

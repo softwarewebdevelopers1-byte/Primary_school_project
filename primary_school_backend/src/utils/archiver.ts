@@ -40,6 +40,57 @@ const buildGrade = (average: number) => {
   return "E";
 };
 
+const toFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numericValue =
+    typeof value === "number" ? value : Number(typeof value === "string" ? value.trim() : value);
+
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const resolveMarkPercentage = (mark: any): number | null => {
+  const explicitFinalScore = toFiniteNumber(mark?.finalScore);
+  if (explicitFinalScore !== null) {
+    return Math.max(0, Math.min(100, Math.round(explicitFinalScore)));
+  }
+
+  const components = [
+    { score: toFiniteNumber(mark?.cat1), max: toFiniteNumber(mark?.cat1Max) },
+    { score: toFiniteNumber(mark?.cat2), max: toFiniteNumber(mark?.cat2Max) },
+    { score: toFiniteNumber(mark?.cat3), max: toFiniteNumber(mark?.cat3Max) },
+    { score: toFiniteNumber(mark?.cat4), max: toFiniteNumber(mark?.cat4Max) },
+    { score: toFiniteNumber(mark?.cat5), max: toFiniteNumber(mark?.cat5Max) },
+    { score: toFiniteNumber(mark?.exam), max: toFiniteNumber(mark?.examMax) },
+  ];
+
+  let totalScore = 0;
+  let totalMax = 0;
+
+  for (const component of components) {
+    if (component.score === null) {
+      continue;
+    }
+
+    const componentMax = component.max !== null && component.max > 0 ? component.max : null;
+    if (componentMax === null) {
+      continue;
+    }
+
+    totalScore += component.score;
+    totalMax += componentMax;
+  }
+
+  if (totalMax <= 0) {
+    return null;
+  }
+
+  const calculatedPercentage = Math.round((totalScore / totalMax) * 100);
+  return Math.max(0, Math.min(100, calculatedPercentage));
+};
+
 const removeStoredFiles = async (fileNames: string[]) => {
   if (fileNames.length === 0) return;
 
@@ -213,6 +264,7 @@ export async function archiveClassMarks(
   doc.text(`Generated on ${new Date().toLocaleString()}`, 14, 37);
 
   const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Average", "Grade"];
+  let hasAtLeastOneScore = false;
   const tableRows = students.map((student) => {
     const studentMarks = marksByStudent.get(student._id.toString()) || new Map();
     let total = 0;
@@ -221,10 +273,13 @@ export async function archiveClassMarks(
 
     for (const subject of subjectColumns) {
       const mark = studentMarks.get(subject.id);
-      if (mark?.finalScore != null) {
-        rowData.push(String(mark.finalScore));
-        total += Number(mark.finalScore);
+      const percentage = resolveMarkPercentage(mark);
+
+      if (percentage !== null) {
+        rowData.push(String(percentage));
+        total += percentage;
         count += 1;
+        hasAtLeastOneScore = true;
       } else {
         rowData.push("-");
       }
@@ -235,6 +290,12 @@ export async function archiveClassMarks(
     rowData.push(buildGrade(average));
     return rowData;
   });
+
+  if (!hasAtLeastOneScore) {
+    throw new Error(
+      `No usable scores were found for ${classLabel} in Term ${term}, ${year} (${normalizedExamType}). Upload cancelled to prevent empty archives.`,
+    );
+  }
 
   autoTable(doc, {
     head: [tableColumns],

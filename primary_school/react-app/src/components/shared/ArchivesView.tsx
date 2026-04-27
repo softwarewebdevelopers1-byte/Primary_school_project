@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
 import { DlIcon } from "../classteacher/shared/Icons";
 import { C, FONT } from "../classteacher/shared/constants";
@@ -60,7 +60,7 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
   title = "Academic Archives",
   allowManagement = false,
 }) => {
-  const [archives, setArchives] = useState<Archive[]>([]);
+  const [allArchives, setAllArchives] = useState<Archive[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState("");
@@ -73,9 +73,8 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
       const data: Archive[] = await api.get("/school/archives", {
         classGrade,
         classStream,
-        search: allowManagement ? search.trim() || undefined : undefined,
       });
-      setArchives(data);
+      setAllArchives(data);
       setFeedback((current) => (current?.type === "error" ? null : current));
     } catch (error) {
       setFeedback({
@@ -85,15 +84,11 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [allowManagement, classGrade, classStream, search]);
+  }, [classGrade, classStream]);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void fetchArchives();
-    }, allowManagement ? 250 : 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [allowManagement, fetchArchives]);
+    void fetchArchives();
+  }, [fetchArchives]);
 
   const handleDelete = async (archive: Archive) => {
     if (!allowManagement) return;
@@ -112,7 +107,7 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
 
     try {
       const response = await api.delete<{ message?: string }>(`/school/archives/${archive._id}`);
-      setArchives((current) => current.filter((item) => item._id !== archive._id));
+      setAllArchives((current) => current.filter((item) => item._id !== archive._id));
       setFeedback({
         type: "success",
         text: response.message || "Archive deleted successfully.",
@@ -127,7 +122,32 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
     }
   };
 
-  const hasSearch = search.trim().length > 0;
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const archives = useMemo(() => {
+    if (!allowManagement || !normalizedSearch) {
+      return allArchives;
+    }
+
+    return allArchives.filter((archive) => {
+      const classLabel = `${archive.classGrade} ${archive.classStream}`.trim().toLowerCase();
+      const haystack = [
+        archive.classGrade,
+        archive.classStream,
+        classLabel,
+        archive.examType,
+        `term ${archive.term}`,
+        String(archive.term),
+        String(archive.year),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+  }, [allArchives, allowManagement, normalizedSearch]);
+
+  const hasSearch = normalizedSearch.length > 0;
 
   return (
     <div className="ct-anim">

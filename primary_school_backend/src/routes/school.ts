@@ -143,6 +143,22 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
 });
 
 router.post("/assignments", async (req: Request, res: Response) => {
+  try {
+    const { subjectId, teacherId, classGrade, classStream } = req.body;
+    if (!subjectId || !teacherId || !classGrade || !classStream) {
+      return res.status(400).json({ message: "subjectId, teacherId, classGrade and classStream are required." });
+    }
+
+    const assignment = await AssignmentModel.findOneAndUpdate(
+      { subjectId, classGrade, classStream },
+      { teacherId },
+      { returnDocument: 'after', upsert: true }
+    );
+
+    res.status(201).json(assignment);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
 });
 
 router.delete("/assignments/:id", async (req: Request, res: Response) => {

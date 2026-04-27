@@ -27,9 +27,20 @@ const buildClassKey = (classGrade: string | null | undefined, classStream: strin
 const formatClassLabel = (classGrade: string | null | undefined, classStream: string | null | undefined) =>
   `${normalizeClassValue(classGrade)} ${normalizeClassValue(classStream)}`.trim() || "Unknown class";
 
+const toFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numericValue =
+    typeof value === "number" ? value : Number(typeof value === "string" ? value.trim() : value);
+
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
 const hasRecordedScore = (mark: any) =>
   [mark?.cat1, mark?.cat2, mark?.cat3, mark?.cat4, mark?.cat5, mark?.exam, mark?.finalScore]
-    .some((value) => value !== null && value !== undefined);
+    .some((value) => toFiniteNumber(value) !== null);
 
 type CycleCompletionIssue =
   | {
