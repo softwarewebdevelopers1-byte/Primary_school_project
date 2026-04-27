@@ -32,13 +32,28 @@ export interface ArchiveClassMarksResult {
   studentCount: number;
 }
 
-const buildGrade = (average: number) => {
-  if (average >= 80) return "A";
-  if (average >= 70) return "B";
-  if (average >= 60) return "C";
-  if (average >= 50) return "D";
-  return "E";
+const GRADE_SCALE = [
+  { grade: "A", points: 12, min: 80, max: 100, remark: "Plain" },
+  { grade: "A-", points: 11, min: 75, max: 79, remark: "Minus" },
+  { grade: "B+", points: 10, min: 70, max: 74, remark: "Plus" },
+  { grade: "B", points: 9, min: 65, max: 69, remark: "Plain" },
+  { grade: "B-", points: 8, min: 60, max: 64, remark: "Minus" },
+  { grade: "C+", points: 7, min: 55, max: 59, remark: "Minimum" },
+  { grade: "C", points: 6, min: 50, max: 54, remark: "Plain" },
+  { grade: "C-", points: 5, min: 45, max: 49, remark: "Minus" },
+  { grade: "D+", points: 4, min: 40, max: 44, remark: "Plus" },
+  { grade: "D", points: 3, min: 35, max: 39, remark: "Plain" },
+  { grade: "D-", points: 2, min: 30, max: 34, remark: "Minus" },
+  { grade: "E", points: 1, min: 0, max: 29, remark: "Weak" },
+] as const;
+const DEFAULT_GRADE_BAND = GRADE_SCALE[GRADE_SCALE.length - 1]!;
+
+const resolveGradeBand = (average: number) => {
+  const normalizedAverage = Math.max(0, Math.min(100, Math.round(average)));
+  return GRADE_SCALE.find((band) => normalizedAverage >= band.min) || DEFAULT_GRADE_BAND;
 };
+
+const buildGrade = (average: number) => resolveGradeBand(average).grade;
 
 const toFiniteNumber = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") {
@@ -305,6 +320,31 @@ export async function archiveClassMarks(
     styles: { fontSize: 8, cellPadding: 3 },
     headStyles: { fillColor: [201, 150, 61], textColor: 255, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [250, 248, 242] },
+  });
+
+  const gradeTableStartY = (((doc as any).lastAutoTable?.finalY as number | undefined) || 45) + 10;
+  doc.setFontSize(11);
+  doc.setTextColor(80);
+  doc.text("Grading Scale", 14, gradeTableStartY);
+
+  autoTable(doc, {
+    head: [["Grade", "Points", "Range", "Remark"]],
+    body: GRADE_SCALE.map((band) => [
+      band.grade,
+      String(band.points),
+      `${band.min} - ${band.max}`,
+      band.remark,
+    ]),
+    startY: gradeTableStartY + 4,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 2.5 },
+    headStyles: { fillColor: [44, 77, 64], textColor: 255, fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 28 },
+    },
   });
 
   const pdfOutput = doc.output("arraybuffer");
