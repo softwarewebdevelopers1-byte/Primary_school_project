@@ -277,15 +277,6 @@ const rotateArray = <T,>(items: T[], offset: number) => {
   return [...items.slice(normalizedOffset), ...items.slice(0, normalizedOffset)];
 };
 
-const shuffleArray = <T,>(items: T[]) => {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j] as T, result[i] as T];
-  }
-  return result;
-};
-
 const extractJsonPayload = (rawText: string) => {
   const trimmed = rawText.trim();
   const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -417,9 +408,7 @@ const generateFallbackPlan = (
       const baseCount = Math.floor(totalWeeklySlots / currentClass.subjects.length);
       const remainder = totalWeeklySlots % currentClass.subjects.length;
 
-      // Shuffle subjects initially to avoid deterministic bias
-      const shuffledSubjects = shuffleArray(currentClass.subjects);
-      shuffledSubjects.forEach((subject, index) => {
+      currentClass.subjects.forEach((subject, index) => {
         counts.set(subject.subjectId, baseCount + (index < remainder ? 1 : 0));
       });
     }
@@ -442,20 +431,15 @@ const generateFallbackPlan = (
   });
 
   for (let dayIndex = 0; dayIndex < SCHOOL_DAYS.length; dayIndex += 1) {
-    const day = SCHOOL_DAYS[dayIndex];
+    const day = SCHOOL_DAYS[dayIndex]!;
     const previousSubjectByClass = new Map<string, string | null>();
     const daySubjectCounts = new Map<string, Map<string, number>>();
 
     for (let slotIndex = 0; slotIndex < subjectsPerDay; slotIndex += 1) {
       const teacherBooked = new Set<string>();
 
-      // Randomize the order of classes processed for this slot to prevent teacher priority bias
-      const classIndices = shuffleArray(Array.from({ length: classes.length }, (_, i) => i));
-
-      for (const classIndex of classIndices) {
-        const currentClass = classes[classIndex];
-        if (!currentClass) continue;
-
+      for (let classIndex = 0; classIndex < classes.length; classIndex += 1) {
+        const currentClass = classes[(classIndex + dayIndex + slotIndex) % classes.length]!;
         const classKey = buildClassKey(currentClass.classGrade, currentClass.classStream);
         const subjectCountsForDay = daySubjectCounts.get(classKey) || new Map<string, number>();
         daySubjectCounts.set(classKey, subjectCountsForDay);
@@ -493,22 +477,25 @@ const generateFallbackPlan = (
           viableCandidates = candidatePool;
         }
 
-        // Sort candidates with a random tie-breaker instead of alphabetical
         viableCandidates.sort((left, right) => {
           const leftUrgency = left.remaining / Math.max(1, remainingDays);
           const rightUrgency = right.remaining / Math.max(1, remainingDays);
-          if (Math.abs(rightUrgency - leftUrgency) > 0.01) return rightUrgency - leftUrgency;
+          
+          // Add small random noise to urgency to avoid deterministic patterns across classes
+          const leftUrgencyFinal = leftUrgency + (Math.random() * 0.05);
+          const rightUrgencyFinal = rightUrgency + (Math.random() * 0.05);
+
+          if (Math.abs(rightUrgencyFinal - leftUrgencyFinal) > 0.01) return rightUrgencyFinal - leftUrgencyFinal;
           if (left.dayCount !== right.dayCount) return left.dayCount - right.dayCount;
-          // Use Math.random() for tie-breaking
-          return Math.random() - 0.5;
+          return left.subjectName.localeCompare(right.subjectName);
         });
 
         const selectedSubject = viableCandidates[0];
 
         if (selectedSubject) {
-          const planForClass = classPlans.get(classKey);
-          if (planForClass) {
-            planForClass.lessonPlan[day as SchoolDay].push({
+          const plan = classPlans.get(classKey);
+          if (plan) {
+            plan.lessonPlan[day]!.push({
               subjectId: selectedSubject.subjectId,
               subjectName: selectedSubject.subjectName,
               teacherId: selectedSubject.teacherId,
@@ -520,9 +507,9 @@ const generateFallbackPlan = (
           subjectCountsForDay.set(selectedSubject.subjectId, (subjectCountsForDay.get(selectedSubject.subjectId) || 0) + 1);
           remainingByClass.get(classKey)?.set(selectedSubject.subjectId, selectedSubject.remaining - 1);
         } else {
-          const planForClass = classPlans.get(classKey);
-          if (planForClass) {
-            planForClass.lessonPlan[day as SchoolDay].push({
+          const plan = classPlans.get(classKey);
+          if (plan) {
+            plan.lessonPlan[day]!.push({
               subjectId: null,
               subjectName: "Independent Study",
               teacherId: null,
@@ -538,7 +525,7 @@ const generateFallbackPlan = (
   return {
     generationMode: "balanced-fallback",
     summary:
-      "Balanced fallback scheduler generated the timetable using randomized subject distribution, strict teacher conflict checks, and realistic daily subject spacing.",
+      "Balanced fallback scheduler generated the timetable using equal weekly distribution, strict teacher conflict checks, and realistic daily subject spacing.",
     classes: Array.from(classPlans.values()),
   };
 };
@@ -673,7 +660,7 @@ const generatePlanWithGroq = async (
       {
         role: "system",
         content:
-          "You generate school timetables. Return only valid JSON with no markdown. Respect teacher availability across classes and keep timetables balanced.",
+          "You are an expert school scheduler. Your goal is to generate highly balanced, realistic, and conflict-free school timetables. Return only valid JSON with no markdown.",
       },
       {
         role: "user",
@@ -682,27 +669,27 @@ const generatePlanWithGroq = async (
           `Each class must have exactly ${subjectsPerDay} lesson slots per day.`,
           "Return JSON in this exact shape:",
           JSON.stringify({
-            summary: "short explanation",
+            summary: "short explanation of the scheduling strategy used",
             classes: [
               {
-                classGrade: "7",
-                classStream: "A",
+                classGrade: "Grade Level",
+                classStream: "Stream Name",
                 days: {
                   Monday: ["subject-id-1", "subject-id-2"],
-                  Tuesday: ["subject-id-1", "subject-id-2"],
-                  Wednesday: ["subject-id-1", "subject-id-2"],
-                  Thursday: ["subject-id-1", "subject-id-2"],
-                  Friday: ["subject-id-1", "subject-id-2"],
+                  Tuesday: ["subject-id-3", "subject-id-4"],
+                  Wednesday: ["subject-id-5", "subject-id-1"],
+                  Thursday: ["subject-id-2", "subject-id-3"],
+                  Friday: ["subject-id-4", "subject-id-5"],
                 },
               },
             ],
           }),
-          "Rules:",
-          "1. Use only the provided subjectId values for each class.",
-          "2. Do not schedule the same teacher in two classes during the same day/period.",
-          "3. Distribute subjects as evenly as possible across the week.",
-          "4. Avoid repeating the same subject in consecutive periods for a class unless unavoidable.",
-          "5. Make different classes have different subject orderings when possible.",
+          "CRITICAL RULES:",
+          "1. Use ONLY the provided subjectId values for each class. If a class has 5 subjects and 35 slots (7 per day), each subject should appear exactly 7 times (+/- 1 if not divisible).",
+          "2. STRICT TEACHER CONFLICT PREVENTION: A teacher CANNOT be in two places at once. If Teacher A is in 1 North at 8:00 AM, they CANNOT be in any other class at 8:00 AM.",
+          "3. EQUAL DISTRIBUTION: Distribute subjects evenly across the week. For example, if a subject has 5 lessons, it should ideally appear once per day.",
+          "4. REALISTIC SPACING: Avoid repeating the same subject in consecutive periods for a class unless it is the only option. Prefer a diverse variety of subjects each day.",
+          "5. DIVERSITY: Ensure different classes have different subject orderings to minimize teacher overlaps across many slots.",
           `Class data: ${JSON.stringify(classPayload)}`,
         ].join("\n"),
       },
@@ -963,17 +950,7 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
   const [assignments, students, teachers, subjects, generatedByUser, sampleUser] = await Promise.all([
     AssignmentModel.find().lean(),
     studentModel.find({ class: { $ne: null }, classStream: { $ne: null } } as any).lean(),
-    userModel.find({
-      __t: {
-        $in: [
-          rolesMapped.CT,
-          rolesMapped.SJ,
-          rolesMapped.DT,
-          rolesMapped.HT,
-          rolesMapped.ADM,
-        ],
-      },
-    } as any).lean(),
+    userModel.find({ __t: { $ne: rolesMapped.ST } } as any).lean(),
     SubjectModel.find().lean(),
     generatedByUserId ? userModel.findById(generatedByUserId).lean() : Promise.resolve(null),
     userModel.findOne({ term: { $ne: null } } as any).lean(),
@@ -1025,13 +1002,11 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
 
   const allClasses = new Set([...studentCountByClass.keys(), ...classTeacherByClass.keys()]);
   for (const classKey of allClasses) {
-    const parts = classKey.split("::");
-    const classGrade = parts[0] || "Unknown";
-    const classStream = parts[1] || "";
+    const [classGrade, classStream] = classKey.split("::") as [string, string];
     const classTeacher = classTeacherByClass.get(classKey);
     classMap.set(classKey, {
-      classGrade,
-      classStream,
+      classGrade: classGrade!,
+      classStream: classStream!,
       studentCount: studentCountByClass.get(classKey) || 0,
       classTeacherId: classTeacher?.id || null,
       classTeacherName: classTeacher?.name || null,
