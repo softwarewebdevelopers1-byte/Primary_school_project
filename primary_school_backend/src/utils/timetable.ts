@@ -303,6 +303,95 @@ const buildSubjectLookup = (subjects: ClassSubjectContext[]) => {
   return { byId, byName };
 };
 
+const validatePlanQuality = (
+  plan: GeneratedSchoolTimetablePlan,
+  classes: ClassTimetableContext[],
+  subjectsPerDay: number,
+) => {
+  const totalWeeklySlots = SCHOOL_DAYS.length * subjectsPerDay;
+  const classContextByKey = new Map(
+    classes.map((currentClass) => [
+      buildClassKey(currentClass.classGrade, currentClass.classStream),
+      currentClass,
+    ]),
+  );
+
+  for (const classPlan of plan.classes) {
+    const classKey = buildClassKey(classPlan.classGrade, classPlan.classStream);
+    const classContext = classContextByKey.get(classKey);
+
+    if (!classContext || classContext.subjects.length <= 1) {
+      continue;
+    }
+
+    const weeklyCounts = new Map<string, number>();
+    const dayCounts = new Map<SchoolDay, Map<string, number>>();
+    const uniqueSubjects = new Set<string>();
+    const minWeeklyCount = Math.floor(totalWeeklySlots / classContext.subjects.length);
+    const maxWeeklyCount = Math.ceil(totalWeeklySlots / classContext.subjects.length);
+
+    for (const day of SCHOOL_DAYS) {
+      const lessons = classPlan.lessonPlan[day] || [];
+      const countsForDay = new Map<string, number>();
+      let previousSubjectId: string | null = null;
+      let consecutiveCount = 0;
+
+      for (const lesson of lessons) {
+        if (!lesson?.subjectId) {
+          previousSubjectId = null;
+          consecutiveCount = 0;
+          continue;
+        }
+
+        uniqueSubjects.add(lesson.subjectId);
+        weeklyCounts.set(lesson.subjectId, (weeklyCounts.get(lesson.subjectId) || 0) + 1);
+        countsForDay.set(lesson.subjectId, (countsForDay.get(lesson.subjectId) || 0) + 1);
+
+        consecutiveCount =
+          previousSubjectId === lesson.subjectId ? consecutiveCount + 1 : 1;
+
+        if (consecutiveCount >= 3) {
+          throw new Error(
+            `Groq repeated ${lesson.subjectName || lesson.subjectId} too many times in a row for ${classPlan.classGrade} ${classPlan.classStream} on ${day}.`,
+          );
+        }
+
+        previousSubjectId = lesson.subjectId;
+      }
+
+      dayCounts.set(day, countsForDay);
+    }
+
+    if (uniqueSubjects.size < Math.min(classContext.subjects.length, totalWeeklySlots)) {
+      throw new Error(
+        `Groq did not spread subjects widely enough for ${classPlan.classGrade} ${classPlan.classStream}.`,
+      );
+    }
+
+    for (const subject of classContext.subjects) {
+      const weeklyCount = weeklyCounts.get(subject.subjectId) || 0;
+      if (weeklyCount < minWeeklyCount || weeklyCount > maxWeeklyCount) {
+        throw new Error(
+          `Groq gave ${subject.subjectName} an unrealistic weekly load for ${classPlan.classGrade} ${classPlan.classStream}.`,
+        );
+      }
+
+      const maxDailyCountAllowed =
+        Math.max(1, Math.ceil(weeklyCount / SCHOOL_DAYS.length)) +
+        (classContext.subjects.length <= 3 ? 1 : 0);
+
+      for (const day of SCHOOL_DAYS) {
+        const scheduledThatDay = dayCounts.get(day)?.get(subject.subjectId) || 0;
+        if (scheduledThatDay > maxDailyCountAllowed) {
+          throw new Error(
+            `Groq overloaded ${subject.subjectName} on ${day} for ${classPlan.classGrade} ${classPlan.classStream}.`,
+          );
+        }
+      }
+    }
+  }
+};
+
 const generateFallbackPlan = (
   classes: ClassTimetableContext[],
   subjectsPerDay: number,
@@ -395,42 +484,85 @@ const generateFallbackPlan = (
         const currentClass = classes.find((item) => buildClassKey(item.classGrade, item.classStream) === classKey)!;
         const subjectCountsForDay = daySubjectCounts.get(classKey) || new Map<string, number>();
         daySubjectCounts.set(classKey, subjectCountsForDay);
+        const previousSubjectId = previousSubjectByClass.get(classKey);
+        const remainingDays = SCHOOL_DAYS.length - dayIndex;
 
-        const availableCandidates = currentClass.subjects
-          .filter((subject) => {
-            const remaining = remainingByClass.get(classKey)?.get(subject.subjectId) || 0;
-            return remaining > 0 && !teacherBooked.has(subject.teacherId);
-          })
-          .sort((left, right) => {
-            const leftRemaining = remainingByClass.get(classKey)?.get(left.subjectId) || 0;
-            const rightRemaining = remainingByClass.get(classKey)?.get(right.subjectId) || 0;
-            const leftRepeatPenalty = previousSubjectByClass.get(classKey) === left.subjectId ? 1 : 0;
-            const rightRepeatPenalty = previousSubjectByClass.get(classKey) === right.subjectId ? 1 : 0;
-            const leftDayCount = subjectCountsForDay.get(left.subjectId) || 0;
-            const rightDayCount = subjectCountsForDay.get(right.subjectId) || 0;
-            const leftTeacherDaily = teacherDailyLoads.get(left.teacherId) || 0;
-            const rightTeacherDaily = teacherDailyLoads.get(right.teacherId) || 0;
-            const leftConsecutive = teacherConsecutiveLoads.get(left.teacherId) || 0;
-            const rightConsecutive = teacherConsecutiveLoads.get(right.teacherId) || 0;
+        const buildCandidates = (
+          allowRepeat: boolean,
+          enforceDailyCap: boolean,
+        ) =>
+          currentClass.subjects
+            .map((subject) => {
+              const remaining =
+                remainingByClass.get(classKey)?.get(subject.subjectId) || 0;
+              const dayCount = subjectCountsForDay.get(subject.subjectId) || 0;
+              const dailyCap = Math.max(
+                1,
+                Math.ceil(remaining / Math.max(1, remainingDays)),
+              );
 
-            const leftScore =
-              leftRemaining * 100 -
-              leftRepeatPenalty * 35 -
-              leftDayCount * 14 -
-              leftTeacherDaily * 5 -
-              leftConsecutive * 10;
-            const rightScore =
-              rightRemaining * 100 -
-              rightRepeatPenalty * 35 -
-              rightDayCount * 14 -
-              rightTeacherDaily * 5 -
-              rightConsecutive * 10;
+              return {
+                ...subject,
+                remaining,
+                dayCount,
+                dailyCap,
+                teacherDaily: teacherDailyLoads.get(subject.teacherId) || 0,
+                consecutive: teacherConsecutiveLoads.get(subject.teacherId) || 0,
+                teacherWeight:
+                  teacherAssignmentWeights.get(subject.teacherId) || 0,
+              };
+            })
+            .filter((subject) => {
+              if (subject.remaining <= 0 || teacherBooked.has(subject.teacherId)) {
+                return false;
+              }
 
-            if (rightScore !== leftScore) return rightScore - leftScore;
-            return left.subjectName.localeCompare(right.subjectName);
-          });
+              if (!allowRepeat && previousSubjectId === subject.subjectId) {
+                return false;
+              }
 
-        const selectedSubject = availableCandidates[0];
+              if (enforceDailyCap && subject.dayCount >= subject.dailyCap) {
+                return false;
+              }
+
+              return true;
+            })
+            .sort((left, right) => {
+              const leftUrgency = left.remaining / Math.max(1, remainingDays);
+              const rightUrgency = right.remaining / Math.max(1, remainingDays);
+
+              if (rightUrgency !== leftUrgency) {
+                return rightUrgency - leftUrgency;
+              }
+
+              if (left.dayCount !== right.dayCount) {
+                return left.dayCount - right.dayCount;
+              }
+
+              if (left.teacherDaily !== right.teacherDaily) {
+                return left.teacherDaily - right.teacherDaily;
+              }
+
+              if (left.consecutive !== right.consecutive) {
+                return left.consecutive - right.consecutive;
+              }
+
+              if (right.teacherWeight !== left.teacherWeight) {
+                return right.teacherWeight - left.teacherWeight;
+              }
+
+              return left.subjectName.localeCompare(right.subjectName);
+            });
+
+        const candidatePool =
+          [
+            buildCandidates(false, true),
+            buildCandidates(true, true),
+            buildCandidates(false, false),
+            buildCandidates(true, false),
+          ].find((candidates) => candidates.length > 0) || [];
+
+        const selectedSubject = candidatePool[0];
 
         if (!selectedSubject) {
           chosenLessons.set(classKey, {
@@ -500,7 +632,7 @@ const generateFallbackPlan = (
   return {
     generationMode: "balanced-fallback",
     summary:
-      "Balanced fallback scheduler generated the timetable using subject rotation, teacher conflict checks, and daily load balancing.",
+      "Balanced fallback scheduler generated the timetable using equal weekly distribution, teacher conflict checks, and realistic daily subject spacing.",
     classes: Array.from(classPlans.values()),
   };
 };
@@ -1078,6 +1210,9 @@ export async function generateAndStoreSchoolTimetables(input: CreateSchoolTimeta
   let plan: GeneratedSchoolTimetablePlan | null = null;
   try {
     plan = await generatePlanWithGroq(context.classes, validatedInput.subjectsPerDay);
+    if (plan) {
+      validatePlanQuality(plan, context.classes, validatedInput.subjectsPerDay);
+    }
   } catch (_error) {
     plan = null;
   }

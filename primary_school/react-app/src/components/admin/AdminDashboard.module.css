@@ -135,6 +135,7 @@
   justify-content: center;
   padding: 16px;
   backdrop-filter: blur(3px);
+  overflow-y: auto;
 }
 
 .modalBox {
@@ -143,6 +144,8 @@
   width: 100%;
   max-width: 460px;
   box-shadow: 0 24px 60px rgba(11, 32, 24, 0.3);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
 }
 
 /* Scrollbar */

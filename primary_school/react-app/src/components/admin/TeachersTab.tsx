@@ -170,7 +170,13 @@ const StaffFormModal: React.FC<{
   const [errorMsg, setErrorMsg] = useState("");
 
   return (
-    <div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        maxHeight: "min(780px, calc(100dvh - 48px))",
+      }}
+    >
       <div style={modalHeaderStyle}>
         <h3 style={modalTitleStyle}>{teacher ? "Edit staff member" : "Add staff member"}</h3>
         <button onClick={onClose} style={closeButtonStyle}>
@@ -178,7 +184,7 @@ const StaffFormModal: React.FC<{
         </button>
       </div>
 
-      <div style={{ padding: "18px 22px 22px" }}>
+      <div style={{ padding: "18px 22px", overflowY: "auto" }}>
         {errorMsg && (
           <div style={{ padding: "10px", marginBottom: "15px", background: "#fdeaea", color: "#a32d2d", borderRadius: "8px", fontSize: "13px", fontWeight: 600 }}>
             {errorMsg}
@@ -296,44 +302,53 @@ const StaffFormModal: React.FC<{
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "1.5rem" }}>
-          <button onClick={onClose} style={secondaryButtonStyle}>
-            Cancel
-          </button>
-          <button
-            onClick={async () => {
-              if (!name.trim() || !email.trim()) {
-                setErrorMsg("Name and email are required.");
-                return;
-              }
-              setErrorMsg("");
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          justifyContent: "flex-end",
+          padding: "14px 22px 22px",
+          borderTop: "1px solid var(--border)",
+          background: "var(--cream)",
+        }}
+      >
+        <button onClick={onClose} style={secondaryButtonStyle}>
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            if (!name.trim() || !email.trim()) {
+              setErrorMsg("Name and email are required.");
+              return;
+            }
+            setErrorMsg("");
 
-              setSaving(true);
-              try {
-                await onSave({
-                  roles: role,
-                  name: name.trim(),
-                  email: email.trim(),
-                  phone: phone.trim(),
-                  department: department.trim() || "General",
-                  status,
-                  classGrade: classGrade.trim(),
-                  classStream: classStream.trim(),
-                  subjects: subjects
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-                });
-              } finally {
-                setSaving(false);
-              }
-            }}
-            style={primaryButtonStyle}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : teacher ? "Save changes" : "Add staff"}
-          </button>
-        </div>
+            setSaving(true);
+            try {
+              await onSave({
+                roles: role,
+                name: name.trim(),
+                email: email.trim(),
+                phone: phone.trim(),
+                department: department.trim() || "General",
+                status,
+                classGrade: classGrade.trim(),
+                classStream: classStream.trim(),
+                subjects: subjects
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              });
+            } finally {
+              setSaving(false);
+            }
+          }}
+          style={primaryButtonStyle}
+          disabled={saving}
+        >
+          {saving ? "Saving..." : teacher ? "Save changes" : "Add staff"}
+        </button>
       </div>
     </div>
   );
