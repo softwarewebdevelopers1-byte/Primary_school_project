@@ -356,7 +356,9 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
             </button>
           </form>
         </div>
+      </div>
 
+      <div style={{ marginTop: 20 }}>
         <TimetableLibrary
           fetchPath="/school/timetables"
           fetchParams={{

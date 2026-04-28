@@ -394,12 +394,6 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
                         </div>
                         <div style={{ display: "flex", gap: 5 }}>
                           <button 
-                            onClick={() => openAssignModal(currentClass)}
-                            style={{ ...miniButtonStyle, background: "var(--cream)", color: "var(--textM)", border: "1px solid var(--border)" }}
-                          >
-                            Edit
-                          </button>
-                          <button 
                             onClick={() => handleUnassign(classTeacher)}
                             style={{ ...miniButtonStyle, background: "var(--dBg)", color: "var(--dText)", border: "1px solid var(--dText)" }}
                           >

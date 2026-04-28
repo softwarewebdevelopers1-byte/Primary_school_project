@@ -887,43 +887,21 @@ const createTimetablePdfBuffer = (
   const schoolName = process.env.SCHOOL_NAME?.trim() || "SCHOOL MANAGEMENT SYSTEM";
   const classLabel = `${classPlan.classGrade} ${classPlan.classStream}`.trim();
   const slotCount = renderedDays[0]?.entries.length || 0;
-  const body: any[] = [];
+  const timeLabels = renderedDays[0]?.entries.map(entry => 
+    entry.type === "break" ? (entry.label || "BREAK") : `${entry.startTime} - ${entry.endTime}`
+  ) || [];
 
-  for (let slotIndex = 0; slotIndex < slotCount; slotIndex += 1) {
-    const mondayEntry = renderedDays[0]?.entries[slotIndex];
-    if (!mondayEntry) continue;
-
-    if (mondayEntry.type === "break") {
-      body.push([
-        {
-          content: buildBreakRowLabel(mondayEntry),
-          colSpan: 6,
-          styles: {
-            halign: "center",
-            fontStyle: "bold",
-            fillColor: [236, 228, 208],
-            textColor: [72, 59, 38],
-            fontSize: 9,
-            cellPadding: 3.5,
-          },
-        },
-      ]);
-      continue;
-    }
-
+  const body: any[] = renderedDays.map((day) => {
     const row = [
-      `${mondayEntry.startTime} - ${mondayEntry.endTime}`,
-      ...renderedDays.map((day) => {
-        const entry = day.entries[slotIndex];
-        if (!entry || entry.type === "break") {
-          return "Break";
-        }
-
+      day.day.toUpperCase(),
+      ...day.entries.map((entry) => {
+        if (!entry) return "Independent Study";
+        if (entry.type === "break") return "BREAK";
         return [entry.subjectName || "Independent Study", entry.teacherName || "Department Supervision"].join("\n");
       }),
     ];
-    body.push(row);
-  }
+    return row;
+  });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -949,17 +927,17 @@ const createTimetablePdfBuffer = (
   );
 
   autoTable(doc, {
-    head: [["TIME", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]],
+    head: [["DAY", ...timeLabels]],
     body,
     startY: 33,
     theme: "grid",
     styles: {
       font: "helvetica",
-      fontSize: 8.5,
-      cellPadding: 2.8,
+      fontSize: 8,
+      cellPadding: 2,
       valign: "middle",
       lineColor: [160, 160, 160],
-      lineWidth: 0.15,
+      lineWidth: 0.1,
       overflow: "linebreak",
       textColor: [38, 38, 38],
     },
@@ -969,30 +947,36 @@ const createTimetablePdfBuffer = (
       fontStyle: "bold",
       halign: "center",
       valign: "middle",
-      fontSize: 9,
-      cellPadding: 3.2,
+      fontSize: 8,
+      cellPadding: 2.5,
     },
     columnStyles: {
       0: {
-        cellWidth: 30,
+        cellWidth: 25,
         halign: "center",
         fontStyle: "bold",
         fillColor: [248, 244, 236],
       },
-      1: { cellWidth: 46, halign: "center" },
-      2: { cellWidth: 46, halign: "center" },
-      3: { cellWidth: 46, halign: "center" },
-      4: { cellWidth: 46, halign: "center" },
-      5: { cellWidth: 46, halign: "center" },
     },
     didParseCell: (data) => {
       if (data.section !== "body") return;
-      if (Array.isArray(data.row.raw) && data.row.raw.length === 1) return;
+      if (data.column.index === 0) return;
 
-      if (data.column.index > 0) {
-        data.cell.styles.minCellHeight = 18;
+      const cellText = data.cell.text.join("");
+      if (cellText === "BREAK") {
+        data.cell.styles.fillColor = [236, 228, 208];
+        data.cell.styles.textColor = [72, 59, 38];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.halign = "center";
+      } else {
+        data.cell.styles.minCellHeight = 15;
       }
     },
+    alternateRowStyles: {
+      fillColor: [252, 251, 248],
+    },
+    margin: { left: 10, right: 10, top: 12, bottom: 16 },
+  });
     alternateRowStyles: {
       fillColor: [252, 251, 248],
     },

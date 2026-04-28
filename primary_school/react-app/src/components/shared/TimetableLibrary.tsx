@@ -119,39 +119,14 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
     [selected],
   );
 
-  const tableRows = useMemo<TimetableDisplayRow[]>(() => {
-    if (!selected || orderedDays.length === 0) {
-      return [];
-    }
-
-    const slotCount = orderedDays[0]?.entries.length || 0;
-    const rows: TimetableDisplayRow[] = [];
-
-    for (let slotIndex = 0; slotIndex < slotCount; slotIndex += 1) {
-      const referenceEntry = orderedDays[0]?.entries[slotIndex];
-      if (!referenceEntry) {
-        continue;
-      }
-
-      if (referenceEntry.type === "break") {
-        rows.push({
-          type: "break",
-          key: `break-${slotIndex}-${referenceEntry.startTime}`,
-          label: buildBreakLabel(referenceEntry),
-        });
-        continue;
-      }
-
-      rows.push({
-        type: "lesson",
-        key: `lesson-${slotIndex}-${referenceEntry.startTime}`,
-        timeLabel: `${referenceEntry.startTime} - ${referenceEntry.endTime}`,
-        entries: orderedDays.map((day) => day.entries[slotIndex] || null),
-      });
-    }
-
-    return rows;
-  }, [orderedDays, selected]);
+  const timeLabels = useMemo(() => {
+    if (orderedDays.length === 0) return [];
+    return orderedDays[0].entries.map((entry) => 
+      entry.type === "break" 
+        ? (entry.label || "Break").toUpperCase() 
+        : `${entry.startTime} - ${entry.endTime}`
+    );
+  }, [orderedDays]);
 
   const teacherLessonCount = selected?.myLessons?.length || 0;
 
@@ -395,78 +370,79 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
                 >
                   <thead>
                     <tr style={{ background: "var(--cg)" }}>
-                      <th style={timeHeaderStyle}>Time</th>
-                      {orderedDays.map((day) => (
-                        <th key={day.day} style={dayHeaderStyle}>
-                          {day.day}
+                      <th style={dayHeaderStyle}>Day</th>
+                      {timeLabels.map((label, idx) => (
+                        <th key={`head-${idx}`} style={timeHeaderStyle}>
+                          {label}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {tableRows.map((row) =>
-                      row.type === "break" ? (
-                        <tr key={row.key}>
-                          <td
-                            colSpan={orderedDays.length + 1}
-                            style={breakRowStyle}
-                          >
-                            {row.label}
-                          </td>
-                        </tr>
-                      ) : (
-                        <tr key={row.key}>
-                          <td style={timeCellStyle}>{row.timeLabel}</td>
-                          {row.entries.map((entry, index) => {
-                            const isTeacherLesson =
-                              Boolean(highlightTeacherId) &&
-                              entry?.type === "lesson" &&
-                              entry.teacherId === highlightTeacherId;
-
+                    {orderedDays.map((day) => (
+                      <tr key={day.day}>
+                        <td style={dayCellStyle}>{day.day}</td>
+                        {day.entries.map((entry, idx) => {
+                          if (entry?.type === "break") {
                             return (
                               <td
-                                key={`${row.key}-${orderedDays[index]?.day || index}`}
-                                style={{
-                                  ...lessonCellStyle,
-                                  background: isTeacherLesson
-                                    ? "var(--goldP)"
-                                    : "var(--white)",
-                                  borderColor: isTeacherLesson
-                                    ? "var(--gold)"
-                                    : "var(--borderL)",
-                                }}
+                                key={`${day.day}-break-${idx}`}
+                                style={breakCellStyle}
                               >
-                                <div
-                                  style={{
-                                    fontSize: 12.5,
-                                    fontWeight: 700,
-                                    color: "var(--text)",
-                                  }}
-                                >
-                                  {entry?.type === "lesson"
-                                    ? entry.subjectName || "Independent Study"
-                                    : "Independent Study"}
-                                </div>
-                                <div
-                                  style={{
-                                    marginTop: 5,
-                                    fontSize: 11.5,
-                                    color: "var(--textMut)",
-                                    lineHeight: 1.45,
-                                  }}
-                                >
-                                  {buildLessonMeta(entry)}
-                                </div>
+                                {entry.label || "BREAK"}
                               </td>
                             );
-                          })}
-                        </tr>
-                      ),
-                    )}
+                          }
+
+                          const isTeacherLesson =
+                            Boolean(highlightTeacherId) &&
+                            entry?.type === "lesson" &&
+                            entry.teacherId === highlightTeacherId;
+
+                          return (
+                            <td
+                              key={`${day.day}-slot-${idx}`}
+                              style={{
+                                ...lessonCellStyle,
+                                background: isTeacherLesson
+                                  ? "var(--goldP)"
+                                  : "var(--white)",
+                                borderColor: isTeacherLesson
+                                  ? "var(--gold)"
+                                  : "var(--borderL)",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "var(--text)",
+                                }}
+                              >
+                                {entry?.type === "lesson"
+                                  ? entry.subjectName || "Independent Study"
+                                  : "Independent Study"}
+                              </div>
+                              <div
+                                style={{
+                                  marginTop: 5,
+                                  fontSize: 11,
+                                  color: "var(--textMut)",
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                {buildLessonMeta(entry)}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             </div>
+
 
             {highlightTeacherId && selected.myLessons.length > 0 && (
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
@@ -623,29 +599,29 @@ const dangerButtonStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const timeHeaderStyle: React.CSSProperties = {
-  padding: "12px 14px",
-  color: "#fff",
-  fontSize: 12.5,
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: ".04em",
-  textAlign: "center",
-  minWidth: 120,
-};
-
 const dayHeaderStyle: React.CSSProperties = {
   padding: "12px 14px",
   color: "#fff",
-  fontSize: 12.5,
+  fontSize: 12,
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: ".04em",
   textAlign: "center",
-  minWidth: 148,
+  minWidth: 100,
 };
 
-const timeCellStyle: React.CSSProperties = {
+const timeHeaderStyle: React.CSSProperties = {
+  padding: "12px 14px",
+  color: "#fff",
+  fontSize: 12,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: ".04em",
+  textAlign: "center",
+  minWidth: 140,
+};
+
+const dayCellStyle: React.CSSProperties = {
   padding: "14px 12px",
   borderTop: "1px solid var(--borderL)",
   background: "var(--goldP)",
@@ -655,6 +631,7 @@ const timeCellStyle: React.CSSProperties = {
   textAlign: "center",
   verticalAlign: "middle",
   whiteSpace: "nowrap",
+  minWidth: 100,
 };
 
 const lessonCellStyle: React.CSSProperties = {
@@ -662,15 +639,18 @@ const lessonCellStyle: React.CSSProperties = {
   borderTop: "1px solid var(--borderL)",
   borderLeft: "1px solid var(--borderL)",
   verticalAlign: "top",
+  minWidth: 140,
 };
 
-const breakRowStyle: React.CSSProperties = {
+const breakCellStyle: React.CSSProperties = {
   padding: "12px 16px",
   borderTop: "1px solid var(--borderL)",
+  borderLeft: "1px solid var(--borderL)",
   background: "rgba(201, 150, 61, 0.14)",
   color: "var(--textM)",
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 700,
   textAlign: "center",
+  verticalAlign: "middle",
   letterSpacing: ".03em",
 };
