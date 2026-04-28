@@ -19,6 +19,11 @@ export interface ClassSubjectEnrollmentSetting {
   sharedSlotId: string | null;
 }
 
+export interface ElectiveEnrollmentGroup {
+  sharedSlotId: string;
+  subjectIds: string[];
+}
+
 export interface SubjectEnrollmentStudentRecord {
   _id?: unknown;
   class?: string | null;
@@ -176,4 +181,40 @@ export const countSharedStudents = (leftStudentIds: string[], rightStudentIds: s
   }
 
   return overlapCount;
+};
+
+export const collectElectiveEnrollmentGroups = (
+  settingsMap: Map<string, ClassSubjectEnrollmentSetting> | undefined,
+  classGrade: string,
+  classStream: string,
+): ElectiveEnrollmentGroup[] => {
+  const grouped = new Map<string, string[]>();
+
+  for (const setting of settingsMap?.values() || []) {
+    if (
+      normalizeClassValue(setting.classGrade) !== normalizeClassValue(classGrade) ||
+      normalizeClassValue(setting.classStream) !== normalizeClassValue(classStream) ||
+      setting.isOffered === false ||
+      setting.enrollmentMode !== "elective" ||
+      !setting.sharedSlotId
+    ) {
+      continue;
+    }
+
+    const sharedSlotId = normalizeSharedSlotId(setting.sharedSlotId);
+    if (!sharedSlotId) {
+      continue;
+    }
+
+    const groupSubjectIds = grouped.get(sharedSlotId) || [];
+    groupSubjectIds.push(normalizeSubjectId(setting.subjectId));
+    grouped.set(sharedSlotId, groupSubjectIds);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([sharedSlotId, subjectIds]) => ({
+      sharedSlotId,
+      subjectIds: Array.from(new Set(subjectIds.filter(Boolean))),
+    }))
+    .filter((group) => group.subjectIds.length > 1);
 };

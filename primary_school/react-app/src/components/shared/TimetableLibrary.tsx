@@ -19,19 +19,6 @@ interface TimetableLibraryProps {
   onDeleteSuccess?: (message: string) => void;
 }
 
-type TimetableDisplayRow =
-  | {
-      type: "break";
-      key: string;
-      label: string;
-    }
-  | {
-      type: "lesson";
-      key: string;
-      timeLabel: string;
-      entries: Array<TimetableEntry | null>;
-    };
-
 const DISPLAY_DAY_ORDER = [
   "Monday",
   "Tuesday",
@@ -44,9 +31,6 @@ const orderDays = (days: TimetableDay[]) => {
   const dayMap = new Map(days.map((day) => [day.day, day]));
   return DISPLAY_DAY_ORDER.map((day) => dayMap.get(day)).filter(Boolean) as TimetableDay[];
 };
-
-const buildBreakLabel = (entry: TimetableEntry) =>
-  `${(entry.label || "Break").toUpperCase()} | ${entry.startTime} - ${entry.endTime}`;
 
 const buildLessonMeta = (entry: TimetableEntry | null) => {
   if (!entry || entry.type !== "lesson") {

@@ -4,7 +4,13 @@ import bcrypt from "bcrypt";
 import { userModel, studentModel, adminModel, classTeacherModel, subjectTeacher, deputyModel, headTeacherModel, rolesMapped } from "../models/user.model.js";
 import { SubjectModel, AssignmentModel, ClassSubjectSettingModel, MarkModel } from "../models/school.model.js";
 import { archiveClassMarks, rollbackArchivedMarks, type ArchiveClassMarksResult } from "../utils/archiver.js";
-import { buildClassSubjectSettingMap, filterStudentsForSubject, normalizeSubjectId } from "../utils/subjectEnrollment.js";
+import {
+  buildClassSubjectSettingMap,
+  collectElectiveEnrollmentGroups,
+  filterStudentsForSubject,
+  getClassSubjectEnrollmentSetting,
+  normalizeSubjectId,
+} from "../utils/subjectEnrollment.js";
 import jwt from "jsonwebtoken";
 import { authenticate } from "../middleware/auth.js";
 
@@ -73,6 +79,62 @@ const sanitizeEnrolledSubjects = (
       seen.add(key);
       return true;
     });
+};
+
+const validateStudentElectiveEnrollments = async (
+  enrolledSubjects: Array<{
+    subjectId: string;
+    classGrade: string;
+    classStream: string;
+    isActive: boolean;
+    enrolledAt?: Date | string | null;
+  }>,
+  classGrade: string,
+  classStream: string,
+) => {
+  if (!classGrade) {
+    if (enrolledSubjects.length > 0) {
+      throw new Error("Students must be assigned to a class before elective subjects can be selected.");
+    }
+    return;
+  }
+
+  const classSubjectSettings = await ClassSubjectSettingModel.find({
+    classGrade,
+    classStream,
+  }).lean();
+  const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
+  const activeElectiveSelections = enrolledSubjects.filter((entry) => entry.isActive !== false);
+
+  for (const enrollment of activeElectiveSelections) {
+    const setting = getClassSubjectEnrollmentSetting(classSubjectSettingsMap, {
+      subjectId: enrollment.subjectId,
+      classGrade,
+      classStream,
+    });
+
+    if (!setting.isOffered || setting.enrollmentMode !== "elective") {
+      throw new Error("Only active elective subjects can be saved as per-student selections.");
+    }
+  }
+
+  const linkedElectiveGroups = collectElectiveEnrollmentGroups(
+    classSubjectSettingsMap,
+    classGrade,
+    classStream,
+  );
+
+  for (const group of linkedElectiveGroups) {
+    const selectedCount = activeElectiveSelections.filter((entry) =>
+      group.subjectIds.includes(entry.subjectId),
+    ).length;
+
+    if (selectedCount !== 1) {
+      throw new Error(
+        `Each linked elective block requires exactly one subject choice. Block ${group.sharedSlotId} currently has ${selectedCount} selection(s).`,
+      );
+    }
+  }
 };
 
 const toFiniteNumber = (value: unknown): number | null => {
@@ -622,6 +684,8 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
     if (role === rolesMapped.ST) {
       const classGrade = normalizeClassValue(req.body.classGrade);
       const classStream = normalizeClassValue(req.body.classStream);
+      const enrolledSubjects = sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream);
+      await validateStudentElectiveEnrollments(enrolledSubjects, classGrade, classStream);
       const hashedPassword = await bcrypt.hash("student123", 10);
       newUser = await studentModel.create({
         studentsName: req.body.name,
@@ -634,7 +698,7 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
         status: req.body.status || "active",
         role: rolesMapped.ST,
         password: hashedPassword,
-        enrolledSubjects: sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream),
+        enrolledSubjects,
       });
     } else {
       const hashedPassword = await bcrypt.hash("staff123", 10);
@@ -935,6 +999,8 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
     if (role === rolesMapped.ST) {
       const classGrade = normalizeClassValue(req.body.classGrade);
       const classStream = normalizeClassValue(req.body.classStream);
+      const enrolledSubjects = sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream);
+      await validateStudentElectiveEnrollments(enrolledSubjects, classGrade, classStream);
       updateData = {
         studentsName: req.body.name,
         ADM: req.body.admissionNo,
@@ -944,7 +1010,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
         class: classGrade,
         classStream: classStream,
         status: req.body.status,
-        enrolledSubjects: sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream),
+        enrolledSubjects,
       };
     } else {
       const rolesArray = Array.isArray(req.body.roles) ? req.body.roles : [req.body.role].filter(Boolean);

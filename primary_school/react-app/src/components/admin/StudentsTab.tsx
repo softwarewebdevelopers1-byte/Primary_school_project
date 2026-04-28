@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Class, ClassSubjectSetting, Student, Subject } from "./types";
 import {
+  buildElectiveSubjectGroups,
   buildEnrolledSubjectsPayload,
   formatSubjectOfferingTag,
   getClassSubjectSetting,
@@ -223,8 +224,31 @@ const StudentFormModal: React.FC<{
     [classSubjectSettings, grade, stream],
   );
   const electiveSubjects = useMemo(
-    () => subjects.filter((subject) => electiveSubjectIds.includes(subject.id)),
-    [electiveSubjectIds, subjects],
+    () =>
+      subjects
+        .filter((subject) => electiveSubjectIds.includes(subject.id))
+        .map((subject) => {
+          const setting = getClassSubjectSetting(classSubjectSettings, subject.id, grade, stream);
+          return {
+            ...subject,
+            isOffered: setting.isOffered,
+            enrollmentMode: setting.enrollmentMode,
+            sharedSlotId: setting.sharedSlotId,
+          };
+        }),
+    [classSubjectSettings, electiveSubjectIds, grade, stream, subjects],
+  );
+  const electiveGroups = useMemo(
+    () => buildElectiveSubjectGroups(electiveSubjects),
+    [electiveSubjects],
+  );
+  const linkedElectiveGroups = useMemo(
+    () => electiveGroups.filter((group) => group.isLinkedGroup),
+    [electiveGroups],
+  );
+  const standaloneElectives = useMemo(
+    () => electiveGroups.filter((group) => !group.isLinkedGroup).flatMap((group) => group.subjects),
+    [electiveGroups],
   );
   const compulsorySubjects = useMemo(
     () =>
@@ -240,6 +264,28 @@ const StudentFormModal: React.FC<{
       current.filter((subjectId) => electiveSubjectIds.includes(subjectId)),
     );
   }, [electiveSubjectIds]);
+
+  React.useEffect(() => {
+    const validSubjectIds = new Set(electiveSubjects.map((subject) => subject.id));
+
+    setSelectedElectiveIds((current) => {
+      let next = current.filter((subjectId) => validSubjectIds.has(subjectId));
+
+      linkedElectiveGroups.forEach((group) => {
+        const groupSubjectIds = new Set(group.subjects.map((subject) => subject.id));
+        const selectedWithinGroup = next.filter((subjectId) => groupSubjectIds.has(subjectId));
+
+        if (selectedWithinGroup.length > 1) {
+          const [keepSubjectId] = selectedWithinGroup;
+          next = next.filter(
+            (subjectId) => !groupSubjectIds.has(subjectId) || subjectId === keepSubjectId,
+          );
+        }
+      });
+
+      return next;
+    });
+  }, [electiveSubjects, linkedElectiveGroups]);
 
   return (
     <div>
@@ -391,8 +437,79 @@ const StudentFormModal: React.FC<{
               </p>
             ) : (
               <div style={{ display: "grid", gap: 8 }}>
-                {electiveSubjects.map((subject) => {
-                  const setting = getClassSubjectSetting(classSubjectSettings, subject.id, grade, stream);
+                {linkedElectiveGroups.map((group) => {
+                  const selectedSubjectId =
+                    group.subjects.find((subject) => selectedElectiveIds.includes(subject.id))?.id || "";
+
+                  return (
+                    <div
+                      key={group.key}
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        background: "var(--white)",
+                        padding: "10px 12px",
+                        display: "grid",
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <p style={{ margin: "0 0 3px", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>
+                          {group.label}
+                        </p>
+                        <p style={{ margin: 0, fontSize: 11, color: "var(--textMut)" }}>
+                          Linked elective pair{group.sharedSlotId ? ` | Block ${group.sharedSlotId}` : ""}
+                        </p>
+                      </div>
+
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {group.subjects.map((subject) => (
+                          <label
+                            key={subject.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 10,
+                              padding: "8px 10px",
+                              borderRadius: 8,
+                              border: "1px solid var(--border)",
+                              background:
+                                selectedSubjectId === subject.id ? "rgba(201,150,61,0.10)" : "var(--sand)",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name={`elective-group-${group.key}`}
+                              checked={selectedSubjectId === subject.id}
+                              onChange={() =>
+                                setSelectedElectiveIds((current) => {
+                                  const groupSubjectIds = new Set(
+                                    group.subjects.map((groupSubject) => groupSubject.id),
+                                  );
+                                  const withoutGroup = current.filter(
+                                    (value) => !groupSubjectIds.has(value),
+                                  );
+                                  return [...withoutGroup, subject.id];
+                                })
+                              }
+                            />
+                            <span style={{ display: "grid", gap: 2 }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>
+                                {subject.name}
+                              </span>
+                              <span style={{ fontSize: 11, color: "var(--textMut)" }}>
+                                {formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {standaloneElectives.map((subject) => {
                   const checked = selectedElectiveIds.includes(subject.id);
 
                   return (
@@ -425,7 +542,7 @@ const StudentFormModal: React.FC<{
                           {subject.name}
                         </span>
                         <span style={{ fontSize: 11, color: "var(--textMut)" }}>
-                          {formatSubjectOfferingTag(setting.enrollmentMode, setting.sharedSlotId)}
+                          {formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)}
                         </span>
                       </span>
                     </label>
@@ -453,6 +570,16 @@ const StudentFormModal: React.FC<{
                 return;
               }
               setErrorMsg("");
+
+              const missingLinkedGroup = linkedElectiveGroups.find((group) => {
+                const groupSubjectIds = new Set(group.subjects.map((subject) => subject.id));
+                return selectedElectiveIds.filter((subjectId) => groupSubjectIds.has(subjectId)).length !== 1;
+              });
+
+              if (missingLinkedGroup) {
+                setErrorMsg(`Choose one subject for the linked elective pair ${missingLinkedGroup.label}.`);
+                return;
+              }
 
               setSaving(true);
               try {

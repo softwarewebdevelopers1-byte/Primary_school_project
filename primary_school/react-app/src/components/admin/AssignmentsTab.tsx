@@ -132,6 +132,12 @@ const smallLabelStyle: React.CSSProperties = {
   margin: "0 0 5px",
 };
 
+const generateElectivePairId = () =>
+  `EL-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random()
+    .toString(36)
+    .slice(2, 6)
+    .toUpperCase()}`;
+
 const metricValueStyle: React.CSSProperties = {
   fontFamily: "var(--serif)",
   fontSize: "1.9rem",
@@ -251,6 +257,13 @@ const SubjectConfigurationModal: React.FC<{
   );
   const [sharedSlotId, setSharedSlotId] = useState(currentSetting?.sharedSlotId || "");
   const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  React.useEffect(() => {
+    if (enrollmentMode === "elective" && !sharedSlotId.trim()) {
+      setSharedSlotId(generateElectivePairId());
+    }
+  }, [enrollmentMode, sharedSlotId]);
 
   return (
     <div>
@@ -279,16 +292,48 @@ const SubjectConfigurationModal: React.FC<{
         </div>
 
         <div>
-          <label style={labelStyle}>Shared slot ID</label>
-          <input
-            value={sharedSlotId}
-            onChange={(event) => setSharedSlotId(event.target.value)}
-            style={inputStyle}
-            placeholder={enrollmentMode === "elective" ? "e.g. SCI-BLOCK-A" : "Only used for electives"}
-            disabled={enrollmentMode !== "elective"}
-          />
+          <label style={labelStyle}>Elective pair ID</label>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto", gap: 8 }}>
+            <input
+              value={sharedSlotId}
+              onChange={(event) => {
+                setSharedSlotId(event.target.value);
+                setCopied(false);
+              }}
+              style={inputStyle}
+              placeholder={enrollmentMode === "elective" ? "Generated automatically for linked electives" : "Only used for electives"}
+              disabled={enrollmentMode !== "elective"}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setSharedSlotId(generateElectivePairId());
+                setCopied(false);
+              }}
+              style={{ ...secondaryButtonStyle, whiteSpace: "nowrap" }}
+              disabled={enrollmentMode !== "elective"}
+            >
+              Generate
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!sharedSlotId.trim()) return;
+                try {
+                  await navigator.clipboard.writeText(sharedSlotId.trim());
+                  setCopied(true);
+                } catch (error) {
+                  setCopied(false);
+                }
+              }}
+              style={{ ...secondaryButtonStyle, whiteSpace: "nowrap" }}
+              disabled={enrollmentMode !== "elective" || !sharedSlotId.trim()}
+            >
+              {copied ? "Copied" : "Copy ID"}
+            </button>
+          </div>
           <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--textMut)", lineHeight: 1.5 }}>
-            Use the same shared slot ID for elective subjects that may run in parallel for this class.
+            Use the same pair ID on the other elective subject so learners choose one subject from the pair.
           </p>
         </div>
 
@@ -602,67 +647,87 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                     key={`${currentClass.id}-${subject.id}`}
                     style={{
                       padding: "10px 0",
-                      borderTop: subject.id === subjects[0]?.id ? "none" : "1px solid var(--borderL)",
+                      borderTop: availableSubjects[0]?.id === subject.id ? "none" : "1px solid var(--borderL)",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                      <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: "1 1 180px" }}>
                         <p style={rowPrimaryTextStyle}>{subject.name}</p>
                         <p style={rowMetaTextStyle}>
                           {subject.department} | {formatSubjectOfferingTag(subjectSetting?.enrollmentMode, subjectSetting?.sharedSlotId)} | {eligibleStudentCount} learner{eligibleStudentCount === 1 ? "" : "s"}
                         </p>
                       </div>
                       {assignedTeacher ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 12,
+                            minWidth: 0,
+                            flex: "1 1 280px",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: "1 1 180px" }}>
                             <div dangerouslySetInnerHTML={{ __html: avatar(assignedTeacher.name, 26) }} />
                             <div style={{ minWidth: 0 }}>
                               <p style={rowPrimaryTextStyle}>{assignedTeacher.name}</p>
                               <p style={rowMetaTextStyle}>{assignedTeacher.department}</p>
                             </div>
                           </div>
-                          <button 
-                            onClick={() => openAssignmentModal(currentClass, subject)}
-                            style={{ ...miniButtonStyle, background: "var(--cream)", color: "var(--textM)", border: "1px solid var(--border)" }}
-                          >
-                            Change
-                          </button>
-                          <button
-                            onClick={() => openConfigurationModal(currentClass, subject)}
-                            style={{ ...miniButtonStyle, background: "#f4f0ff", color: "#5a35b4", border: "1px solid #c9b9ff" }}
-                          >
-                            Configure
-                          </button>
-                          <button 
-                            onClick={() => handleUnassign(currentClass, subject, assignedTeacher)}
-                            style={{ ...miniButtonStyle, background: "var(--dBg)", color: "var(--dText)", border: "1px solid var(--dText)" }}
-                          >
-                            Unassign
-                          </button>
-                          <button
-                            onClick={() =>
-                              showConfirm(
-                                `Drop <strong>${subject.name}</strong> for <strong>${currentClass.name}</strong>? Teacher assignment for this class subject will be removed until the subject is added back.`,
-                                async () => {
-                                  await onToggleSubjectOffering(
-                                    subject.id,
-                                    currentClass.grade,
-                                    currentClass.stream || "",
-                                    false,
-                                    subjectSetting?.enrollmentMode || "compulsory",
-                                    subjectSetting?.sharedSlotId || null,
-                                  );
-                                },
-                                true,
-                              )
-                            }
-                            style={{ ...miniButtonStyle, background: "#fff8ef", color: "var(--gold)", border: "1px solid var(--gold)" }}
-                          >
-                            Drop subject
-                          </button>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", flex: "1 1 260px" }}>
+                            <button 
+                              onClick={() => openAssignmentModal(currentClass, subject)}
+                              style={{ ...miniButtonStyle, background: "var(--cream)", color: "var(--textM)", border: "1px solid var(--border)" }}
+                            >
+                              Change
+                            </button>
+                            <button
+                              onClick={() => openConfigurationModal(currentClass, subject)}
+                              style={{ ...miniButtonStyle, background: "#f4f0ff", color: "#5a35b4", border: "1px solid #c9b9ff" }}
+                            >
+                              Configure
+                            </button>
+                            <button 
+                              onClick={() => handleUnassign(currentClass, subject, assignedTeacher)}
+                              style={{ ...miniButtonStyle, background: "var(--dBg)", color: "var(--dText)", border: "1px solid var(--dText)" }}
+                            >
+                              Unassign
+                            </button>
+                            <button
+                              onClick={() =>
+                                showConfirm(
+                                  `Drop <strong>${subject.name}</strong> for <strong>${currentClass.name}</strong>? Teacher assignment for this class subject will be removed until the subject is added back.`,
+                                  async () => {
+                                    await onToggleSubjectOffering(
+                                      subject.id,
+                                      currentClass.grade,
+                                      currentClass.stream || "",
+                                      false,
+                                      subjectSetting?.enrollmentMode || "compulsory",
+                                      subjectSetting?.sharedSlotId || null,
+                                    );
+                                  },
+                                  true,
+                                )
+                              }
+                              style={{ ...miniButtonStyle, background: "#fff8ef", color: "var(--gold)", border: "1px solid var(--gold)" }}
+                            >
+                              Drop subject
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", flex: "1 1 220px" }}>
                           <button 
                             onClick={() => openAssignmentModal(currentClass, subject)}
                             style={miniButtonStyle}

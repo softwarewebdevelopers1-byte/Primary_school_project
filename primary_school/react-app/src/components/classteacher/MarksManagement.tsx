@@ -1,7 +1,8 @@
 // components/classteacher/MarksManagement.tsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { C } from "./shared/constants";
 import { api } from "../../lib/api";
+import { buildElectiveSubjectGroups } from "../../lib/subjectEnrollment";
 import { MarksEntry } from "../shared/MarksEntry";
 import { avatar } from "../../lib/dashboardHelpers";
 import { MarksData, Subject, Student } from "../subjectteacher/types";
@@ -19,6 +20,33 @@ const hasAnyStoredValue = (marks: {
     (value) => value !== null && value !== "",
   );
 
+const createEmptyMarks = () => ({
+  cat1: null,
+  cat2: null,
+  cat3: null,
+  cat4: null,
+  cat5: null,
+  cat1Max: 40,
+  cat2Max: 40,
+  cat3Max: 40,
+  cat4Max: 40,
+  cat5Max: 40,
+  exam: null,
+  examMax: 100,
+  finalScore: null,
+});
+
+const normalizeValue = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+const getRawSubjectId = (subject: any) => String(subject?.id || subject?._id || "").trim();
+
+const getStudentAdmissionNumber = (student: any) =>
+  student?.admissionNumber || student?.admissionNo || student?.ADM || student?.adm || "";
+
+interface DisplaySubjectOption extends Subject {
+  actualSubjects: Array<{ id: string; name: string }>;
+}
+
 interface MarksManagementProps {
   students: any[];
   subjects: any[];
@@ -26,16 +54,150 @@ interface MarksManagementProps {
   user: any;
 }
 
-export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects, onRefresh, user }) => {
+const resolveStudentSubjectSelection = (
+  student: any,
+  subject: DisplaySubjectOption,
+  classGrade: string,
+  classStream: string,
+) => {
+  if ((subject.enrollmentMode || "compulsory") === "compulsory") {
+    return subject.actualSubjects[0]?.id || null;
+  }
+
+  const activeEnrollment = (student?.enrolledSubjects || []).find((entry: any) => {
+    const enrollmentClassGrade = normalizeValue(entry?.classGrade);
+    const enrollmentClassStream = normalizeValue(entry?.classStream);
+
+    return (
+      entry?.isActive !== false &&
+      subject.actualSubjects.some((actualSubject) => actualSubject.id === String(entry?.subjectId || "").trim()) &&
+      enrollmentClassGrade === normalizeValue(classGrade) &&
+      enrollmentClassStream === normalizeValue(classStream)
+    );
+  });
+
+  return activeEnrollment ? String(activeEnrollment.subjectId).trim() : null;
+};
+
+export const MarksManagement: React.FC<MarksManagementProps> = ({
+  students: rosterStudents,
+  subjects,
+  onRefresh,
+  user,
+}) => {
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
   const [subjectStudents, setSubjectStudents] = useState<Record<string, Student[]>>({});
-  const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [term, setTerm] = useState<number>(user?.term || 1);
   const [year, setYear] = useState<number>(user?.year || 2024);
   const [examType, setExamType] = useState<string>(user?.examType || "opener");
 
-  // Sync with global user state (e.g. after Admin update)
+  const displaySubjects = useMemo<DisplaySubjectOption[]>(() => {
+    const activeSubjects = subjects
+      .map((subject) => ({
+        ...subject,
+        id: getRawSubjectId(subject),
+        enrollmentMode: subject.enrollmentMode || "compulsory",
+        sharedSlotId: subject.sharedSlotId || null,
+      }))
+      .filter((subject) => subject.id && subject.isOffered !== false);
+
+    const electiveGroups = buildElectiveSubjectGroups(activeSubjects);
+    const electiveGroupsByKey = new Map(electiveGroups.map((group) => [group.key, group]));
+    const seenKeys = new Set<string>();
+
+    const buildOption = (subject: {
+      id: string;
+      name: string;
+      displayName?: string;
+      enrollmentMode: "compulsory" | "elective";
+      sharedSlotId?: string | null;
+      groupedSubjectIds?: string[];
+      groupedSubjectNames?: string[];
+      isLinkedElectiveGroup?: boolean;
+      actualSubjects: Array<{ id: string; name: string }>;
+    }): DisplaySubjectOption => ({
+      id: subject.id,
+      name: subject.name,
+      displayName: subject.displayName || subject.name,
+      grade: `${user.classGrade} ${user.classStream}`.trim(),
+      subjectId: subject.actualSubjects[0]?.id || subject.id,
+      classGrade: user.classGrade,
+      classStream: user.classStream,
+      students: 0,
+      avg: 0,
+      pushed: false,
+      term: 1,
+      year,
+      lastAssess: "N/A",
+      enrollmentMode: subject.enrollmentMode,
+      sharedSlotId: subject.sharedSlotId || null,
+      groupedSubjectIds: subject.groupedSubjectIds,
+      groupedSubjectNames: subject.groupedSubjectNames,
+      isLinkedElectiveGroup: subject.isLinkedElectiveGroup,
+      actualSubjects: subject.actualSubjects,
+    });
+
+    const result: DisplaySubjectOption[] = [];
+
+    activeSubjects.forEach((subject) => {
+      if ((subject.enrollmentMode || "compulsory") !== "elective") {
+        result.push(buildOption({
+          id: subject.id,
+          name: subject.name,
+          enrollmentMode: "compulsory",
+          sharedSlotId: subject.sharedSlotId || null,
+          actualSubjects: [{ id: subject.id, name: subject.name }],
+        }));
+        return;
+      }
+
+      const normalizedSharedSlotId = normalizeValue(subject.sharedSlotId);
+      const groupKey = normalizedSharedSlotId || `subject:${subject.id}`;
+      if (seenKeys.has(groupKey)) {
+        return;
+      }
+      seenKeys.add(groupKey);
+
+      const group = electiveGroupsByKey.get(groupKey);
+      if (!group || !group.isLinkedGroup) {
+        result.push(buildOption({
+          id: subject.id,
+          name: subject.name,
+          enrollmentMode: "elective",
+          sharedSlotId: subject.sharedSlotId || null,
+          actualSubjects: [{ id: subject.id, name: subject.name }],
+        }));
+        return;
+      }
+
+      const groupSubjectNames = group.subjects.map((groupSubject) => groupSubject.name);
+      result.push(buildOption({
+        id: `elective-group:${group.key}`,
+        name: group.label,
+        displayName: group.label,
+        enrollmentMode: "elective",
+        sharedSlotId: group.sharedSlotId,
+        groupedSubjectIds: group.subjects.map((groupSubject) => groupSubject.id),
+        groupedSubjectNames: groupSubjectNames,
+        isLinkedElectiveGroup: true,
+        actualSubjects: group.subjects.map((groupSubject) => ({
+          id: groupSubject.id,
+          name: groupSubject.name,
+        })),
+      }));
+    });
+
+    return result;
+  }, [subjects, user.classGrade, user.classStream, year]);
+
+  const countEligibleStudents = useCallback((subject: DisplaySubjectOption) => {
+    return rosterStudents.filter((student) =>
+      Boolean(resolveStudentSubjectSelection(student, subject, user.classGrade, user.classStream)),
+    ).length;
+  }, [rosterStudents, user.classGrade, user.classStream]);
+
   useEffect(() => {
     if (user) {
       setTerm(user.term || 1);
@@ -45,67 +207,117 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
   }, [user]);
 
   useEffect(() => {
-    if (subjects.length > 0 && !activeSubjectId) {
-      setActiveSubjectId(subjects[0].id || subjects[0]._id);
+    if (displaySubjects.length > 0 && !displaySubjects.some((subject) => subject.id === activeSubjectId)) {
+      setActiveSubjectId(displaySubjects[0].id);
     }
-  }, [subjects, activeSubjectId]);
+  }, [displaySubjects, activeSubjectId]);
 
   const loadDetailedMarks = useCallback(async () => {
-    if (!activeSubjectId) return;
+    const currentSubject = displaySubjects.find((subject) => subject.id === activeSubjectId);
+    if (!currentSubject) return;
+
     try {
-      const data: any[] = await api.get("/marks", {
-        subjectId: activeSubjectId,
-        classGrade: user.classGrade,
-        classStream: user.classStream,
-        term: term,
-        year: year,
-        examType: examType
+      const subjectPayloads = await Promise.all(
+        currentSubject.actualSubjects.map(async (actualSubject) => ({
+          subjectId: actualSubject.id,
+          data: await api.get("/marks", {
+            subjectId: actualSubject.id,
+            classGrade: user.classGrade,
+            classStream: user.classStream,
+            term,
+            year,
+            examType,
+          }),
+        })),
+      );
+
+      const marksByActualSubject = new Map<string, Map<string, any>>();
+      subjectPayloads.forEach(({ subjectId, data }) => {
+        marksByActualSubject.set(
+          subjectId,
+          new Map(
+            (data as any[]).map((item) => [item.studentId.toString(), item]),
+          ),
+        );
       });
 
-      setMarksData(prev => ({
+      const relevantStudents: Student[] = [];
+
+      rosterStudents.forEach((student) => {
+        const actualSubjectId = resolveStudentSubjectSelection(
+          student,
+          currentSubject,
+          user.classGrade,
+          user.classStream,
+        );
+
+        if (!actualSubjectId) {
+          return;
+        }
+
+        const subjectRecord = currentSubject.actualSubjects.find(
+          (actualSubject) => actualSubject.id === actualSubjectId,
+        );
+        const markRecord = marksByActualSubject.get(actualSubjectId)?.get(String(student.id));
+
+        relevantStudents.push({
+          id: String(student.id),
+          name: student.name,
+          adm: getStudentAdmissionNumber(student),
+          gender: student.gender || "N/A",
+          enrolledSubjects: student.enrolledSubjects || [],
+          enrollmentSubjectId: actualSubjectId,
+          enrollmentSubjectName:
+            currentSubject.actualSubjects.length > 1 ? subjectRecord?.name || null : null,
+          marks: markRecord?.marks || createEmptyMarks(),
+          pushed: false,
+        });
+      });
+
+      setMarksData((prev) => ({
         ...prev,
-        [activeSubjectId]: data.reduce((acc, item) => {
-          const sid = item.studentId.toString();
-          acc[sid] = item.marks;
+        [activeSubjectId]: relevantStudents.reduce((acc, student) => {
+          acc[student.id] = student.marks;
           return acc;
-        }, {} as any)
+        }, {} as MarksData[string]),
       }));
       setSubjectStudents((prev) => ({
         ...prev,
-        [activeSubjectId]: data.map((item) => ({
-          id: item.studentId.toString(),
-          name: item.name,
-          adm: item.admissionNo,
-          gender: item.gender || "N/A",
-          enrolledSubjects: item.enrolledSubjects || [],
-          marks: item.marks,
-          pushed: false,
-        })),
+        [activeSubjectId]: relevantStudents,
       }));
     } catch (err) {
-      
+      setSubjectStudents((prev) => ({
+        ...prev,
+        [activeSubjectId]: [],
+      }));
     }
-  }, [activeSubjectId, user.classGrade, user.classStream, term, year, examType]);
+  }, [
+    activeSubjectId,
+    displaySubjects,
+    examType,
+    rosterStudents,
+    term,
+    user.classGrade,
+    user.classStream,
+    year,
+  ]);
 
-  // Clear marks when switching period to ensure "Specific term specific exam at specific year"
   useEffect(() => {
     setMarksData({});
     setSubjectStudents({});
   }, [term, year, examType]);
 
   useEffect(() => {
-    if (activeSubjectId) loadDetailedMarks();
-  }, [activeSubjectId, loadDetailedMarks, term, examType]);
+    if (activeSubjectId) {
+      void loadDetailedMarks();
+    }
+  }, [activeSubjectId, loadDetailedMarks, term, year, examType]);
 
   const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
     setMarksData((prev) => {
       const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
-      const updatedStudentMarks = { 
-        ...(updatedSubjectMarks[studentId] || {
-          cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
-          cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
-          exam: null, examMax: 100, finalScore: null 
-        })
+      const updatedStudentMarks = {
+        ...(updatedSubjectMarks[studentId] || createEmptyMarks()),
       };
 
       let n: string | number | null = value;
@@ -113,7 +325,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
         n = null;
       } else {
         const num = Number(n);
-        if (!isNaN(num)) {
+        if (!Number.isNaN(num)) {
           const maxKey = `${key}Max`;
           const max = key === "finalScore" ? 100 : (updatedStudentMarks as any)[maxKey] || (key === "exam" ? 100 : 40);
           if (num > max) {
@@ -131,7 +343,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
 
       return {
         ...prev,
-        [subjectId]: updatedSubjectMarks
+        [subjectId]: updatedSubjectMarks,
       };
     });
   };
@@ -140,12 +352,12 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
     setMarksData((prev) => {
       const newData = { ...prev };
       if (!newData[subjectId]) return prev;
-      
+
       const updatedSubjectMarks = { ...newData[subjectId] };
-      Object.keys(updatedSubjectMarks).forEach(studentId => {
+      Object.keys(updatedSubjectMarks).forEach((studentId) => {
         updatedSubjectMarks[studentId] = {
           ...updatedSubjectMarks[studentId],
-          [key]: value
+          [key]: value,
         };
       });
       newData[subjectId] = updatedSubjectMarks;
@@ -154,77 +366,110 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
   };
 
   const handleRemoveCat = (subjectId: string, catIndex: number) => {
-    setMarksData(prev => {
+    setMarksData((prev) => {
       const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
-      Object.keys(updatedSubjectMarks).forEach(studentId => {
+      Object.keys(updatedSubjectMarks).forEach((studentId) => {
         updatedSubjectMarks[studentId] = {
           ...updatedSubjectMarks[studentId],
           [`cat${catIndex}`]: null,
-          [`cat${catIndex}Max`]: 40
+          [`cat${catIndex}Max`]: 40,
         };
       });
       return {
         ...prev,
-        [subjectId]: updatedSubjectMarks
+        [subjectId]: updatedSubjectMarks,
       };
     });
   };
 
   const handleSaveMarks = async (subjectId: string, catConfigs?: any) => {
+    const currentSubject = displaySubjects.find((subject) => subject.id === subjectId);
+    if (!currentSubject) return;
+
     const subjectMarks = marksData[subjectId];
     if (!subjectMarks) return;
 
+    const studentRows = subjectStudents[subjectId] || [];
+    const studentLookup = new Map(studentRows.map((student) => [student.id, student]));
+    const marksByActualSubject = new Map<string, Array<{ studentId: string } & Student["marks"]>>();
+    const summaryData: Array<{ studentId: string; subjectId: string; finalScore: number | string | null }> = [];
+    const missingSelections: string[] = [];
+
+    Object.entries(subjectMarks).forEach(([studentId, marks]) => {
+      const student = studentLookup.get(studentId);
+      const actualSubjectId =
+        student?.enrollmentSubjectId ||
+        (currentSubject.actualSubjects.length === 1 ? currentSubject.actualSubjects[0].id : null);
+
+      if (!actualSubjectId) {
+        missingSelections.push(student?.name || studentId);
+        return;
+      }
+
+      const currentSubjectMarks = marksByActualSubject.get(actualSubjectId) || [];
+      currentSubjectMarks.push({
+        studentId,
+        ...marks,
+      });
+      marksByActualSubject.set(actualSubjectId, currentSubjectMarks);
+
+      if (hasAnyStoredValue(marks)) {
+        summaryData.push({
+          studentId,
+          subjectId: actualSubjectId,
+          finalScore: marks.finalScore,
+        });
+      }
+    });
+
+    if (missingSelections.length > 0) {
+      setMsg({
+        text: "Some learners are missing an elective subject selection. Update the student enrollment first.",
+        type: "error",
+      });
+      return;
+    }
+
     setMsg(null);
     try {
-      const data = Object.entries(subjectMarks).map(([studentId, marks]) => ({
-        studentId,
-        ...marks
-      }));
-      const summaryData = data
-        .filter((marks) => hasAnyStoredValue(marks))
-        .map((marks) => ({
-          studentId: marks.studentId,
-          subjectId,
-          finalScore: marks.finalScore,
-        }));
+      await Promise.all(
+        Array.from(marksByActualSubject.entries()).map(([actualSubjectId, actualSubjectMarks]) =>
+          api.post("/marks/save", {
+            subjectId: actualSubjectId,
+            classGrade: user.classGrade,
+            classStream: user.classStream,
+            term,
+            year,
+            examType,
+            marksData: actualSubjectMarks,
+            catConfigs,
+          }),
+        ),
+      );
 
-      await api.post("/marks/save", {
-        subjectId,
-        classGrade: user.classGrade,
-        classStream: user.classStream,
-        term: term,
-        year: year,
-        examType: examType,
-        marksData: data,
-        catConfigs
-      });
       if (summaryData.length > 0) {
         await api.post("/marks/summary-save", {
           classGrade: user.classGrade,
           classStream: user.classStream,
-          term: term,
-          year: year,
-          examType: examType,
+          term,
+          year,
+          examType,
           marksData: summaryData,
         });
       }
+
       setMsg({ text: "Marks saved successfully!", type: "success" });
       if (onRefresh) onRefresh();
+      await loadDetailedMarks();
     } catch (err: any) {
       setMsg({ text: "Failed to save: " + err.message, type: "error" });
     }
   };
 
-  // Map students and subjects to the expected types for MarksEntry
   const activeSubjectStudents = subjectStudents[activeSubjectId] || [];
-
   const mappedStudents: Student[] = activeSubjectStudents.map((student) => {
-    const sid = student.id.toString();
-    const studentMarks = (marksData[activeSubjectId] && marksData[activeSubjectId][sid]) || {
-      cat1: null, cat2: null, cat3: null, cat4: null, cat5: null,
-      cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
-      exam: null, examMax: 100, finalScore: null
-    };
+    const sid = String(student.id);
+    const studentMarks = (marksData[activeSubjectId] && marksData[activeSubjectId][sid]) || createEmptyMarks();
 
     return {
       ...student,
@@ -233,43 +478,37 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
     };
   });
 
-  const mappedSubjects: Subject[] = subjects.map(s => ({
-    id: s.id || s._id,
-    name: s.name,
-    grade: `${user.classGrade} ${user.classStream}`.trim(),
-    subjectId: s.id || s._id,
-    classGrade: user.classGrade,
-    classStream: user.classStream,
-    students: subjectStudents[s.id || s._id]?.length ?? students.length,
+  const mappedSubjects: Subject[] = displaySubjects.map((subject) => ({
+    ...subject,
+    students: subjectStudents[subject.id]?.length ?? countEligibleStudents(subject),
     avg: 0,
     pushed: false,
     term: 1,
-    lastAssess: "N/A"
-    ,
-    enrollmentMode: s.enrollmentMode || "compulsory",
-    sharedSlotId: s.sharedSlotId || null,
-  } as Subject));
+    lastAssess: "N/A",
+  }));
 
-  if (subjects.length === 0) {
+  if (displaySubjects.length === 0) {
     return <div style={{ padding: 40, textAlign: "center" }}>No subjects found.</div>;
   }
 
   return (
     <div className="ct-anim">
       {msg && (
-        <div style={{ 
-          padding: "10px 20px", 
-          marginBottom: 15, 
-          borderRadius: 8, 
-          background: msg.type === "success" ? C.greenLight : "#fdeaea",
-          color: msg.type === "success" ? C.successText : C.dangerText,
-          fontSize: 13,
-          fontWeight: 600
-        }}>
+        <div
+          style={{
+            padding: "10px 20px",
+            marginBottom: 15,
+            borderRadius: 8,
+            background: msg.type === "success" ? C.greenLight : "#fdeaea",
+            color: msg.type === "success" ? C.successText : C.dangerText,
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
           {msg.text}
         </div>
       )}
-      
+
       <MarksEntry
         mode="class"
         subjects={mappedSubjects}

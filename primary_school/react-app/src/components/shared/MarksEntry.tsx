@@ -76,6 +76,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
 }) => {
   const currentSubject = subjects.find((subject) => subject.id === activeSubjectId) || subjects[0] || null;
   const subjectMarks = marksData[activeSubjectId] || {};
+  const currentSubjectLabel = currentSubject?.displayName || currentSubject?.name || "";
+  const showEnrollmentSubjectColumn = students.some((student) => Boolean(student.enrollmentSubjectName));
 
   const [catsCount, setCatsCount] = useState(0);
   const [catConfigs, setCatConfigs] = useState<Record<ConfigKey, number | string | null>>({
@@ -174,7 +176,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
             {mode === "class" ? "Detailed Class Marks" : "Enter and Push Marks"}
           </h2>
           <p className={styles.sectionSub}>
-            {[currentSubject?.name, currentSubject?.grade, `Term ${term}`, `${year}`, examType]
+            {[currentSubjectLabel, currentSubject?.grade, `Term ${term}`, `${year}`, examType]
               .filter(Boolean)
               .join(" | ")}
           </p>
@@ -218,7 +220,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
           >
             {subjects.map((subject) => (
               <option key={subject.id} value={subject.id}>
-                {`${subject.name} - ${subject.grade} - ${formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)}`}
+                {`${subject.displayName || subject.name} - ${subject.grade} - ${formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)}`}
               </option>
             ))}
           </select>
@@ -275,6 +277,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
               <tr>
                 <th>Student</th>
                 <th>Adm. No</th>
+                {showEnrollmentSubjectColumn && <th>Subject</th>}
                 {Array.from({ length: catsCount }).map((_, index) => {
                   const key = getCatMaxKey(index + 1);
                   return (
@@ -334,6 +337,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                     : catsSum !== null && marks.exam !== null && marks.exam !== ""
                       ? catsSum + Number(marks.exam)
                       : null;
+                const calculatedPercentage =
+                  total !== null && maxTotal > 0 ? Math.round((total / maxTotal) * 100) : null;
                 const pushed = pushedStudents.has(student.id);
 
                 return (
@@ -345,6 +350,11 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                       </div>
                     </td>
                     <td style={{ color: "var(--textMut)", fontSize: "12px" }}>{student.adm}</td>
+                    {showEnrollmentSubjectColumn && (
+                      <td style={{ color: "var(--textMut)", fontSize: "12px" }}>
+                        {student.enrollmentSubjectName || "-"}
+                      </td>
+                    )}
                     {Array.from({ length: catsCount }).map((_, index) => {
                       const key = getCatKey(index + 1);
                       return (
@@ -387,13 +397,13 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                           min="0"
                           max="100"
                           value={marks.finalScore ?? ""}
-                          placeholder={total !== null && maxTotal > 0 ? Math.round((total / maxTotal) * 100).toString() : "-"}
+                          placeholder={calculatedPercentage !== null ? calculatedPercentage.toString() : "-"}
                           onChange={(event) => onMarkUpdate(activeSubjectId, student.id, "finalScore", event.target.value)}
                           style={{ borderColor: "var(--gold)", fontWeight: 700 }}
                         />
-                      ) : marks.finalScore !== null || (total !== null && maxTotal > 0) ? (
+                      ) : marks.finalScore !== null || calculatedPercentage !== null ? (
                         <span style={{ fontFamily: "var(--serif)", fontSize: "15px", fontWeight: 700, color: "var(--gold)" }}>
-                          {marks.finalScore !== null ? marks.finalScore : Math.round((total / maxTotal) * 100)}%
+                          {marks.finalScore !== null ? marks.finalScore : calculatedPercentage}%
                         </span>
                       ) : (
                         <span style={{ color: "var(--textF)", fontSize: "11px" }}>Pending</span>

@@ -8,6 +8,7 @@ import type {
 export interface Subject {
   id: string;
   name: string;
+  displayName?: string;
   grade: string;
   students: number;
   avg: number;
@@ -20,6 +21,9 @@ export interface Subject {
   classStream: string;
   enrollmentMode?: SubjectEnrollmentMode;
   sharedSlotId?: string | null;
+  groupedSubjectIds?: string[];
+  groupedSubjectNames?: string[];
+  isLinkedElectiveGroup?: boolean;
 }
 
 export interface Student {
@@ -28,6 +32,8 @@ export interface Student {
   name: string;
   gender: string;
   enrolledSubjects?: StudentSubjectEnrollment[];
+  enrollmentSubjectId?: string | null;
+  enrollmentSubjectName?: string | null;
   marks: {
     cat1: number | string | null;
     cat2: number | string | null;
