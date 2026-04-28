@@ -277,6 +277,15 @@ const rotateArray = <T,>(items: T[], offset: number) => {
   return [...items.slice(normalizedOffset), ...items.slice(0, normalizedOffset)];
 };
 
+const shuffleArray = <T,>(items: T[]) => {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j] as T, result[i] as T];
+  }
+  return result;
+};
+
 const extractJsonPayload = (rawText: string) => {
   const trimmed = rawText.trim();
   const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -399,39 +408,24 @@ const generateFallbackPlan = (
   const totalWeeklySlots = SCHOOL_DAYS.length * subjectsPerDay;
   const classPlans = new Map<string, ClassTimetablePlan>();
   const remainingByClass = new Map<string, Map<string, number>>();
-  const teacherAssignmentWeights = new Map<string, number>();
 
-  for (const currentClass of classes) {
-    for (const subject of currentClass.subjects) {
-      teacherAssignmentWeights.set(
-        subject.teacherId,
-        (teacherAssignmentWeights.get(subject.teacherId) || 0) + 1,
-      );
-    }
-  }
-
-  classes.forEach((currentClass, classIndex) => {
-    const orderedSubjects = rotateArray(
-      [...currentClass.subjects].sort((left, right) => {
-        const leftWeight = teacherAssignmentWeights.get(left.teacherId) || 0;
-        const rightWeight = teacherAssignmentWeights.get(right.teacherId) || 0;
-
-        if (leftWeight !== rightWeight) return leftWeight - rightWeight;
-        return left.subjectName.localeCompare(right.subjectName);
-      }),
-      classIndex,
-    );
-
-    const baseCount = Math.floor(totalWeeklySlots / orderedSubjects.length);
-    const remainder = totalWeeklySlots % orderedSubjects.length;
+  classes.forEach((currentClass) => {
+    const classKey = buildClassKey(currentClass.classGrade, currentClass.classStream);
     const counts = new Map<string, number>();
 
-    orderedSubjects.forEach((subject, index) => {
-      counts.set(subject.subjectId, baseCount + (index < remainder ? 1 : 0));
-    });
+    if (currentClass.subjects.length > 0) {
+      const baseCount = Math.floor(totalWeeklySlots / currentClass.subjects.length);
+      const remainder = totalWeeklySlots % currentClass.subjects.length;
 
-    remainingByClass.set(buildClassKey(currentClass.classGrade, currentClass.classStream), counts);
-    classPlans.set(buildClassKey(currentClass.classGrade, currentClass.classStream), {
+      // Shuffle subjects initially to avoid deterministic bias
+      const shuffledSubjects = shuffleArray(currentClass.subjects);
+      shuffledSubjects.forEach((subject, index) => {
+        counts.set(subject.subjectId, baseCount + (index < remainder ? 1 : 0));
+      });
+    }
+
+    remainingByClass.set(classKey, counts);
+    classPlans.set(classKey, {
       classGrade: currentClass.classGrade,
       classStream: currentClass.classStream,
       classTeacherId: currentClass.classTeacherId,
@@ -447,192 +441,104 @@ const generateFallbackPlan = (
     });
   });
 
-  const teacherDailyLoads = new Map<string, number>();
-  let teacherPreviousSlot = new Set<string>();
-  let teacherConsecutiveLoads = new Map<string, number>();
-
-  SCHOOL_DAYS.forEach((day, dayIndex) => {
+  for (let dayIndex = 0; dayIndex < SCHOOL_DAYS.length; dayIndex += 1) {
+    const day = SCHOOL_DAYS[dayIndex];
     const previousSubjectByClass = new Map<string, string | null>();
     const daySubjectCounts = new Map<string, Map<string, number>>();
 
-    teacherDailyLoads.clear();
-    teacherPreviousSlot = new Set<string>();
-    teacherConsecutiveLoads = new Map<string, number>();
-
     for (let slotIndex = 0; slotIndex < subjectsPerDay; slotIndex += 1) {
       const teacherBooked = new Set<string>();
-      const teachersInCurrentSlot = new Set<string>();
-      const pendingClassKeys = rotateArray(classes.map((currentClass) => buildClassKey(currentClass.classGrade, currentClass.classStream)), dayIndex + slotIndex);
-      const chosenLessons = new Map<string, TimetableLessonPlan>();
 
-      while (pendingClassKeys.length > 0) {
-        pendingClassKeys.sort((leftKey, rightKey) => {
-          const leftClass = classes.find((item) => buildClassKey(item.classGrade, item.classStream) === leftKey)!;
-          const rightClass = classes.find((item) => buildClassKey(item.classGrade, item.classStream) === rightKey)!;
-          const leftCandidates = leftClass.subjects.filter((subject) => {
-            const remaining = remainingByClass.get(leftKey)?.get(subject.subjectId) || 0;
-            return remaining > 0 && !teacherBooked.has(subject.teacherId);
-          }).length;
-          const rightCandidates = rightClass.subjects.filter((subject) => {
-            const remaining = remainingByClass.get(rightKey)?.get(subject.subjectId) || 0;
-            return remaining > 0 && !teacherBooked.has(subject.teacherId);
-          }).length;
-          return leftCandidates - rightCandidates;
-        });
+      // Randomize the order of classes processed for this slot to prevent teacher priority bias
+      const classIndices = shuffleArray(Array.from({ length: classes.length }, (_, i) => i));
 
-        const classKey = pendingClassKeys.shift()!;
-        const currentClass = classes.find((item) => buildClassKey(item.classGrade, item.classStream) === classKey)!;
+      for (const classIndex of classIndices) {
+        const currentClass = classes[classIndex];
+        if (!currentClass) continue;
+
+        const classKey = buildClassKey(currentClass.classGrade, currentClass.classStream);
         const subjectCountsForDay = daySubjectCounts.get(classKey) || new Map<string, number>();
         daySubjectCounts.set(classKey, subjectCountsForDay);
+
         const previousSubjectId = previousSubjectByClass.get(classKey);
         const remainingDays = SCHOOL_DAYS.length - dayIndex;
 
-        const buildCandidates = (
-          allowRepeat: boolean,
-          enforceDailyCap: boolean,
-        ) =>
-          currentClass.subjects
-            .map((subject) => {
-              const remaining =
-                remainingByClass.get(classKey)?.get(subject.subjectId) || 0;
-              const dayCount = subjectCountsForDay.get(subject.subjectId) || 0;
-              const dailyCap = Math.max(
-                1,
-                Math.ceil(remaining / Math.max(1, remainingDays)),
-              );
+        const candidatePool = currentClass.subjects
+          .map((subject) => {
+            const remaining = remainingByClass.get(classKey)?.get(subject.subjectId) || 0;
+            const dayCount = subjectCountsForDay.get(subject.subjectId) || 0;
+            const dailyCap = Math.max(1, Math.ceil(remaining / Math.max(1, remainingDays)));
+            return {
+              ...subject,
+              remaining,
+              dayCount,
+              dailyCap,
+            };
+          })
+          .filter((subject) => subject.remaining > 0 && !teacherBooked.has(subject.teacherId));
 
-              return {
-                ...subject,
-                remaining,
-                dayCount,
-                dailyCap,
-                teacherDaily: teacherDailyLoads.get(subject.teacherId) || 0,
-                consecutive: teacherConsecutiveLoads.get(subject.teacherId) || 0,
-                teacherWeight:
-                  teacherAssignmentWeights.get(subject.teacherId) || 0,
-              };
-            })
-            .filter((subject) => {
-              if (subject.remaining <= 0 || teacherBooked.has(subject.teacherId)) {
-                return false;
-              }
+        let viableCandidates = candidatePool.filter(
+          (subject) => previousSubjectId !== subject.subjectId && subject.dayCount < subject.dailyCap
+        );
 
-              if (!allowRepeat && previousSubjectId === subject.subjectId) {
-                return false;
-              }
-
-              if (enforceDailyCap && subject.dayCount >= subject.dailyCap) {
-                return false;
-              }
-
-              return true;
-            })
-            .sort((left, right) => {
-              const leftUrgency = left.remaining / Math.max(1, remainingDays);
-              const rightUrgency = right.remaining / Math.max(1, remainingDays);
-
-              if (rightUrgency !== leftUrgency) {
-                return rightUrgency - leftUrgency;
-              }
-
-              if (left.dayCount !== right.dayCount) {
-                return left.dayCount - right.dayCount;
-              }
-
-              if (left.teacherDaily !== right.teacherDaily) {
-                return left.teacherDaily - right.teacherDaily;
-              }
-
-              if (left.consecutive !== right.consecutive) {
-                return left.consecutive - right.consecutive;
-              }
-
-              if (right.teacherWeight !== left.teacherWeight) {
-                return right.teacherWeight - left.teacherWeight;
-              }
-
-              return left.subjectName.localeCompare(right.subjectName);
-            });
-
-        const candidatePool =
-          [
-            buildCandidates(false, true),
-            buildCandidates(true, true),
-            buildCandidates(false, false),
-            buildCandidates(true, false),
-          ].find((candidates) => candidates.length > 0) || [];
-
-        const selectedSubject = candidatePool[0];
-
-        if (!selectedSubject) {
-          chosenLessons.set(classKey, {
-            subjectId: null,
-            subjectName: "Independent Study",
-            teacherId: null,
-            teacherName: "Department Supervision",
-          });
-          previousSubjectByClass.set(classKey, null);
-          continue;
+        if (viableCandidates.length === 0) {
+          viableCandidates = candidatePool.filter((subject) => subject.dayCount < subject.dailyCap);
         }
 
-        chosenLessons.set(classKey, {
-          subjectId: selectedSubject.subjectId,
-          subjectName: selectedSubject.subjectName,
-          teacherId: selectedSubject.teacherId,
-          teacherName: selectedSubject.teacherName,
+        if (viableCandidates.length === 0) {
+          viableCandidates = candidatePool.filter((subject) => previousSubjectId !== subject.subjectId);
+        }
+
+        if (viableCandidates.length === 0) {
+          viableCandidates = candidatePool;
+        }
+
+        // Sort candidates with a random tie-breaker instead of alphabetical
+        viableCandidates.sort((left, right) => {
+          const leftUrgency = left.remaining / Math.max(1, remainingDays);
+          const rightUrgency = right.remaining / Math.max(1, remainingDays);
+          if (Math.abs(rightUrgency - leftUrgency) > 0.01) return rightUrgency - leftUrgency;
+          if (left.dayCount !== right.dayCount) return left.dayCount - right.dayCount;
+          // Use Math.random() for tie-breaking
+          return Math.random() - 0.5;
         });
 
-        teacherBooked.add(selectedSubject.teacherId);
-        teachersInCurrentSlot.add(selectedSubject.teacherId);
-        previousSubjectByClass.set(classKey, selectedSubject.subjectId);
-        subjectCountsForDay.set(selectedSubject.subjectId, (subjectCountsForDay.get(selectedSubject.subjectId) || 0) + 1);
-        teacherDailyLoads.set(selectedSubject.teacherId, (teacherDailyLoads.get(selectedSubject.teacherId) || 0) + 1);
-        remainingByClass.get(classKey)?.set(
-          selectedSubject.subjectId,
-          Math.max(0, (remainingByClass.get(classKey)?.get(selectedSubject.subjectId) || 0) - 1),
-        );
-      }
+        const selectedSubject = viableCandidates[0];
 
-      for (const currentClass of classes) {
-        const classKey = buildClassKey(currentClass.classGrade, currentClass.classStream);
-        classPlans.get(classKey)?.lessonPlan[day].push(
-          chosenLessons.get(classKey) || {
-            subjectId: null,
-            subjectName: "Independent Study",
-            teacherId: null,
-            teacherName: "Department Supervision",
-          },
-        );
-      }
-
-      const updatedConsecutiveLoads = new Map<string, number>();
-      const allTeachers = new Set<string>([
-        ...Array.from(teacherPreviousSlot),
-        ...Array.from(teachersInCurrentSlot),
-      ]);
-
-      for (const teacherId of allTeachers) {
-        if (teachersInCurrentSlot.has(teacherId)) {
-          updatedConsecutiveLoads.set(
-            teacherId,
-            teacherPreviousSlot.has(teacherId)
-              ? (teacherConsecutiveLoads.get(teacherId) || 0) + 1
-              : 1,
-          );
+        if (selectedSubject) {
+          const planForClass = classPlans.get(classKey);
+          if (planForClass) {
+            planForClass.lessonPlan[day as SchoolDay].push({
+              subjectId: selectedSubject.subjectId,
+              subjectName: selectedSubject.subjectName,
+              teacherId: selectedSubject.teacherId,
+              teacherName: selectedSubject.teacherName,
+            });
+          }
+          teacherBooked.add(selectedSubject.teacherId);
+          previousSubjectByClass.set(classKey, selectedSubject.subjectId);
+          subjectCountsForDay.set(selectedSubject.subjectId, (subjectCountsForDay.get(selectedSubject.subjectId) || 0) + 1);
+          remainingByClass.get(classKey)?.set(selectedSubject.subjectId, selectedSubject.remaining - 1);
         } else {
-          updatedConsecutiveLoads.set(teacherId, 0);
+          const planForClass = classPlans.get(classKey);
+          if (planForClass) {
+            planForClass.lessonPlan[day as SchoolDay].push({
+              subjectId: null,
+              subjectName: "Independent Study",
+              teacherId: null,
+              teacherName: "Department Supervision",
+            });
+          }
+          previousSubjectByClass.set(classKey, null);
         }
       }
-
-      teacherPreviousSlot = teachersInCurrentSlot;
-      teacherConsecutiveLoads = updatedConsecutiveLoads;
     }
-  });
+  }
 
   return {
     generationMode: "balanced-fallback",
     summary:
-      "Balanced fallback scheduler generated the timetable using equal weekly distribution, teacher conflict checks, and realistic daily subject spacing.",
+      "Balanced fallback scheduler generated the timetable using randomized subject distribution, strict teacher conflict checks, and realistic daily subject spacing.",
     classes: Array.from(classPlans.values()),
   };
 };
@@ -801,8 +707,8 @@ const generatePlanWithGroq = async (
         ].join("\n"),
       },
     ],
-    model: "openai/gpt-oss-20b",
-    temperature: 1,
+    model: "llama3-70b-8192",
+    temperature: 0.7,
     max_completion_tokens: 8192,
     stream: true,
   });
@@ -977,11 +883,6 @@ const createTimetablePdfBuffer = (
     },
     margin: { left: 10, right: 10, top: 12, bottom: 16 },
   });
-    alternateRowStyles: {
-      fillColor: [252, 251, 248],
-    },
-    margin: { left: 10, right: 10, top: 12, bottom: 16 },
-  });
 
   const footerText = `Generated by School Management System | Date: ${new Date().toLocaleDateString()}`;
   doc.setFontSize(8.5);
@@ -1062,7 +963,17 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
   const [assignments, students, teachers, subjects, generatedByUser, sampleUser] = await Promise.all([
     AssignmentModel.find().lean(),
     studentModel.find({ class: { $ne: null }, classStream: { $ne: null } } as any).lean(),
-    userModel.find({ class: { $ne: null }, classStream: { $ne: null } } as any).lean(),
+    userModel.find({
+      __t: {
+        $in: [
+          rolesMapped.CT,
+          rolesMapped.SJ,
+          rolesMapped.DT,
+          rolesMapped.HT,
+          rolesMapped.ADM,
+        ],
+      },
+    } as any).lean(),
     SubjectModel.find().lean(),
     generatedByUserId ? userModel.findById(generatedByUserId).lean() : Promise.resolve(null),
     userModel.findOne({ term: { $ne: null } } as any).lean(),
@@ -1111,6 +1022,22 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
       subjects: ClassSubjectContext[];
     }
   >();
+
+  const allClasses = new Set([...studentCountByClass.keys(), ...classTeacherByClass.keys()]);
+  for (const classKey of allClasses) {
+    const parts = classKey.split("::");
+    const classGrade = parts[0] || "Unknown";
+    const classStream = parts[1] || "";
+    const classTeacher = classTeacherByClass.get(classKey);
+    classMap.set(classKey, {
+      classGrade,
+      classStream,
+      studentCount: studentCountByClass.get(classKey) || 0,
+      classTeacherId: classTeacher?.id || null,
+      classTeacherName: classTeacher?.name || null,
+      subjects: [],
+    });
+  }
 
   for (const assignment of assignments as any[]) {
     const subjectName = subjectMap.get(String(assignment.subjectId));
