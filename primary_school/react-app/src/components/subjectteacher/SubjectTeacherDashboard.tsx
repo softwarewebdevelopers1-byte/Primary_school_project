@@ -101,10 +101,10 @@ const SubjectTeacherDashboard: React.FC = () => {
       setLoading(true);
       const data: any[] = await api.get(`/school/assignments/teacher/${currentUser.id}`);
       const mapped: Subject[] = data.map((a: any) => ({
-        id: a._id, // Use assignment ID
+        id: a._id || a.id,
         subjectId: a.subjectId._id,
         name: a.subjectId.name,
-        grade: `Grade ${a.classGrade}${a.classStream}`,
+        grade: `Grade ${a.classGrade} ${a.classStream}`.trim(),
         classGrade: a.classGrade,
         classStream: a.classStream,
         students: a.studentCount || 0,
@@ -112,7 +112,9 @@ const SubjectTeacherDashboard: React.FC = () => {
         pushed: false,
         term: 1,
         year: 2024,
-        lastAssess: "N/A"
+        lastAssess: "N/A",
+        enrollmentMode: a.enrollmentMode || "compulsory",
+        sharedSlotId: a.sharedSlotId || null,
       }));
       setSubjects(mapped);
       if (mapped.length > 0) setActiveSubjectId(mapped[0].id);

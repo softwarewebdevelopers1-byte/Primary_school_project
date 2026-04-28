@@ -1,5 +1,6 @@
 import mongoose, { Model, Schema } from "mongoose";
 import { type teachers, type student, type user } from "./types.js";
+import type { StudentSubjectEnrollment } from "../utils/subjectEnrollment.js";
 //
 type roles = "CT" | "SJ" | "DT" | "HT" | "ST" | "ADM";
 //
@@ -122,6 +123,21 @@ const studentSchema = new Schema<student>({
   joinDate: {
     type: String,
     default: () => new Date().toISOString().slice(0, 10),
+  },
+  enrolledSubjects: {
+    type: [
+      new Schema<StudentSubjectEnrollment>(
+        {
+          subjectId: { type: String, required: true },
+          classGrade: { type: String, required: true },
+          classStream: { type: String, required: true, default: "" },
+          isActive: { type: Boolean, default: true },
+          enrolledAt: { type: Date, default: Date.now },
+        },
+        { _id: false },
+      ),
+    ],
+    default: [],
   },
 });
 export const userModel =

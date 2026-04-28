@@ -26,6 +26,12 @@ import {
 } from "./types";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
 import { api } from "../../lib/api";
+import {
+  buildClassId,
+  getClassSubjectSetting,
+  type StudentSubjectEnrollment,
+  type SubjectEnrollmentMode,
+} from "../../lib/subjectEnrollment";
 
 const navItems: NavItem[] = [
   { id: "overview", label: "Overview", svg: "<path d='M3 13h8V3H3v10z'/><path d='M13 21h8V11h-8v10z'/><path d='M13 3h8v6h-8V3z'/><path d='M3 17h8v4H3v-4z'/>" },
@@ -42,9 +48,6 @@ const navItems: NavItem[] = [
 
 const teacherInitials = "AU";
 const teacherAvatarColor = "#c9963d";
-
-const buildClassId = (grade: string, stream?: string) =>
-  `${grade.trim()}::${(stream || "").trim()}`;
 
 const normalizeStatus = (value?: string) =>
   value?.toLowerCase() === "inactive" ? "Inactive" : "Active";
@@ -65,6 +68,9 @@ const mapStudentsFromApi = (students: ApiStudent[]): Student[] =>
     guardianName: student.guardianName,
     guardianPhone: student.guardianPhone,
     classId: buildClassId(student.classGrade, student.classStream),
+    classGrade: student.classGrade,
+    classStream: student.classStream || "",
+    enrolledSubjects: student.enrolledSubjects || [],
     status: normalizeStatus(student.status),
     term: student.term,
     year: student.year,
@@ -81,15 +87,30 @@ const deriveClasses = (
   const classMap = new Map<string, Class>();
   const allSubjectIds = subjects.map((subject) => subject.id);
 
-  const getDroppedSubjectIdsForClass = (grade: string, stream: string) =>
-    classSubjectSettings
-      .filter(
-        (setting) =>
-          setting.classGrade === grade &&
-          (setting.classStream || "") === stream &&
-          setting.isOffered === false,
-      )
-      .map((setting) => setting.subjectId);
+  const getSubjectSettingsForClass = (grade: string, stream: string) =>
+    Object.fromEntries(
+      subjects.map((subject) => {
+        const setting = getClassSubjectSetting(
+          classSubjectSettings,
+          subject.id,
+          grade,
+          stream,
+        );
+
+        return [
+          subject.id,
+          {
+            id: `${grade}:${stream}:${subject.id}`,
+            subjectId: subject.id,
+            classGrade: grade,
+            classStream: stream,
+            isOffered: setting.isOffered,
+            enrollmentMode: setting.enrollmentMode,
+            sharedSlotId: setting.sharedSlotId,
+          },
+        ];
+      }),
+    ) as Record<string, ClassSubjectSetting>;
 
   const getAssignmentsForClass = (grade: string, stream: string, offeredSubjectIds: string[]) => {
     const res: Record<string, string> = {};
@@ -112,8 +133,17 @@ const deriveClasses = (
         (teacher.classGrade || "").trim() === grade &&
         (teacher.classStream || "").trim() === stream,
     );
-    const droppedSubjectIds = getDroppedSubjectIdsForClass(grade, stream);
+    const subjectSettings = getSubjectSettingsForClass(grade, stream);
+    const droppedSubjectIds = Object.values(subjectSettings)
+      .filter((setting) => setting.isOffered === false)
+      .map((setting) => setting.subjectId);
     const offeredSubjectIds = allSubjectIds.filter((subjectId) => !droppedSubjectIds.includes(subjectId));
+    const compulsorySubjectIds = offeredSubjectIds.filter(
+      (subjectId) => (subjectSettings[subjectId]?.enrollmentMode || "compulsory") === "compulsory",
+    );
+    const electiveSubjectIds = offeredSubjectIds.filter(
+      (subjectId) => (subjectSettings[subjectId]?.enrollmentMode || "compulsory") === "elective",
+    );
 
     classMap.set(student.classId, {
       id: student.classId,
@@ -123,8 +153,11 @@ const deriveClasses = (
       students: students.filter((current) => current.classId === student.classId).length,
       classTeacherId: classTeacher?.id || "",
       subjectAssignments: getAssignmentsForClass(grade, stream, offeredSubjectIds),
+      subjectSettings,
       offeredSubjectIds,
       droppedSubjectIds,
+      compulsorySubjectIds,
+      electiveSubjectIds,
       term: classTeacher?.term || student.term || 1,
       year: classTeacher?.year || student.year || 2024,
       examType: classTeacher?.examType || student.examType || "opener",
@@ -137,8 +170,17 @@ const deriveClasses = (
       const grade = teacher.classGrade || "";
       const stream = teacher.classStream || "";
       const classId = buildClassId(grade, stream);
-      const droppedSubjectIds = getDroppedSubjectIdsForClass(grade, stream);
+      const subjectSettings = getSubjectSettingsForClass(grade, stream);
+      const droppedSubjectIds = Object.values(subjectSettings)
+        .filter((setting) => setting.isOffered === false)
+        .map((setting) => setting.subjectId);
       const offeredSubjectIds = allSubjectIds.filter((subjectId) => !droppedSubjectIds.includes(subjectId));
+      const compulsorySubjectIds = offeredSubjectIds.filter(
+        (subjectId) => (subjectSettings[subjectId]?.enrollmentMode || "compulsory") === "compulsory",
+      );
+      const electiveSubjectIds = offeredSubjectIds.filter(
+        (subjectId) => (subjectSettings[subjectId]?.enrollmentMode || "compulsory") === "elective",
+      );
 
       if (classMap.has(classId)) {
         return;
@@ -152,8 +194,11 @@ const deriveClasses = (
         students: 0,
         classTeacherId: teacher.id,
         subjectAssignments: getAssignmentsForClass(grade, stream, offeredSubjectIds),
+        subjectSettings,
         offeredSubjectIds,
         droppedSubjectIds,
+        compulsorySubjectIds,
+        electiveSubjectIds,
         term: teacher.term || 1,
         year: teacher.year || 2024,
         examType: teacher.examType || "opener",
@@ -317,6 +362,7 @@ const AdminDashboard: React.FC = () => {
       classGrade: string;
       classStream: string;
       status: string;
+      enrolledSubjects: StudentSubjectEnrollment[];
     },
     studentId?: string,
   ) => {
@@ -500,6 +546,8 @@ const AdminDashboard: React.FC = () => {
     classGrade: string,
     classStream: string,
     isOffered: boolean,
+    enrollmentMode: SubjectEnrollmentMode = "compulsory",
+    sharedSlotId: string | null = null,
   ) => {
     try {
       const response = await api.put<{ message?: string }>("/school/class-subjects", {
@@ -507,6 +555,8 @@ const AdminDashboard: React.FC = () => {
         classGrade,
         classStream,
         isOffered,
+        enrollmentMode,
+        sharedSlotId,
       });
       await loadDashboardUsers();
       showSuccess(
@@ -671,6 +721,8 @@ const AdminDashboard: React.FC = () => {
         <StudentsTab
           students={students}
           classes={classes}
+          subjects={subjects}
+          classSubjectSettings={classSubjectSettings}
           onSaveStudent={saveStudent}
           onDeleteStudent={deleteStudent}
           pill={pill}
@@ -729,6 +781,7 @@ const AdminDashboard: React.FC = () => {
           classes={classes}
           teachers={teachers}
           subjects={subjects}
+          students={students}
           onSaveAssignment={saveAssignment}
           onUnassignTeacher={unassignSubjectTeacher}
           onToggleSubjectOffering={toggleSubjectOffering}

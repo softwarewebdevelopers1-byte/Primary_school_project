@@ -70,6 +70,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   const [selectedClassId, setSelectedClassId] = useState("");
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
+  const [subjectStudents, setSubjectStudents] = useState<Record<string, MarksStudent[]>>({});
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -106,6 +107,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
 
   useEffect(() => {
     setMarksData({});
+    setSubjectStudents({});
   }, [selectedClassId, currentClass?.term, currentClass?.year, currentClass?.examType]);
 
   useEffect(() => {
@@ -136,6 +138,18 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
             acc[item.studentId.toString()] = item.marks;
             return acc;
           }, {} as any),
+        }));
+        setSubjectStudents((prev) => ({
+          ...prev,
+          [activeSubjectId]: data.map((item) => ({
+            id: item.studentId.toString(),
+            name: item.name,
+            adm: item.admissionNo,
+            gender: item.gender || "N/A",
+            enrolledSubjects: item.enrolledSubjects || [],
+            marks: item.marks,
+            pushed: false,
+          })),
         }));
       } catch (error: any) {
         if (!ignore) {
@@ -300,7 +314,9 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     }
   };
 
-  const mappedStudents: MarksStudent[] = classStudents.map((student) => {
+  const activeSubjectStudents = subjectStudents[activeSubjectId] || [];
+
+  const mappedStudents: MarksStudent[] = activeSubjectStudents.map((student) => {
     const studentMarks = (marksData[activeSubjectId] && marksData[activeSubjectId][student.id]) || {
       cat1: null,
       cat2: null,
@@ -318,10 +334,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     };
 
     return {
-      id: student.id,
-      name: student.name,
-      adm: student.admissionNo,
-      gender: student.gender,
+      ...student,
       marks: studentMarks,
       pushed: false,
     };
@@ -334,12 +347,14 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     subjectId: subject.id,
     classGrade: currentClass?.grade || "",
     classStream: currentClass?.stream || "",
-    students: classStudents.length,
+    students: subjectStudents[subject.id]?.length ?? classStudents.length,
     avg: 0,
     pushed: false,
     term: currentClass?.term || 1,
     year: currentClass?.year || new Date().getFullYear(),
     lastAssess: "N/A",
+    enrollmentMode: currentClass?.subjectSettings?.[subject.id]?.enrollmentMode || "compulsory",
+    sharedSlotId: currentClass?.subjectSettings?.[subject.id]?.sharedSlotId || null,
   }));
 
   if (classes.length === 0) {

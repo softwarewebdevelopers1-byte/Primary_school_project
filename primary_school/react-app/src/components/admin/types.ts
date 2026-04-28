@@ -1,5 +1,10 @@
 // components/admin/types.ts
 
+import type {
+  StudentSubjectEnrollment,
+  SubjectEnrollmentMode,
+} from "../../lib/subjectEnrollment";
+
 export interface Teacher {
   id: string;
   name: string;
@@ -24,6 +29,8 @@ export interface Subject {
   name: string;
   department: string;
   isOffered?: boolean;
+  enrollmentMode?: SubjectEnrollmentMode;
+  sharedSlotId?: string | null;
 }
 
 export interface Class {
@@ -34,8 +41,11 @@ export interface Class {
   students: number;
   classTeacherId?: string;
   subjectAssignments: Record<string, string>;
+  subjectSettings: Record<string, ClassSubjectSetting>;
   offeredSubjectIds: string[];
   droppedSubjectIds: string[];
+  compulsorySubjectIds: string[];
+  electiveSubjectIds: string[];
   term?: number;
   year?: number;
   examType?: string;
@@ -49,6 +59,9 @@ export interface Student {
   guardianName: string;
   guardianPhone: string;
   classId: string;
+  classGrade: string;
+  classStream?: string;
+  enrolledSubjects: StudentSubjectEnrollment[];
   status?: string;
   term?: number;
   year?: number;
@@ -85,6 +98,7 @@ export interface ApiStudent {
   classGrade: string;
   classStream?: string;
   joinDate?: string;
+  enrolledSubjects?: StudentSubjectEnrollment[];
   term?: number;
   year?: number;
   examType?: string;
@@ -96,6 +110,9 @@ export interface ApiAssignment {
   teacherId: string;
   classGrade: string;
   classStream: string;
+  enrollmentMode?: SubjectEnrollmentMode;
+  sharedSlotId?: string | null;
+  studentCount?: number;
 }
 
 export interface ClassSubjectSetting {
@@ -104,6 +121,8 @@ export interface ClassSubjectSetting {
   classGrade: string;
   classStream: string;
   isOffered: boolean;
+  enrollmentMode?: SubjectEnrollmentMode;
+  sharedSlotId?: string | null;
 }
 
 export interface UsersDashboardResponse {

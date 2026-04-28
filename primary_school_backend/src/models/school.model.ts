@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import type { SubjectEnrollmentMode } from "../utils/subjectEnrollment.js";
 
 export interface ISubject extends Document {
   name: string;
@@ -33,6 +34,8 @@ export interface IClassSubjectSetting extends Document {
   classGrade: string;
   classStream: string;
   isOffered: boolean;
+  enrollmentMode: SubjectEnrollmentMode;
+  sharedSlotId?: string | null;
   updatedBy?: string | null;
 }
 
@@ -41,6 +44,8 @@ const ClassSubjectSettingSchema: Schema = new Schema({
   classGrade: { type: String, required: true },
   classStream: { type: String, required: true, default: "" },
   isOffered: { type: Boolean, default: false },
+  enrollmentMode: { type: String, enum: ["compulsory", "elective"], default: "compulsory" },
+  sharedSlotId: { type: String, default: null },
   updatedBy: { type: String, default: null },
 }, { timestamps: true });
 
@@ -102,6 +107,15 @@ const MarkSchema: Schema = new Schema({
 
 export const MarkModel = mongoose.model<IMark>("Mark", MarkSchema);
 
+export interface ITimetableParallelLesson {
+  subjectId: string;
+  subjectName: string;
+  teacherId?: string | null;
+  teacherName?: string | null;
+  enrollmentMode?: SubjectEnrollmentMode | null;
+  sharedSlotId?: string | null;
+}
+
 export interface IArchive extends Document {
   classGrade: string;
   classStream: string;
@@ -142,6 +156,9 @@ export interface ITimetableEntry {
   subjectName?: string | null;
   teacherId?: string | null;
   teacherName?: string | null;
+  enrollmentMode?: SubjectEnrollmentMode | null;
+  sharedSlotId?: string | null;
+  parallelLessons?: ITimetableParallelLesson[];
 }
 
 export interface ITimetableDay {
@@ -188,6 +205,21 @@ const TimetableEntrySchema = new Schema<ITimetableEntry>({
   subjectName: { type: String, default: null },
   teacherId: { type: String, default: null },
   teacherName: { type: String, default: null },
+  enrollmentMode: { type: String, enum: ["compulsory", "elective"], default: null },
+  sharedSlotId: { type: String, default: null },
+  parallelLessons: {
+    type: [
+      new Schema<ITimetableParallelLesson>({
+        subjectId: { type: String, required: true },
+        subjectName: { type: String, required: true },
+        teacherId: { type: String, default: null },
+        teacherName: { type: String, default: null },
+        enrollmentMode: { type: String, enum: ["compulsory", "elective"], default: null },
+        sharedSlotId: { type: String, default: null },
+      }, { _id: false }),
+    ],
+    default: [],
+  },
 }, { _id: false });
 
 const TimetableDaySchema = new Schema<ITimetableDay>({

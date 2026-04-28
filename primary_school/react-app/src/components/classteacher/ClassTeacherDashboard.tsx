@@ -26,6 +26,7 @@ import {
 import { C, FONT } from "./shared/constants";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
 import { api } from "../../lib/api";
+import { type SubjectEnrollmentMode } from "../../lib/subjectEnrollment";
 
 const NAV = [
   { id: "students", label: "Student records", desc: "Rosters, contacts, and learner profiles.", Icon: UsersIcon },
@@ -112,7 +113,12 @@ export default function ClassTeacherDashboard() {
     }
   }, [currentUser]);
 
-  const toggleSubjectOffering = useCallback(async (subjectId: string, isOffered: boolean) => {
+  const toggleSubjectOffering = useCallback(async (
+    subjectId: string,
+    isOffered: boolean,
+    enrollmentMode: SubjectEnrollmentMode = "compulsory",
+    sharedSlotId: string | null = null,
+  ) => {
     if (!currentUser?.classGrade) {
       throw new Error("No class is assigned to your profile.");
     }
@@ -122,6 +128,8 @@ export default function ClassTeacherDashboard() {
       classGrade: currentUser.classGrade,
       classStream: currentUser.classStream || "",
       isOffered,
+      enrollmentMode,
+      sharedSlotId,
     });
     await loadData();
   }, [currentUser, loadData]);

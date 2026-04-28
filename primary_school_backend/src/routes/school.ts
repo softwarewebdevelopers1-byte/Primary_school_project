@@ -5,6 +5,14 @@ import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
 import { authenticate, type AuthRequest } from "../middleware/auth.js";
 import { buildArchiveSearchQuery, deleteStoredArchiveById } from "../utils/archiver.js";
 import { deleteStoredTimetableById, generateAndStoreSchoolTimetables } from "../utils/timetable.js";
+import {
+  buildClassKey,
+  buildClassSubjectSettingMap,
+  filterStudentsForSubject,
+  getClassSubjectEnrollmentSetting,
+  normalizeSharedSlotId,
+  normalizeSubjectEnrollmentMode,
+} from "../utils/subjectEnrollment.js";
 
 const router = Router();
 
@@ -12,11 +20,29 @@ const mapTimetableRecord = (record: any, teacherId?: string) => {
   const myLessons = teacherId
     ? record.days.flatMap((day: any) =>
         day.entries
-          .filter((entry: any) => entry.teacherId === teacherId)
-          .map((entry: any) => ({
-            day: day.day,
-            ...entry,
-          })),
+          .flatMap((entry: any) => {
+            if (entry.teacherId === teacherId) {
+              return [{
+                day: day.day,
+                ...entry,
+              }];
+            }
+
+            const matchingParallelLessons = Array.isArray(entry.parallelLessons)
+              ? entry.parallelLessons.filter((lesson: any) => lesson.teacherId === teacherId)
+              : [];
+
+            return matchingParallelLessons.map((lesson: any) => ({
+              day: day.day,
+              ...entry,
+              subjectId: lesson.subjectId,
+              subjectName: lesson.subjectName,
+              teacherId: lesson.teacherId,
+              teacherName: lesson.teacherName,
+              enrollmentMode: lesson.enrollmentMode || entry.enrollmentMode || null,
+              sharedSlotId: lesson.sharedSlotId || entry.sharedSlotId || null,
+            }));
+          }),
       )
     : [];
 
@@ -58,6 +84,29 @@ const getLatestByClass = (records: any[]) => {
 const hasRole = (roles: string[], role: string) => roles.includes(role);
 const normalizeClassValue = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
+
+const mapAssignmentWithEnrollment = (
+  assignment: any,
+  settingsMap: Map<string, any>,
+  studentCount?: number,
+) => {
+  const subjectId =
+    assignment?.subjectId?._id?.toString?.() ||
+    assignment?.subjectId?.toString?.() ||
+    String(assignment?.subjectId || "");
+  const setting = getClassSubjectEnrollmentSetting(settingsMap, {
+    subjectId,
+    classGrade: assignment?.classGrade,
+    classStream: assignment?.classStream,
+  });
+
+  return {
+    ...assignment,
+    enrollmentMode: setting.enrollmentMode,
+    sharedSlotId: setting.sharedSlotId,
+    ...(typeof studentCount === "number" ? { studentCount } : {}),
+  };
+};
 
 const canManageClassSubjects = async (
   req: AuthRequest,
@@ -144,18 +193,18 @@ router.get("/class-subjects", async (req: AuthRequest, res: Response) => {
         ClassSubjectSettingModel.find({ classGrade, classStream }).lean(),
       ]);
 
-      const droppedSubjectIds = new Set(
-        settings
-          .filter((setting: any) => setting.isOffered === false)
-          .map((setting: any) => setting.subjectId.toString()),
-      );
+      const settingsMap = buildClassSubjectSettingMap(settings as any[]);
 
       return res.json(
         subjects.map((subject: any) => ({
           id: subject._id.toString(),
           name: subject.name,
           department: subject.department,
-          isOffered: !droppedSubjectIds.has(subject._id.toString()),
+          ...getClassSubjectEnrollmentSetting(settingsMap, {
+            subjectId: subject._id.toString(),
+            classGrade,
+            classStream,
+          }),
         })),
       );
     }
@@ -172,6 +221,8 @@ router.get("/class-subjects", async (req: AuthRequest, res: Response) => {
         classGrade: setting.classGrade,
         classStream: setting.classStream || "",
         isOffered: Boolean(setting.isOffered),
+        enrollmentMode: normalizeSubjectEnrollmentMode(setting.enrollmentMode),
+        sharedSlotId: normalizeSharedSlotId(setting.sharedSlotId),
       })),
     );
   } catch (error: any) {
@@ -185,9 +236,15 @@ router.put("/class-subjects", async (req: AuthRequest, res: Response) => {
     const classGrade = normalizeClassValue(req.body.classGrade);
     const classStream = normalizeClassValue(req.body.classStream);
     const isOffered = req.body.isOffered;
+    const enrollmentMode = normalizeSubjectEnrollmentMode(req.body.enrollmentMode);
+    const sharedSlotId = normalizeSharedSlotId(req.body.sharedSlotId);
 
     if (!subjectId || !classGrade || typeof isOffered !== "boolean") {
       return res.status(400).json({ message: "subjectId, classGrade, classStream and isOffered are required." });
+    }
+
+    if (sharedSlotId && enrollmentMode !== "elective") {
+      return res.status(400).json({ message: "sharedSlotId can only be used for elective subjects." });
     }
 
     const isAllowed = await canManageClassSubjects(req, classGrade, classStream);
@@ -200,23 +257,13 @@ router.put("/class-subjects", async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Subject not found." });
     }
 
-    if (isOffered) {
-      await ClassSubjectSettingModel.findOneAndDelete({
-        subjectId,
-        classGrade,
-        classStream,
-      } as any);
-
-      return res.json({
-        message: "Subject restored for this class. You can now assign a teacher and enter marks again.",
-      });
-    }
-
-    await ClassSubjectSettingModel.findOneAndUpdate(
+    const updatedSetting = await ClassSubjectSettingModel.findOneAndUpdate(
       { subjectId, classGrade, classStream },
       {
         $set: {
-          isOffered: false,
+          isOffered,
+          enrollmentMode,
+          sharedSlotId,
           updatedBy: req.user?.id || null,
         },
       },
@@ -227,10 +274,15 @@ router.put("/class-subjects", async (req: AuthRequest, res: Response) => {
       },
     );
 
-    await AssignmentModel.deleteMany({ subjectId, classGrade, classStream } as any);
+    if (!isOffered) {
+      await AssignmentModel.deleteMany({ subjectId, classGrade, classStream } as any);
+    }
 
     res.json({
-      message: "Subject dropped for this class. Any teacher assignment for it has been cleared.",
+      message: isOffered
+        ? "Subject settings updated. Marks entry and timetable generation will now use the selected enrollment mode."
+        : "Subject dropped for this class. Any teacher assignment for it has been cleared.",
+      setting: updatedSetting,
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -240,8 +292,13 @@ router.put("/class-subjects", async (req: AuthRequest, res: Response) => {
 // Assignments
 router.get("/assignments", async (req: Request, res: Response) => {
   try {
-    const assignments = await AssignmentModel.find().populate("subjectId").populate("teacherId");
-    res.json(assignments);
+    const [assignments, settings] = await Promise.all([
+      AssignmentModel.find().populate("subjectId").populate("teacherId"),
+      ClassSubjectSettingModel.find().lean(),
+    ]);
+    const settingsMap = buildClassSubjectSettingMap(settings as any[]);
+
+    res.json(assignments.map((assignment: any) => mapAssignmentWithEnrollment(assignment.toObject(), settingsMap)));
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -250,22 +307,37 @@ router.get("/assignments", async (req: Request, res: Response) => {
 router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const assignments = await AssignmentModel.find({ teacherId: id } as any).populate("subjectId");
+    const [assignments, settings, students] = await Promise.all([
+      AssignmentModel.find({ teacherId: id } as any).populate("subjectId"),
+      ClassSubjectSettingModel.find().lean(),
+      studentModel.find({ class: { $ne: null }, classStream: { $ne: null } } as any)
+        .select("_id class classStream enrolledSubjects")
+        .lean(),
+    ]);
+    const settingsMap = buildClassSubjectSettingMap(settings as any[]);
     
     // Filter out assignments where the subject no longer exists in the system
     const validAssignments = assignments.filter((a: any) => a.subjectId != null);
 
+    const studentsByClass = new Map<string, any[]>();
+    for (const student of students as any[]) {
+      const classKey = buildClassKey(student.class, student.classStream);
+      const classStudents = studentsByClass.get(classKey) || [];
+      classStudents.push(student);
+      studentsByClass.set(classKey, classStudents);
+    }
+
     // Add student count to each valid assignment
     const enrichedAssignments = await Promise.all(validAssignments.map(async (a: any) => {
-      const studentCount = await studentModel.countDocuments({
-        class: a.classGrade,
-        classStream: a.classStream
-      } as any);
+      const classStudents = studentsByClass.get(buildClassKey(a.classGrade, a.classStream)) || [];
+      const subjectId = a?.subjectId?._id?.toString?.() || a?.subjectId?.toString?.() || "";
+      const studentCount = filterStudentsForSubject(
+        classStudents,
+        { subjectId, classGrade: a.classGrade, classStream: a.classStream },
+        settingsMap,
+      ).length;
       
-      return {
-        ...a.toObject(),
-        studentCount
-      };
+      return mapAssignmentWithEnrollment(a.toObject(), settingsMap, studentCount);
     }));
 
     // Filter out assignments that have no students (outdated/orphaned classes)

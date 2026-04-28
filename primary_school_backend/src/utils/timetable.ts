@@ -5,12 +5,20 @@ import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
 import {
   AssignmentModel,
+  ClassSubjectSettingModel,
   SubjectModel,
   TimetableModel,
   type ITimetableDay,
   type ITimetableEntry,
 } from "../models/school.model.js";
 import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
+import {
+  buildClassSubjectSettingMap,
+  countSharedStudents,
+  filterStudentsForSubject,
+  getClassSubjectEnrollmentSetting,
+  type SubjectEnrollmentMode,
+} from "./subjectEnrollment.js";
 
 const SCHOOL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
 const allowedTimetableModes = new Set(["ai", "balanced-fallback"] as const);
@@ -36,6 +44,9 @@ interface ClassSubjectContext {
   subjectName: string;
   teacherId: string;
   teacherName: string;
+  enrollmentMode: SubjectEnrollmentMode;
+  sharedSlotId: string | null;
+  studentIds: string[];
 }
 
 interface ClassTimetableContext {
@@ -51,6 +62,7 @@ interface TimetableGenerationContext {
   term: number;
   year: number;
   classes: ClassTimetableContext[];
+  hasSharedSlotElectives: boolean;
 }
 
 interface TimetableLessonPlan {
@@ -58,6 +70,10 @@ interface TimetableLessonPlan {
   subjectName: string;
   teacherId: string | null;
   teacherName: string | null;
+  enrollmentMode?: SubjectEnrollmentMode | null;
+  sharedSlotId?: string | null;
+  studentIds?: string[];
+  parallelLessons?: ClassSubjectContext[];
 }
 
 interface ClassTimetablePlan {
@@ -303,6 +319,127 @@ const buildSubjectLookup = (subjects: ClassSubjectContext[]) => {
   return { byId, byName };
 };
 
+const getScheduledLessonsForSlot = (lesson: TimetableLessonPlan | undefined): ClassSubjectContext[] => {
+  if (!lesson) {
+    return [];
+  }
+
+  if (Array.isArray(lesson.parallelLessons) && lesson.parallelLessons.length > 0) {
+    return lesson.parallelLessons;
+  }
+
+  if (!lesson.subjectId || !lesson.teacherId) {
+    return [];
+  }
+
+  return [{
+    subjectId: lesson.subjectId,
+    subjectName: lesson.subjectName,
+    teacherId: lesson.teacherId,
+    teacherName: lesson.teacherName || "Unknown Teacher",
+    enrollmentMode: lesson.enrollmentMode || "compulsory",
+    sharedSlotId: lesson.sharedSlotId || null,
+    studentIds: Array.isArray(lesson.studentIds) ? lesson.studentIds : [],
+  }];
+};
+
+const buildSlotSignature = (lesson: TimetableLessonPlan | undefined) => {
+  const scheduledLessons = getScheduledLessonsForSlot(lesson);
+  if (scheduledLessons.length === 0) {
+    return null;
+  }
+
+  return scheduledLessons
+    .map((scheduledLesson) => scheduledLesson.subjectId)
+    .sort((left, right) => left.localeCompare(right))
+    .join("|");
+};
+
+const createTimetableSlot = (lessons: ClassSubjectContext[]): TimetableLessonPlan => {
+  if (lessons.length === 0) {
+    return {
+      subjectId: null,
+      subjectName: "Independent Study",
+      teacherId: null,
+      teacherName: "Department Supervision",
+      enrollmentMode: null,
+      sharedSlotId: null,
+      studentIds: [],
+      parallelLessons: [],
+    };
+  }
+
+  if (lessons.length === 1) {
+    const lesson = lessons[0]!;
+    return {
+      subjectId: lesson.subjectId,
+      subjectName: lesson.subjectName,
+      teacherId: lesson.teacherId,
+      teacherName: lesson.teacherName,
+      enrollmentMode: lesson.enrollmentMode,
+      sharedSlotId: lesson.sharedSlotId,
+      studentIds: lesson.studentIds,
+      parallelLessons: [],
+    };
+  }
+
+  const sortedLessons = [...lessons].sort((left, right) =>
+    left.subjectName.localeCompare(right.subjectName),
+  );
+
+  return {
+    subjectId: sortedLessons[0]?.subjectId || null,
+    subjectName: sortedLessons.map((lesson) => lesson.subjectName).join(" / "),
+    teacherId: null,
+    teacherName: sortedLessons.map((lesson) => lesson.teacherName).join(" / "),
+    enrollmentMode: "elective",
+    sharedSlotId: sortedLessons[0]?.sharedSlotId || null,
+    studentIds: Array.from(
+      new Set(sortedLessons.flatMap((lesson) => lesson.studentIds)),
+    ),
+    parallelLessons: sortedLessons,
+  };
+};
+
+const validateParallelSlotGroups = (classes: ClassTimetableContext[]) => {
+  for (const currentClass of classes) {
+    const lessonsBySharedSlotId = new Map<string, ClassSubjectContext[]>();
+
+    for (const subject of currentClass.subjects) {
+      if (!subject.sharedSlotId) {
+        continue;
+      }
+
+      if (subject.enrollmentMode !== "elective") {
+        throw new Error(
+          `${currentClass.classGrade} ${currentClass.classStream}: ${subject.subjectName} has a shared slot id but is not marked as an elective.`,
+        );
+      }
+
+      const groupedSubjects = lessonsBySharedSlotId.get(subject.sharedSlotId) || [];
+      groupedSubjects.push(subject);
+      lessonsBySharedSlotId.set(subject.sharedSlotId, groupedSubjects);
+    }
+
+    for (const [sharedSlotId, groupedSubjects] of lessonsBySharedSlotId.entries()) {
+      for (let leftIndex = 0; leftIndex < groupedSubjects.length; leftIndex += 1) {
+        const leftSubject = groupedSubjects[leftIndex]!;
+
+        for (let rightIndex = leftIndex + 1; rightIndex < groupedSubjects.length; rightIndex += 1) {
+          const rightSubject = groupedSubjects[rightIndex]!;
+          const overlapCount = countSharedStudents(leftSubject.studentIds, rightSubject.studentIds);
+
+          if (overlapCount > 0) {
+            throw new Error(
+              `${currentClass.classGrade} ${currentClass.classStream}: shared slot "${sharedSlotId}" is invalid because ${leftSubject.subjectName} and ${rightSubject.subjectName} share ${overlapCount} student(s).`,
+            );
+          }
+        }
+      }
+    }
+  }
+};
+
 const validatePlanQuality = (
   plan: GeneratedSchoolTimetablePlan,
   classes: ClassTimetableContext[],
@@ -333,22 +470,32 @@ const validatePlanQuality = (
     for (const day of SCHOOL_DAYS) {
       const lessons = classPlan.lessonPlan[day] || [];
       const countsForDay = new Map<string, number>();
-      let previousSubjectId: string | null = null;
+      let previousSlotSignature: string | null = null;
       let consecutiveCount = 0;
 
       for (const lesson of lessons) {
-        if (!lesson?.subjectId) {
-          previousSubjectId = null;
+        const scheduledLessons = getScheduledLessonsForSlot(lesson);
+        if (scheduledLessons.length === 0) {
+          previousSlotSignature = null;
           consecutiveCount = 0;
           continue;
         }
 
-        uniqueSubjects.add(lesson.subjectId);
-        weeklyCounts.set(lesson.subjectId, (weeklyCounts.get(lesson.subjectId) || 0) + 1);
-        countsForDay.set(lesson.subjectId, (countsForDay.get(lesson.subjectId) || 0) + 1);
+        for (const scheduledLesson of scheduledLessons) {
+          uniqueSubjects.add(scheduledLesson.subjectId);
+          weeklyCounts.set(
+            scheduledLesson.subjectId,
+            (weeklyCounts.get(scheduledLesson.subjectId) || 0) + 1,
+          );
+          countsForDay.set(
+            scheduledLesson.subjectId,
+            (countsForDay.get(scheduledLesson.subjectId) || 0) + 1,
+          );
+        }
 
+        const slotSignature = buildSlotSignature(lesson);
         consecutiveCount =
-          previousSubjectId === lesson.subjectId ? consecutiveCount + 1 : 1;
+          previousSlotSignature === slotSignature ? consecutiveCount + 1 : 1;
 
         if (consecutiveCount >= 3) {
           throw new Error(
@@ -356,7 +503,7 @@ const validatePlanQuality = (
           );
         }
 
-        previousSubjectId = lesson.subjectId;
+        previousSlotSignature = slotSignature;
       }
 
       dayCounts.set(day, countsForDay);
@@ -396,6 +543,12 @@ const generateFallbackPlan = (
   classes: ClassTimetableContext[],
   subjectsPerDay: number,
 ): GeneratedSchoolTimetablePlan => {
+  interface FallbackCandidate extends ClassSubjectContext {
+    remaining: number;
+    dayCount: number;
+    dailyCap: number;
+  }
+
   const totalWeeklySlots = SCHOOL_DAYS.length * subjectsPerDay;
   const classPlans = new Map<string, ClassTimetablePlan>();
   const remainingByClass = new Map<string, Map<string, number>>();
@@ -432,7 +585,7 @@ const generateFallbackPlan = (
 
   for (let dayIndex = 0; dayIndex < SCHOOL_DAYS.length; dayIndex += 1) {
     const day = SCHOOL_DAYS[dayIndex]!;
-    const previousSubjectByClass = new Map<string, string | null>();
+    const previousSubjectIdsByClass = new Map<string, Set<string>>();
     const daySubjectCounts = new Map<string, Map<string, number>>();
 
     for (let slotIndex = 0; slotIndex < subjectsPerDay; slotIndex += 1) {
@@ -444,10 +597,10 @@ const generateFallbackPlan = (
         const subjectCountsForDay = daySubjectCounts.get(classKey) || new Map<string, number>();
         daySubjectCounts.set(classKey, subjectCountsForDay);
 
-        const previousSubjectId = previousSubjectByClass.get(classKey);
+        const previousSubjectIds = previousSubjectIdsByClass.get(classKey) || new Set<string>();
         const remainingDays = SCHOOL_DAYS.length - dayIndex;
 
-        const candidatePool = currentClass.subjects
+        const candidatePool: FallbackCandidate[] = currentClass.subjects
           .map((subject) => {
             const remaining = remainingByClass.get(classKey)?.get(subject.subjectId) || 0;
             const dayCount = subjectCountsForDay.get(subject.subjectId) || 0;
@@ -462,7 +615,7 @@ const generateFallbackPlan = (
           .filter((subject) => subject.remaining > 0 && !teacherBooked.has(subject.teacherId));
 
         let viableCandidates = candidatePool.filter(
-          (subject) => previousSubjectId !== subject.subjectId && subject.dayCount < subject.dailyCap
+          (subject) => !previousSubjectIds.has(subject.subjectId) && subject.dayCount < subject.dailyCap,
         );
 
         if (viableCandidates.length === 0) {
@@ -470,7 +623,7 @@ const generateFallbackPlan = (
         }
 
         if (viableCandidates.length === 0) {
-          viableCandidates = candidatePool.filter((subject) => previousSubjectId !== subject.subjectId);
+          viableCandidates = candidatePool.filter((subject) => !previousSubjectIds.has(subject.subjectId));
         }
 
         if (viableCandidates.length === 0) {
@@ -493,30 +646,67 @@ const generateFallbackPlan = (
         const selectedSubject = viableCandidates[0];
 
         if (selectedSubject) {
+          const selectedLessons: ClassSubjectContext[] = [selectedSubject];
+          const localTeacherBooked = new Set<string>([...teacherBooked, selectedSubject.teacherId]);
+          const occupiedStudentIds = new Set<string>(selectedSubject.studentIds);
+
+          if (selectedSubject.sharedSlotId) {
+            const siblingCandidates = candidatePool
+              .filter(
+                (subject) =>
+                  subject.subjectId !== selectedSubject.subjectId &&
+                  subject.sharedSlotId === selectedSubject.sharedSlotId &&
+                  !localTeacherBooked.has(subject.teacherId) &&
+                  !previousSubjectIds.has(subject.subjectId),
+              )
+              .sort((left, right) => {
+                const leftUrgency = left.remaining / Math.max(1, remainingDays);
+                const rightUrgency = right.remaining / Math.max(1, remainingDays);
+
+                if (Math.abs(rightUrgency - leftUrgency) > 0.01) return rightUrgency - leftUrgency;
+                if (left.dayCount !== right.dayCount) return left.dayCount - right.dayCount;
+                return left.subjectName.localeCompare(right.subjectName);
+              });
+
+            for (const sibling of siblingCandidates) {
+              if (sibling.dayCount >= sibling.dailyCap) {
+                continue;
+              }
+
+              if (sibling.studentIds.some((studentId) => occupiedStudentIds.has(studentId))) {
+                continue;
+              }
+
+              selectedLessons.push(sibling);
+              localTeacherBooked.add(sibling.teacherId);
+              sibling.studentIds.forEach((studentId) => occupiedStudentIds.add(studentId));
+            }
+          }
+
           const plan = classPlans.get(classKey);
           if (plan) {
-            plan.lessonPlan[day]!.push({
-              subjectId: selectedSubject.subjectId,
-              subjectName: selectedSubject.subjectName,
-              teacherId: selectedSubject.teacherId,
-              teacherName: selectedSubject.teacherName,
-            });
+            plan.lessonPlan[day]!.push(createTimetableSlot(selectedLessons));
           }
-          teacherBooked.add(selectedSubject.teacherId);
-          previousSubjectByClass.set(classKey, selectedSubject.subjectId);
-          subjectCountsForDay.set(selectedSubject.subjectId, (subjectCountsForDay.get(selectedSubject.subjectId) || 0) + 1);
-          remainingByClass.get(classKey)?.set(selectedSubject.subjectId, selectedSubject.remaining - 1);
+
+          for (const lesson of selectedLessons) {
+            teacherBooked.add(lesson.teacherId);
+            subjectCountsForDay.set(lesson.subjectId, (subjectCountsForDay.get(lesson.subjectId) || 0) + 1);
+            remainingByClass.get(classKey)?.set(
+              lesson.subjectId,
+              (remainingByClass.get(classKey)?.get(lesson.subjectId) || 0) - 1,
+            );
+          }
+
+          previousSubjectIdsByClass.set(
+            classKey,
+            new Set(selectedLessons.map((lesson) => lesson.subjectId)),
+          );
         } else {
           const plan = classPlans.get(classKey);
           if (plan) {
-            plan.lessonPlan[day]!.push({
-              subjectId: null,
-              subjectName: "Independent Study",
-              teacherId: null,
-              teacherName: "Department Supervision",
-            });
+            plan.lessonPlan[day]!.push(createTimetableSlot([]));
           }
-          previousSubjectByClass.set(classKey, null);
+          previousSubjectIdsByClass.set(classKey, new Set<string>());
         }
       }
     }
@@ -525,7 +715,7 @@ const generateFallbackPlan = (
   return {
     generationMode: "balanced-fallback",
     summary:
-      "Balanced fallback scheduler generated the timetable using equal weekly distribution, strict teacher conflict checks, and realistic daily subject spacing.",
+      "Balanced fallback scheduler generated the timetable using equal weekly distribution, strict teacher conflict checks, realistic daily subject spacing, and shared-slot elective grouping.",
     classes: Array.from(classPlans.values()),
   };
 };
@@ -590,6 +780,9 @@ const normalizeGroqPlan = (
           subjectName: matchedSubject.subjectName,
           teacherId: matchedSubject.teacherId,
           teacherName: matchedSubject.teacherName,
+          enrollmentMode: matchedSubject.enrollmentMode,
+          sharedSlotId: matchedSubject.sharedSlotId,
+          studentIds: matchedSubject.studentIds,
         };
       });
     });
@@ -610,18 +803,19 @@ const normalizeGroqPlan = (
 
       for (const currentClass of normalizedPlans) {
         const lesson = currentClass.lessonPlan[day][slotIndex];
-        if (!lesson?.teacherId) continue;
-
         const classLabel = `${currentClass.classGrade} ${currentClass.classStream}`;
-        const existingClass = teacherOccupancy.get(lesson.teacherId);
 
-        if (existingClass) {
-          throw new Error(
-            `Groq scheduled teacher ${lesson.teacherName || lesson.teacherId} for both ${existingClass} and ${classLabel} on ${day} period ${slotIndex + 1}.`,
-          );
+        for (const scheduledLesson of getScheduledLessonsForSlot(lesson)) {
+          const existingClass = teacherOccupancy.get(scheduledLesson.teacherId);
+
+          if (existingClass) {
+            throw new Error(
+              `Groq scheduled teacher ${scheduledLesson.teacherName || scheduledLesson.teacherId} for both ${existingClass} and ${classLabel} on ${day} period ${slotIndex + 1}.`,
+            );
+          }
+
+          teacherOccupancy.set(scheduledLesson.teacherId, classLabel);
         }
-
-        teacherOccupancy.set(lesson.teacherId, classLabel);
       }
     }
   }
@@ -652,6 +846,9 @@ const generatePlanWithGroq = async (
       subjectName: subject.subjectName,
       teacherId: subject.teacherId,
       teacherName: subject.teacherName,
+      enrollmentMode: subject.enrollmentMode,
+      sharedSlotId: subject.sharedSlotId,
+      studentCount: subject.studentIds.length,
     })),
   }));
 
@@ -727,6 +924,9 @@ const buildRenderedDays = (
           subjectName: null,
           teacherId: null,
           teacherName: null,
+          enrollmentMode: null,
+          sharedSlotId: null,
+          parallelLessons: [],
         };
       }
 
@@ -735,6 +935,10 @@ const buildRenderedDays = (
         subjectName: "Independent Study",
         teacherId: null,
         teacherName: "Department Supervision",
+        enrollmentMode: null,
+        sharedSlotId: null,
+        studentIds: [],
+        parallelLessons: [],
       };
 
       return {
@@ -747,6 +951,9 @@ const buildRenderedDays = (
         subjectName: lesson.subjectName,
         teacherId: lesson.teacherId,
         teacherName: lesson.teacherName,
+        enrollmentMode: lesson.enrollmentMode || null,
+        sharedSlotId: lesson.sharedSlotId || null,
+        parallelLessons: lesson.parallelLessons || [],
       };
     });
 
@@ -947,11 +1154,12 @@ const rollbackPersistedTimetables = async (state: PersistedTimetableState[]) => 
 };
 
 const buildGenerationContext = async (generatedByUserId?: string): Promise<TimetableGenerationContext> => {
-  const [assignments, students, teachers, subjects, generatedByUser, sampleUser] = await Promise.all([
+  const [assignments, students, teachers, subjects, classSubjectSettings, generatedByUser, sampleUser] = await Promise.all([
     AssignmentModel.find().lean(),
     studentModel.find({ class: { $ne: null }, classStream: { $ne: null } } as any).lean(),
     userModel.find({ __t: { $ne: rolesMapped.ST } } as any).lean(),
     SubjectModel.find().lean(),
+    ClassSubjectSettingModel.find().lean(),
     generatedByUserId ? userModel.findById(generatedByUserId).lean() : Promise.resolve(null),
     userModel.findOne({ term: { $ne: null } } as any).lean(),
   ]);
@@ -971,12 +1179,17 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
       },
     ]),
   );
+  const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
   const studentCountByClass = new Map<string, number>();
+  const studentsByClass = new Map<string, any[]>();
   const classTeacherByClass = new Map<string, { id: string; name: string }>();
 
   for (const student of students as any[]) {
     const classKey = buildClassKey(student.class, student.classStream);
     studentCountByClass.set(classKey, (studentCountByClass.get(classKey) || 0) + 1);
+    const classStudents = studentsByClass.get(classKey) || [];
+    classStudents.push(student);
+    studentsByClass.set(classKey, classStudents);
   }
 
   for (const teacher of teachers as any[]) {
@@ -1015,11 +1228,35 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
   }
 
   for (const assignment of assignments as any[]) {
-    const subjectName = subjectMap.get(String(assignment.subjectId));
+    const subjectId = String(assignment.subjectId);
+    const subjectName = subjectMap.get(subjectId);
     const teacherInfo = teacherMap.get(String(assignment.teacherId));
     if (!assignment.classGrade || !assignment.classStream || !subjectName || !teacherInfo) continue;
 
     const classKey = buildClassKey(assignment.classGrade, assignment.classStream);
+    const subjectSetting = getClassSubjectEnrollmentSetting(classSubjectSettingsMap, {
+      subjectId,
+      classGrade: assignment.classGrade,
+      classStream: assignment.classStream,
+    });
+    if (!subjectSetting.isOffered) {
+      continue;
+    }
+
+    const enrolledStudents = filterStudentsForSubject(
+      studentsByClass.get(classKey) || [],
+      {
+        subjectId,
+        classGrade: assignment.classGrade,
+        classStream: assignment.classStream,
+      },
+      classSubjectSettingsMap,
+    );
+
+    if (enrolledStudents.length === 0) {
+      continue;
+    }
+
     const classTeacher = classTeacherByClass.get(classKey);
     const current = classMap.get(classKey) || {
       classGrade: assignment.classGrade,
@@ -1031,10 +1268,13 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
     };
 
     current.subjects.push({
-      subjectId: String(assignment.subjectId),
+      subjectId,
       subjectName,
       teacherId: String(assignment.teacherId),
       teacherName: teacherInfo.name,
+      enrollmentMode: subjectSetting.enrollmentMode,
+      sharedSlotId: subjectSetting.sharedSlotId,
+      studentIds: enrolledStudents.map((student: any) => student._id.toString()),
     });
 
     classMap.set(classKey, current);
@@ -1051,6 +1291,8 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
       `${left.classGrade} ${left.classStream}`.localeCompare(`${right.classGrade} ${right.classStream}`),
     );
 
+  validateParallelSlotGroups(classes);
+
   if (classes.length === 0) {
     throw new Error(
       "No valid subject assignments were found on the admin assignments page. Assign subjects to classes first, then generate the timetable.",
@@ -1061,6 +1303,9 @@ const buildGenerationContext = async (generatedByUserId?: string): Promise<Timet
     term,
     year,
     classes,
+    hasSharedSlotElectives: classes.some((currentClass) =>
+      currentClass.subjects.some((subject) => Boolean(subject.sharedSlotId)),
+    ),
   };
 };
 
@@ -1095,7 +1340,9 @@ export async function generateAndStoreSchoolTimetables(input: CreateSchoolTimeta
 
   let plan: GeneratedSchoolTimetablePlan | null = null;
   try {
-    plan = await generatePlanWithGroq(context.classes, validatedInput.subjectsPerDay);
+    plan = context.hasSharedSlotElectives
+      ? null
+      : await generatePlanWithGroq(context.classes, validatedInput.subjectsPerDay);
     if (plan) {
       validatePlanQuality(plan, context.classes, validatedInput.subjectsPerDay);
     }
@@ -1145,7 +1392,10 @@ export async function generateAndStoreSchoolTimetables(input: CreateSchoolTimeta
           new Set(
             renderedDays
               .flatMap((day) => day.entries)
-              .map((entry) => entry.teacherId)
+              .flatMap((entry) => [
+                entry.teacherId,
+                ...(entry.parallelLessons || []).map((lesson) => lesson.teacherId || null),
+              ])
               .filter((teacherId): teacherId is string => Boolean(teacherId)),
           ),
         );

@@ -1,5 +1,10 @@
 // components/subjectteacher/types.ts
 
+import type {
+  StudentSubjectEnrollment,
+  SubjectEnrollmentMode,
+} from "../../lib/subjectEnrollment";
+
 export interface Subject {
   id: string;
   name: string;
@@ -13,6 +18,8 @@ export interface Subject {
   subjectId: string;
   classGrade: string;
   classStream: string;
+  enrollmentMode?: SubjectEnrollmentMode;
+  sharedSlotId?: string | null;
 }
 
 export interface Student {
@@ -20,6 +27,7 @@ export interface Student {
   adm: string;
   name: string;
   gender: string;
+  enrolledSubjects?: StudentSubjectEnrollment[];
   marks: {
     cat1: number | string | null;
     cat2: number | string | null;

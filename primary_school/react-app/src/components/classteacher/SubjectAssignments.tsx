@@ -1,6 +1,7 @@
 // components/classteacher/SubjectAssignments.tsx
 import React, { useState } from "react";
 import { C, FONT } from "./shared/constants";
+import { formatSubjectOfferingTag, type SubjectEnrollmentMode } from "../../lib/subjectEnrollment";
 
 interface SubjectAssignmentsProps {
   subjects: any[];
@@ -10,7 +11,12 @@ interface SubjectAssignmentsProps {
   classTeacherName: string;
   onSwitchToSubjectDashboard: () => void;
   canSwitchToSubjectDashboard: boolean;
-  onToggleSubjectOffering: (subjectId: string, isOffered: boolean) => Promise<void>;
+  onToggleSubjectOffering: (
+    subjectId: string,
+    isOffered: boolean,
+    enrollmentMode?: SubjectEnrollmentMode,
+    sharedSlotId?: string | null,
+  ) => Promise<void>;
 }
 
 export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
@@ -62,7 +68,13 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
     setFeedback(null);
 
     try {
-      await onToggleSubjectOffering(subjectId, isOffered);
+      const subject = subjects.find((item) => item.id === subjectId);
+      await onToggleSubjectOffering(
+        subjectId,
+        isOffered,
+        subject?.enrollmentMode || "compulsory",
+        subject?.sharedSlotId || null,
+      );
       setFeedback({
         text: isOffered ? `${subjectName} is active for this class again.` : `${subjectName} has been dropped for this class.`,
         type: "success",
@@ -270,7 +282,7 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
                   <td style={cellStyle}>
                     <p style={primaryTextStyle}>{subject.name}</p>
                     <p style={secondaryTextStyle}>
-                      {subject.isClassTeacher
+                      {formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)} | {subject.isClassTeacher
                         ? "Taught by class teacher"
                         : "Taught by supporting staff"}
                     </p>
@@ -403,7 +415,9 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
               >
                 <div>
                   <p style={primaryTextStyle}>{subject.name}</p>
-                  <p style={secondaryTextStyle}>{subject.department || "Academic"}</p>
+                  <p style={secondaryTextStyle}>
+                    {subject.department || "Academic"} | {formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)}
+                  </p>
                 </div>
                 <button
                   type="button"

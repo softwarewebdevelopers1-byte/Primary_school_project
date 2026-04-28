@@ -1,7 +1,18 @@
+import type { SubjectEnrollmentMode } from "./subjectEnrollment";
+
 export interface TimetableBreak {
   label: string;
   startTime: string;
   endTime: string;
+}
+
+export interface TimetableParallelLesson {
+  subjectId: string;
+  subjectName: string;
+  teacherId?: string | null;
+  teacherName?: string | null;
+  enrollmentMode?: SubjectEnrollmentMode | null;
+  sharedSlotId?: string | null;
 }
 
 export interface TimetableEntry {
@@ -14,6 +25,9 @@ export interface TimetableEntry {
   subjectName?: string | null;
   teacherId?: string | null;
   teacherName?: string | null;
+  enrollmentMode?: SubjectEnrollmentMode | null;
+  sharedSlotId?: string | null;
+  parallelLessons?: TimetableParallelLesson[];
 }
 
 export interface TimetableDay {

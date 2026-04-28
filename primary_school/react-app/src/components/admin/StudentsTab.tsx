@@ -1,5 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { Class, Student } from "./types";
+import { Class, ClassSubjectSetting, Student, Subject } from "./types";
+import {
+  buildEnrolledSubjectsPayload,
+  formatSubjectOfferingTag,
+  getClassSubjectSetting,
+  getElectiveSubjectIdsForClass,
+} from "../../lib/subjectEnrollment";
 
 const eyebrowStyle: React.CSSProperties = {
   fontSize: 10,
@@ -174,6 +180,8 @@ const StudentFormModal: React.FC<{
   currentClass: Class | null;
   gradeOptions: string[];
   streamOptions: string[];
+  subjects: Subject[];
+  classSubjectSettings: ClassSubjectSetting[];
   onClose: () => void;
   onSave: (payload: {
     name: string;
@@ -184,12 +192,15 @@ const StudentFormModal: React.FC<{
     classGrade: string;
     classStream: string;
     status: string;
+    enrolledSubjects: Student["enrolledSubjects"];
   }) => Promise<void>;
 }> = ({
   student,
   currentClass,
   gradeOptions,
   streamOptions,
+  subjects,
+  classSubjectSettings,
   onClose,
   onSave,
 }) => {
@@ -201,8 +212,34 @@ const StudentFormModal: React.FC<{
   const [status, setStatus] = useState(student?.status || "Active");
   const [guardianName, setGuardianName] = useState(student?.guardianName || "");
   const [guardianPhone, setGuardianPhone] = useState(student?.guardianPhone || "");
+  const [selectedElectiveIds, setSelectedElectiveIds] = useState<string[]>(
+    (student?.enrolledSubjects || []).filter((item) => item.isActive !== false).map((item) => item.subjectId),
+  );
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const electiveSubjectIds = useMemo(
+    () => getElectiveSubjectIdsForClass(classSubjectSettings, grade, stream),
+    [classSubjectSettings, grade, stream],
+  );
+  const electiveSubjects = useMemo(
+    () => subjects.filter((subject) => electiveSubjectIds.includes(subject.id)),
+    [electiveSubjectIds, subjects],
+  );
+  const compulsorySubjects = useMemo(
+    () =>
+      subjects.filter((subject) => {
+        const setting = getClassSubjectSetting(classSubjectSettings, subject.id, grade, stream);
+        return setting.isOffered !== false && (setting.enrollmentMode || "compulsory") === "compulsory";
+      }),
+    [classSubjectSettings, grade, stream, subjects],
+  );
+
+  React.useEffect(() => {
+    setSelectedElectiveIds((current) =>
+      current.filter((subjectId) => electiveSubjectIds.includes(subjectId)),
+    );
+  }, [electiveSubjectIds]);
 
   return (
     <div>
@@ -315,6 +352,90 @@ const StudentFormModal: React.FC<{
           />
         </div>
 
+        <div
+          style={{
+            marginTop: "1rem",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: "12px 14px",
+            background: "var(--sand)",
+            display: "grid",
+            gap: 10,
+          }}
+        >
+          <div>
+            <p style={{ ...labelStyle, marginBottom: 4 }}>Subject enrollment</p>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--textMut)", lineHeight: 1.5 }}>
+              Compulsory subjects apply to the whole class automatically. Elective subjects must be selected per student.
+            </p>
+          </div>
+
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+              Compulsory subjects ({compulsorySubjects.length})
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--textMut)", lineHeight: 1.5 }}>
+              {compulsorySubjects.length > 0
+                ? compulsorySubjects.map((subject) => subject.name).join(", ")
+                : "No compulsory subjects are active for this class yet."}
+            </p>
+          </div>
+
+          <div>
+            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+              Electives ({electiveSubjects.length})
+            </p>
+            {electiveSubjects.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 12, color: "var(--textMut)" }}>
+                No elective subjects are configured for Grade {grade || "-"} {stream || ""}.
+              </p>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {electiveSubjects.map((subject) => {
+                  const setting = getClassSubjectSetting(classSubjectSettings, subject.id, grade, stream);
+                  const checked = selectedElectiveIds.includes(subject.id);
+
+                  return (
+                    <label
+                      key={subject.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid var(--border)",
+                        background: "var(--white)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) =>
+                          setSelectedElectiveIds((current) =>
+                            event.target.checked
+                              ? [...current, subject.id]
+                              : current.filter((value) => value !== subject.id),
+                          )
+                        }
+                      />
+                      <span style={{ display: "grid", gap: 2 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>
+                          {subject.name}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--textMut)" }}>
+                          {formatSubjectOfferingTag(setting.enrollmentMode, setting.sharedSlotId)}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "1.5rem" }}>
           <button onClick={onClose} style={secondaryButtonStyle}>
             Cancel
@@ -344,6 +465,7 @@ const StudentFormModal: React.FC<{
                   classGrade: grade.trim(),
                   classStream: stream.trim(),
                   status,
+                  enrolledSubjects: buildEnrolledSubjectsPayload(selectedElectiveIds, grade.trim(), stream.trim()),
                 });
               } finally {
                 setSaving(false);
@@ -363,6 +485,8 @@ const StudentFormModal: React.FC<{
 interface StudentsTabProps {
   students: Student[];
   classes: Class[];
+  subjects: Subject[];
+  classSubjectSettings: ClassSubjectSetting[];
   onSaveStudent: (
     payload: {
       name: string;
@@ -373,6 +497,7 @@ interface StudentsTabProps {
       classGrade: string;
       classStream: string;
       status: string;
+      enrolledSubjects: Student["enrolledSubjects"];
     },
     studentId?: string,
   ) => Promise<void>;
@@ -386,6 +511,8 @@ interface StudentsTabProps {
 export const StudentsTab: React.FC<StudentsTabProps> = ({
   students,
   classes,
+  subjects,
+  classSubjectSettings,
   onSaveStudent,
   onDeleteStudent,
   pill,
@@ -403,6 +530,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         return acc;
       }, {}),
     [classes],
+  );
+  const subjectLookup = useMemo(
+    () =>
+      subjects.reduce<Record<string, Subject>>((acc, subject) => {
+        acc[subject.id] = subject;
+        return acc;
+      }, {}),
+    [subjects],
   );
 
   const filteredStudents = students.filter((student) => {
@@ -428,6 +563,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
         currentClass={currentClass}
         gradeOptions={Array.from(new Set(classes.map((current) => current.grade)))}
         streamOptions={Array.from(new Set(classes.map((current) => current.stream || "")))}
+        subjects={subjects}
+        classSubjectSettings={classSubjectSettings}
         onClose={closeModal}
         onSave={async (payload) => {
           await onSaveStudent(payload, student?.id);
@@ -536,6 +673,15 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           <tbody>
             {filteredStudents.map((student) => {
               const currentClass = classLookup[student.classId];
+              const classElectives = (student.enrolledSubjects || [])
+                .filter(
+                  (entry) =>
+                    entry.isActive !== false &&
+                    entry.classGrade === student.classGrade &&
+                    (entry.classStream || "") === (student.classStream || ""),
+                )
+                .map((entry) => subjectLookup[entry.subjectId]?.name || "Unknown subject");
+
               return (
                 <tr key={student.id} style={{ borderTop: "1px solid var(--borderL)" }}>
                   <td style={{ padding: "10px 13px" }}>
@@ -550,6 +696,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                     <p style={rowMetaTextStyle}>
                       Grade {currentClass?.grade || "-"}
                       {currentClass?.stream ? ` - Stream ${currentClass.stream}` : ""}
+                    </p>
+                    <p style={rowMetaTextStyle}>
+                      {classElectives.length > 0
+                        ? `Electives: ${classElectives.join(", ")}`
+                        : "Electives: Compulsory only"}
                     </p>
                   </td>
                   <td style={{ padding: "10px 13px" }}>

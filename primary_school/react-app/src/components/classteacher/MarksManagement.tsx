@@ -29,6 +29,7 @@ interface MarksManagementProps {
 export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subjects, onRefresh, user }) => {
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
+  const [subjectStudents, setSubjectStudents] = useState<Record<string, Student[]>>({});
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
   const [term, setTerm] = useState<number>(user?.term || 1);
   const [year, setYear] = useState<number>(user?.year || 2024);
@@ -69,6 +70,18 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
           return acc;
         }, {} as any)
       }));
+      setSubjectStudents((prev) => ({
+        ...prev,
+        [activeSubjectId]: data.map((item) => ({
+          id: item.studentId.toString(),
+          name: item.name,
+          adm: item.admissionNo,
+          gender: item.gender || "N/A",
+          enrolledSubjects: item.enrolledSubjects || [],
+          marks: item.marks,
+          pushed: false,
+        })),
+      }));
     } catch (err) {
       
     }
@@ -77,6 +90,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
   // Clear marks when switching period to ensure "Specific term specific exam at specific year"
   useEffect(() => {
     setMarksData({});
+    setSubjectStudents({});
   }, [term, year, examType]);
 
   useEffect(() => {
@@ -202,36 +216,38 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({ students, subj
   };
 
   // Map students and subjects to the expected types for MarksEntry
-  const mappedStudents: Student[] = students.map(s => {
-    const sid = (s.id || s._id || "").toString();
+  const activeSubjectStudents = subjectStudents[activeSubjectId] || [];
+
+  const mappedStudents: Student[] = activeSubjectStudents.map((student) => {
+    const sid = student.id.toString();
     const studentMarks = (marksData[activeSubjectId] && marksData[activeSubjectId][sid]) || {
-      cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
+      cat1: null, cat2: null, cat3: null, cat4: null, cat5: null,
       cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
       exam: null, examMax: 100, finalScore: null
     };
 
     return {
-      id: sid,
-      name: s.name || s.studentsName,
-      adm: s.admissionNo || s.ADM,
-      gender: s.gender || "N/A",
+      ...student,
       marks: studentMarks,
-      pushed: false
+      pushed: false,
     };
   });
 
   const mappedSubjects: Subject[] = subjects.map(s => ({
     id: s.id || s._id,
     name: s.name,
-    grade: `${user.classGrade}${user.classStream}`,
+    grade: `${user.classGrade} ${user.classStream}`.trim(),
     subjectId: s.id || s._id,
     classGrade: user.classGrade,
     classStream: user.classStream,
-    students: students.length,
+    students: subjectStudents[s.id || s._id]?.length ?? students.length,
     avg: 0,
     pushed: false,
     term: 1,
     lastAssess: "N/A"
+    ,
+    enrollmentMode: s.enrollmentMode || "compulsory",
+    sharedSlotId: s.sharedSlotId || null,
   } as Subject));
 
   if (subjects.length === 0) {

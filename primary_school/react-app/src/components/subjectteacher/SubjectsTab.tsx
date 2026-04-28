@@ -2,6 +2,7 @@
 import React from "react";
 import styles from "./SubjectTeacherDashboard.module.css";
 import { Subject } from "./types";
+import { formatSubjectOfferingTag } from "../../lib/subjectEnrollment";
 
 interface SubjectsTabProps {
   subjects: Subject[];
@@ -23,6 +24,7 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   year,
 }) => {
   const totalStudents = subjects.reduce((sum, s) => sum + s.students, 0);
+  const electiveCount = subjects.filter((subject) => subject.enrollmentMode === "elective").length;
   const avgAll = Math.round(
     subjects.reduce((sum, s) => sum + s.avg, 0) / subjects.length,
   );
@@ -66,9 +68,9 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
           className={styles.metricCard}
           style={{ borderTopColor: "var(--iText)" }}
         >
-          <p className={styles.metricLabel}>Marks pushed</p>
-          <p className={styles.metricValue}>{pushedSubjects.size}</p>
-          <p className={styles.metricNote}>To class teacher</p>
+          <p className={styles.metricLabel}>Elective streams</p>
+          <p className={styles.metricValue}>{electiveCount}</p>
+          <p className={styles.metricNote}>Student-level enrollment</p>
         </div>
       </div>
 
@@ -106,7 +108,7 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                     margin: 0,
                   }}
                 >
-                  {subject.grade}
+                  {subject.grade} | {formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)}
                 </p>
               </div>
               <span

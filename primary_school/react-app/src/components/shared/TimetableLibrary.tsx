@@ -5,6 +5,7 @@ import {
   TimetableEntry,
   TimetableRecord,
 } from "../../lib/timetableTypes";
+import { formatSubjectOfferingTag } from "../../lib/subjectEnrollment";
 
 interface TimetableLibraryProps {
   fetchPath: string;
@@ -52,9 +53,27 @@ const buildLessonMeta = (entry: TimetableEntry | null) => {
     return "No lesson scheduled";
   }
 
+  if (Array.isArray(entry.parallelLessons) && entry.parallelLessons.length > 0) {
+    return `Parallel block (${entry.parallelLessons.length} subjects)`;
+  }
+
   return `${entry.teacherName || "Department Supervision"}${
     entry.slotNumber ? ` - Lesson ${entry.slotNumber}` : ""
   }`;
+};
+
+const isHighlightedTeacherLesson = (entry: TimetableEntry | null, teacherId?: string) => {
+  if (!teacherId || !entry || entry.type !== "lesson") {
+    return false;
+  }
+
+  if (entry.teacherId === teacherId) {
+    return true;
+  }
+
+  return Array.isArray(entry.parallelLessons)
+    ? entry.parallelLessons.some((lesson) => lesson.teacherId === teacherId)
+    : false;
 };
 
 export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
@@ -394,10 +413,10 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
                             );
                           }
 
-                          const isTeacherLesson =
-                            Boolean(highlightTeacherId) &&
-                            entry?.type === "lesson" &&
-                            entry.teacherId === highlightTeacherId;
+                          const isTeacherLesson = isHighlightedTeacherLesson(
+                            entry,
+                            highlightTeacherId,
+                          );
 
                           return (
                             <td
@@ -433,6 +452,35 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
                               >
                                 {buildLessonMeta(entry)}
                               </div>
+                              {entry?.type === "lesson" && Array.isArray(entry.parallelLessons) && entry.parallelLessons.length > 0 && (
+                                <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                                  {entry.parallelLessons.map((lesson, lessonIndex) => {
+                                    const isLessonHighlighted = lesson.teacherId === highlightTeacherId;
+
+                                    return (
+                                      <div
+                                        key={`${lesson.subjectId}-${lessonIndex}`}
+                                        style={{
+                                          padding: "8px 9px",
+                                          borderRadius: 10,
+                                          border: `1px solid ${isLessonHighlighted ? "var(--gold)" : "var(--border)"}`,
+                                          background: isLessonHighlighted ? "var(--goldP)" : "var(--cream)",
+                                        }}
+                                      >
+                                        <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text)" }}>
+                                          {lesson.subjectName}
+                                        </div>
+                                        <div style={{ marginTop: 3, fontSize: 10.5, color: "var(--textMut)", lineHeight: 1.4 }}>
+                                          {lesson.teacherName || "Department Supervision"} | {formatSubjectOfferingTag(
+                                            lesson.enrollmentMode || undefined,
+                                            lesson.sharedSlotId || null,
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </td>
                           );
                         })}

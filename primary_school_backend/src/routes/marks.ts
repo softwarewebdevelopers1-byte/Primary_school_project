@@ -1,8 +1,9 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
-import { MarkModel } from "../models/school.model.js";
+import { ClassSubjectSettingModel, MarkModel } from "../models/school.model.js";
 import { userModel, rolesMapped, studentModel } from "../models/user.model.js";
 import { authenticate } from "../middleware/auth.js";
+import { buildClassSubjectSettingMap, filterStudentsForSubject } from "../utils/subjectEnrollment.js";
 
 const router = Router();
 
@@ -17,22 +18,46 @@ router.get("/", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Missing required query parameters" });
     }
 
-    const query: any = { subjectId, classGrade, classStream: String(classStream || "") };
+    const normalizedClassGrade = String(classGrade).trim();
+    const normalizedClassStream =
+      classStream === "null" || !classStream ? "" : String(classStream).trim();
+    const normalizedSubjectId = String(subjectId).trim();
+    const query: any = {
+      subjectId: normalizedSubjectId,
+      classGrade: normalizedClassGrade,
+      classStream: normalizedClassStream,
+    };
     if (term) query.term = Number(term);
     if (year) query.year = Number(year);
     if (examType) query.examType = examType;
 
-    const [marks, students] = await Promise.all([
-      MarkModel.find(query),
+    const [marks, students, classSubjectSettings] = await Promise.all([
+      MarkModel.find(query).lean(),
       studentModel.find({ 
-        class: classGrade as string,
-        classStream: classStream === "null" || !classStream ? { $in: ["", null] } : classStream as string
-      })
+        class: normalizedClassGrade,
+        classStream: normalizedClassStream || { $in: ["", null] }
+      }).lean(),
+      ClassSubjectSettingModel.find({
+        classGrade: normalizedClassGrade,
+        classStream: normalizedClassStream,
+      }).lean(),
     ]);
+    const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
+    const enrolledStudents = filterStudentsForSubject(
+      students as any[],
+      {
+        subjectId: normalizedSubjectId,
+        classGrade: normalizedClassGrade,
+        classStream: normalizedClassStream,
+      },
+      classSubjectSettingsMap,
+    );
+    const markByStudentId = new Map(
+      marks.map((mark: any) => [mark.studentId.toString(), mark]),
+    );
 
-    // Merge marks with student list to ensure every student is present
-    const studentMarks = students.map((s: any) => {
-      const studentMark = marks.find(m => m.studentId.toString() === s._id.toString());
+    const studentMarks = enrolledStudents.map((s: any) => {
+      const studentMark = markByStudentId.get(s._id.toString());
       return {
         studentId: s._id,
         name: s.studentsName,
@@ -83,13 +108,43 @@ router.post("/save", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const operations = marksData.map((item: any) => ({
+    const normalizedClassGrade = String(classGrade).trim();
+    const normalizedClassStream = String(classStream || "").trim();
+    const normalizedSubjectId = String(subjectId).trim();
+    const [students, classSubjectSettings] = await Promise.all([
+      studentModel.find({
+        class: normalizedClassGrade,
+        classStream: normalizedClassStream || { $in: ["", null] },
+      } as any)
+        .select("_id class classStream enrolledSubjects")
+        .lean(),
+      ClassSubjectSettingModel.find({
+        classGrade: normalizedClassGrade,
+        classStream: normalizedClassStream,
+      }).lean(),
+    ]);
+    const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
+    const eligibleStudentIds = new Set(
+      filterStudentsForSubject(
+        students as any[],
+        {
+          subjectId: normalizedSubjectId,
+          classGrade: normalizedClassGrade,
+          classStream: normalizedClassStream,
+        },
+        classSubjectSettingsMap,
+      ).map((student: any) => student._id.toString()),
+    );
+
+    const operations = marksData
+      .filter((item: any) => eligibleStudentIds.has(String(item.studentId)))
+      .map((item: any) => ({
       updateOne: {
         filter: { 
           studentId: item.studentId, 
-          subjectId, 
-          classGrade: classGrade.toString(), 
-          classStream: classStream || "", 
+          subjectId: normalizedSubjectId,
+          classGrade: normalizedClassGrade, 
+          classStream: normalizedClassStream, 
           term: Number(term), 
           year: Number(year),
           examType: examType
@@ -114,8 +169,14 @@ router.post("/save", async (req: Request, res: Response) => {
       }
     }));
 
-    await MarkModel.bulkWrite(operations);
-    res.json({ message: "Marks saved successfully" });
+    if (operations.length > 0) {
+      await MarkModel.bulkWrite(operations);
+    }
+    res.json({
+      message: "Marks saved successfully",
+      savedCount: operations.length,
+      skippedCount: Math.max(0, marksData.length - operations.length),
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -138,13 +199,46 @@ router.post("/summary-save", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const operations = marksData.map((item: any) => ({
+    const normalizedClassGrade = String(classGrade).trim();
+    const normalizedClassStream = String(classStream || "").trim();
+    const [students, classSubjectSettings] = await Promise.all([
+      studentModel.find({
+        class: normalizedClassGrade,
+        classStream: normalizedClassStream || { $in: ["", null] },
+      } as any)
+        .select("_id class classStream enrolledSubjects")
+        .lean(),
+      ClassSubjectSettingModel.find({
+        classGrade: normalizedClassGrade,
+        classStream: normalizedClassStream,
+      }).lean(),
+    ]);
+    const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
+
+    const operations = marksData
+      .filter((item: any) => {
+        const student = (students as any[]).find((candidate) => candidate._id.toString() === String(item.studentId));
+        if (!student) {
+          return false;
+        }
+
+        return filterStudentsForSubject(
+          [student],
+          {
+            subjectId: String(item.subjectId),
+            classGrade: normalizedClassGrade,
+            classStream: normalizedClassStream,
+          },
+          classSubjectSettingsMap,
+        ).length > 0;
+      })
+      .map((item: any) => ({
       updateOne: {
         filter: { 
           studentId: item.studentId, 
           subjectId: item.subjectId, 
-          classGrade: classGrade.toString(), 
-          classStream: classStream || "", 
+          classGrade: normalizedClassGrade, 
+          classStream: normalizedClassStream, 
           term: Number(term), 
           year: Number(year),
           examType: examType
@@ -159,8 +253,14 @@ router.post("/summary-save", async (req: Request, res: Response) => {
     }));
 
 
-    await MarkModel.bulkWrite(operations);
-    res.json({ message: "Summary marks saved successfully" });
+    if (operations.length > 0) {
+      await MarkModel.bulkWrite(operations);
+    }
+    res.json({
+      message: "Summary marks saved successfully",
+      savedCount: operations.length,
+      skippedCount: Math.max(0, marksData.length - operations.length),
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

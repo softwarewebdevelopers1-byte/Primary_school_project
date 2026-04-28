@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Class, Subject, Teacher } from "./types";
+import { Class, Student, Subject, Teacher } from "./types";
+import { formatSubjectOfferingTag, type SubjectEnrollmentMode } from "../../lib/subjectEnrollment";
 
 const miniButtonStyle: React.CSSProperties = {
   padding: "5px 10px",
@@ -234,10 +235,96 @@ const AssignmentFormModal: React.FC<{
   );
 };
 
+const SubjectConfigurationModal: React.FC<{
+  currentClass: Class;
+  subject: Subject;
+  onClose: () => void;
+  onSave: (
+    isOffered: boolean,
+    enrollmentMode: SubjectEnrollmentMode,
+    sharedSlotId: string | null,
+  ) => Promise<void>;
+}> = ({ currentClass, subject, onClose, onSave }) => {
+  const currentSetting = currentClass.subjectSettings[subject.id];
+  const [enrollmentMode, setEnrollmentMode] = useState<SubjectEnrollmentMode>(
+    currentSetting?.enrollmentMode || "compulsory",
+  );
+  const [sharedSlotId, setSharedSlotId] = useState(currentSetting?.sharedSlotId || "");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div>
+      <div style={modalHeaderStyle}>
+        <h3 style={modalTitleStyle}>Configure {subject.name}</h3>
+        <button onClick={onClose} style={closeButtonStyle}>
+          x
+        </button>
+      </div>
+
+      <div style={{ padding: "18px 22px 22px", display: "grid", gap: 14 }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--textM)" }}>
+          Set how <strong>{subject.name}</strong> behaves for <strong>{currentClass.name}</strong>.
+        </p>
+
+        <div>
+          <label style={labelStyle}>Enrollment mode</label>
+          <select
+            value={enrollmentMode}
+            onChange={(event) => setEnrollmentMode(event.target.value as SubjectEnrollmentMode)}
+            style={inputStyle}
+          >
+            <option value="compulsory">Compulsory</option>
+            <option value="elective">Elective</option>
+          </select>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Shared slot ID</label>
+          <input
+            value={sharedSlotId}
+            onChange={(event) => setSharedSlotId(event.target.value)}
+            style={inputStyle}
+            placeholder={enrollmentMode === "elective" ? "e.g. SCI-BLOCK-A" : "Only used for electives"}
+            disabled={enrollmentMode !== "elective"}
+          />
+          <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--textMut)", lineHeight: 1.5 }}>
+            Use the same shared slot ID for elective subjects that may run in parallel for this class.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={secondaryButtonStyle}>
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(
+                  true,
+                  enrollmentMode,
+                  enrollmentMode === "elective" ? (sharedSlotId.trim() || null) : null,
+                );
+              } finally {
+                setSaving(false);
+              }
+            }}
+            style={primaryButtonStyle}
+            disabled={saving}
+          >
+            {saving ? "Saving..." : "Save settings"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface AssignmentsTabProps {
   classes: Class[];
   teachers: Teacher[];
   subjects: Subject[];
+  students: Student[];
   onSaveAssignment: (payload: any) => Promise<void>;
   onUnassignTeacher: (classGrade: string, classStream: string, subjectId: string) => Promise<void>;
   onToggleSubjectOffering: (
@@ -245,6 +332,8 @@ interface AssignmentsTabProps {
     classGrade: string,
     classStream: string,
     isOffered: boolean,
+    enrollmentMode?: SubjectEnrollmentMode,
+    sharedSlotId?: string | null,
   ) => Promise<void>;
   avatar: (name: string, size: number) => string;
   pill: (text: string, color: string) => string;
@@ -257,6 +346,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
   classes,
   teachers,
   subjects,
+  students,
   onSaveAssignment,
   onUnassignTeacher,
   onToggleSubjectOffering,
@@ -282,6 +372,27 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
             classGrade: currentClass.grade,
             classStream: currentClass.stream,
           });
+        }}
+      />,
+    );
+  };
+
+  const openConfigurationModal = (currentClass: Class, subject: Subject) => {
+    showModal(
+      <SubjectConfigurationModal
+        currentClass={currentClass}
+        subject={subject}
+        onClose={closeModal}
+        onSave={async (isOffered, enrollmentMode, sharedSlotId) => {
+          await onToggleSubjectOffering(
+            subject.id,
+            currentClass.grade,
+            currentClass.stream || "",
+            isOffered,
+            enrollmentMode,
+            sharedSlotId,
+          );
+          closeModal();
         }}
       />,
     );
@@ -359,6 +470,10 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
     (count, currentClass) => count + currentClass.droppedSubjectIds.length,
     0,
   );
+  const totalElectiveSubjects = classes.reduce(
+    (count, currentClass) => count + currentClass.electiveSubjectIds.length,
+    0,
+  );
 
   return (
     <div className="anim">
@@ -399,6 +514,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
         <StatCard label="Classes" value={classes.length} />
         <StatCard label="Subjects" value={subjects.length} accent="#1a4a99" />
         <StatCard label="Live assignments" value={totalAssignments} accent="var(--sText)" />
+        <StatCard label="Elective setups" value={totalElectiveSubjects} accent="#7b5cff" />
         <StatCard label="Dropped subjects" value={totalDroppedSubjects} accent="var(--dText)" />
       </div>
 
@@ -465,6 +581,21 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                 const assignedTeacher = assignedTeacherId
                   ? teacherLookup[assignedTeacherId]
                   : undefined;
+                const subjectSetting = currentClass.subjectSettings[subject.id];
+                const eligibleStudentCount =
+                  (subjectSetting?.enrollmentMode || "compulsory") === "elective"
+                    ? students.filter(
+                        (student) =>
+                          student.classId === currentClass.id &&
+                          (student.enrolledSubjects || []).some(
+                            (entry) =>
+                              entry.isActive !== false &&
+                              entry.subjectId === subject.id &&
+                              entry.classGrade === currentClass.grade &&
+                              (entry.classStream || "") === (currentClass.stream || ""),
+                          ),
+                      ).length
+                    : currentClass.students;
 
                 return (
                   <div
@@ -477,7 +608,9 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                       <div>
                         <p style={rowPrimaryTextStyle}>{subject.name}</p>
-                        <p style={rowMetaTextStyle}>{subject.department}</p>
+                        <p style={rowMetaTextStyle}>
+                          {subject.department} | {formatSubjectOfferingTag(subjectSetting?.enrollmentMode, subjectSetting?.sharedSlotId)} | {eligibleStudentCount} learner{eligibleStudentCount === 1 ? "" : "s"}
+                        </p>
                       </div>
                       {assignedTeacher ? (
                         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
@@ -494,6 +627,12 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                           >
                             Change
                           </button>
+                          <button
+                            onClick={() => openConfigurationModal(currentClass, subject)}
+                            style={{ ...miniButtonStyle, background: "#f4f0ff", color: "#5a35b4", border: "1px solid #c9b9ff" }}
+                          >
+                            Configure
+                          </button>
                           <button 
                             onClick={() => handleUnassign(currentClass, subject, assignedTeacher)}
                             style={{ ...miniButtonStyle, background: "var(--dBg)", color: "var(--dText)", border: "1px solid var(--dText)" }}
@@ -505,7 +644,14 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                               showConfirm(
                                 `Drop <strong>${subject.name}</strong> for <strong>${currentClass.name}</strong>? Teacher assignment for this class subject will be removed until the subject is added back.`,
                                 async () => {
-                                  await onToggleSubjectOffering(subject.id, currentClass.grade, currentClass.stream || "", false);
+                                  await onToggleSubjectOffering(
+                                    subject.id,
+                                    currentClass.grade,
+                                    currentClass.stream || "",
+                                    false,
+                                    subjectSetting?.enrollmentMode || "compulsory",
+                                    subjectSetting?.sharedSlotId || null,
+                                  );
                                 },
                                 true,
                               )
@@ -524,11 +670,24 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                             Assign teacher
                           </button>
                           <button
+                            onClick={() => openConfigurationModal(currentClass, subject)}
+                            style={{ ...miniButtonStyle, background: "#f4f0ff", color: "#5a35b4", border: "1px solid #c9b9ff" }}
+                          >
+                            Configure
+                          </button>
+                          <button
                             onClick={() =>
                               showConfirm(
                                 `Drop <strong>${subject.name}</strong> for <strong>${currentClass.name}</strong>?`,
                                 async () => {
-                                  await onToggleSubjectOffering(subject.id, currentClass.grade, currentClass.stream || "", false);
+                                  await onToggleSubjectOffering(
+                                    subject.id,
+                                    currentClass.grade,
+                                    currentClass.stream || "",
+                                    false,
+                                    subjectSetting?.enrollmentMode || "compulsory",
+                                    subjectSetting?.sharedSlotId || null,
+                                  );
                                 },
                                 true,
                               )
@@ -581,23 +740,44 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                             padding: "10px 12px",
                           }}
                         >
-                          <div>
-                            <p style={rowPrimaryTextStyle}>{subject.name}</p>
-                            <p style={rowMetaTextStyle}>{subject.department}</p>
+                            <div>
+                              <p style={rowPrimaryTextStyle}>{subject.name}</p>
+                              <p style={rowMetaTextStyle}>
+                                {subject.department} | {formatSubjectOfferingTag(
+                                  currentClass.subjectSettings[subject.id]?.enrollmentMode,
+                                  currentClass.subjectSettings[subject.id]?.sharedSlotId,
+                                )}
+                              </p>
+                            </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button
+                              onClick={() => openConfigurationModal(currentClass, subject)}
+                              style={{ ...miniButtonStyle, background: "#f4f0ff", color: "#5a35b4", border: "1px solid #c9b9ff" }}
+                            >
+                              Configure
+                            </button>
+                            <button
+                              onClick={() =>
+                                showConfirm(
+                                  `Add <strong>${subject.name}</strong> back to <strong>${currentClass.name}</strong>?`,
+                                  async () => {
+                                    const subjectSetting = currentClass.subjectSettings[subject.id];
+                                    await onToggleSubjectOffering(
+                                      subject.id,
+                                      currentClass.grade,
+                                      currentClass.stream || "",
+                                      true,
+                                      subjectSetting?.enrollmentMode || "compulsory",
+                                      subjectSetting?.sharedSlotId || null,
+                                    );
+                                  },
+                                )
+                              }
+                              style={{ ...miniButtonStyle, background: "var(--sBg)", color: "var(--sText)", border: "1px solid var(--sText)" }}
+                            >
+                              Add back
+                            </button>
                           </div>
-                          <button
-                            onClick={() =>
-                              showConfirm(
-                                `Add <strong>${subject.name}</strong> back to <strong>${currentClass.name}</strong>?`,
-                                async () => {
-                                  await onToggleSubjectOffering(subject.id, currentClass.grade, currentClass.stream || "", true);
-                                },
-                              )
-                            }
-                            style={{ ...miniButtonStyle, background: "var(--sBg)", color: "var(--sText)", border: "1px solid var(--sText)" }}
-                          >
-                            Add back
-                          </button>
                         </div>
                       ))}
                     </div>

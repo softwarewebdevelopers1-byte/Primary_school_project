@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { userModel, studentModel, adminModel, classTeacherModel, subjectTeacher, deputyModel, headTeacherModel, rolesMapped } from "../models/user.model.js";
 import { SubjectModel, AssignmentModel, ClassSubjectSettingModel, MarkModel } from "../models/school.model.js";
 import { archiveClassMarks, rollbackArchivedMarks, type ArchiveClassMarksResult } from "../utils/archiver.js";
+import { buildClassSubjectSettingMap, filterStudentsForSubject, normalizeSubjectId } from "../utils/subjectEnrollment.js";
 import jwt from "jsonwebtoken";
 import { authenticate } from "../middleware/auth.js";
 
@@ -26,6 +27,53 @@ const buildClassKey = (classGrade: string | null | undefined, classStream: strin
 
 const formatClassLabel = (classGrade: string | null | undefined, classStream: string | null | undefined) =>
   `${normalizeClassValue(classGrade)} ${normalizeClassValue(classStream)}`.trim() || "Unknown class";
+
+const sanitizeEnrolledSubjects = (
+  enrolledSubjects: unknown,
+  classGrade: string | null | undefined,
+  classStream: string | null | undefined,
+) => {
+  const defaultClassGrade = normalizeClassValue(classGrade);
+  const defaultClassStream = normalizeClassValue(classStream);
+
+  if (!Array.isArray(enrolledSubjects)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+
+  return enrolledSubjects
+    .map((entry: any) => {
+      const subjectId = normalizeSubjectId(entry?.subjectId);
+      const enrollmentClassGrade = normalizeClassValue(entry?.classGrade) || defaultClassGrade;
+      const enrollmentClassStream = normalizeClassValue(entry?.classStream) || defaultClassStream;
+
+      if (!subjectId || !enrollmentClassGrade) {
+        return null;
+      }
+
+      return {
+        subjectId,
+        classGrade: enrollmentClassGrade,
+        classStream: enrollmentClassStream,
+        isActive: entry?.isActive !== false,
+        enrolledAt: entry?.enrolledAt ? new Date(entry.enrolledAt) : null,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => {
+      if (!entry) {
+        return false;
+      }
+
+      const key = `${entry.subjectId}::${entry.classGrade}::${entry.classStream}`;
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+};
 
 const toFiniteNumber = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") {
@@ -92,14 +140,14 @@ const collectCycleCompletionIssues = async (
       status: { $ne: "inactive" },
       class: { $ne: null },
     } as any)
-    .select("_id class classStream")
+    .select("_id class classStream enrolledSubjects")
     .lean();
 
   if (activeStudents.length === 0) {
     return [];
   }
 
-  const studentsByClass = new Map<string, string[]>();
+  const studentsByClass = new Map<string, any[]>();
   for (const student of activeStudents as any[]) {
     const classGrade = normalizeClassValue(student.class);
     if (!classGrade) continue;
@@ -107,7 +155,7 @@ const collectCycleCompletionIssues = async (
     const classStream = normalizeClassValue(student.classStream);
     const classKey = buildClassKey(classGrade, classStream);
     const classStudents = studentsByClass.get(classKey) || [];
-    classStudents.push(student._id.toString());
+    classStudents.push(student);
     studentsByClass.set(classKey, classStudents);
   }
 
@@ -115,18 +163,24 @@ const collectCycleCompletionIssues = async (
     return [];
   }
 
-  const assignments = (await AssignmentModel.find().lean()).filter((assignment: any) =>
+  const [assignments, classSubjectSettings] = await Promise.all([
+    AssignmentModel.find().lean(),
+    ClassSubjectSettingModel.find().lean(),
+  ]);
+
+  const relevantAssignments = assignments.filter((assignment: any) =>
     studentsByClass.has(buildClassKey(assignment.classGrade, assignment.classStream)),
   );
+  const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
 
   const subjectIds = Array.from(
-    new Set(assignments.map((assignment: any) => assignment.subjectId?.toString()).filter(Boolean)),
+    new Set(relevantAssignments.map((assignment: any) => assignment.subjectId?.toString()).filter(Boolean)),
   );
   const subjects = await SubjectModel.find({ _id: { $in: subjectIds } } as any).lean();
   const subjectNameById = new Map(subjects.map((subject: any) => [subject._id.toString(), subject.name]));
 
   const assignmentsByClass = new Map<string, any[]>();
-  for (const assignment of assignments as any[]) {
+  for (const assignment of relevantAssignments as any[]) {
     const classKey = buildClassKey(assignment.classGrade, assignment.classStream);
     const classAssignments = assignmentsByClass.get(classKey) || [];
     classAssignments.push(assignment);
@@ -156,7 +210,7 @@ const collectCycleCompletionIssues = async (
     const [rawClassGrade = "", rawClassStream = ""] = classKey.split("::");
     const classGrade = normalizeClassValue(rawClassGrade);
     const classStream = normalizeClassValue(rawClassStream);
-    const classStudentIds = studentsByClass.get(classKey) || [];
+    const classStudents = studentsByClass.get(classKey) || [];
     const classAssignments = assignmentsByClass.get(classKey) || [];
 
     if (classAssignments.length === 0) {
@@ -164,7 +218,7 @@ const collectCycleCompletionIssues = async (
         type: "missing-assignment",
         classGrade,
         classStream,
-        totalStudents: classStudentIds.length,
+        totalStudents: classStudents.length,
       });
       continue;
     }
@@ -173,8 +227,19 @@ const collectCycleCompletionIssues = async (
       const subjectId = assignment.subjectId?.toString();
       if (!subjectId) continue;
 
+      const enrolledStudents = filterStudentsForSubject(
+        classStudents,
+        { subjectId, classGrade, classStream },
+        classSubjectSettingsMap,
+      );
+
+      if (enrolledStudents.length === 0) {
+        continue;
+      }
+
       let missingStudents = 0;
-      for (const studentId of classStudentIds) {
+      for (const student of enrolledStudents) {
+        const studentId = student._id?.toString?.() || String(student._id);
         const mark = marksByStudentAndSubject.get(`${studentId}::${subjectId}`);
         if (!mark || !hasRecordedScore(mark)) {
           missingStudents += 1;
@@ -188,7 +253,7 @@ const collectCycleCompletionIssues = async (
           classStream,
           subjectName: subjectNameById.get(subjectId) || "Assigned subject",
           missingStudents,
-          totalStudents: classStudentIds.length,
+          totalStudents: enrolledStudents.length,
         });
       }
     }
@@ -281,6 +346,7 @@ router.post("/login", async (req: Request, res: Response) => {
         classGrade: user.class,
         classStream: user.classStream,
         subjects: user.subjects ? [user.subjects.subject1, user.subjects.subject2].filter(Boolean) : [],
+        enrolledSubjects: user.enrolledSubjects || [],
         term: user.term,
         year: user.year,
         examType: user.examType
@@ -368,6 +434,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         classGrade: s.class,
         classStream: s.classStream,
         status: s.status,
+        enrolledSubjects: s.enrolledSubjects || [],
         marks: marksObj,
         term: s.term,
         year: s.year,
@@ -434,7 +501,8 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
       roles,
       name: user.teachersName || user.studentsName,
       classGrade: user.class,
-      classStream: user.classStream
+      classStream: user.classStream,
+      enrolledSubjects: user.enrolledSubjects || [],
     };
 
     res.json(mapped);
@@ -527,6 +595,7 @@ router.get("/class/:grade/:stream", authenticate, async (req: Request, res: Resp
         parentName: s.guardianName,
         parentPhone: s.guardianPhone,
         status: s.status,
+        enrolledSubjects: s.enrolledSubjects || [],
         marks: studentMarks
       };
     });
@@ -551,6 +620,8 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
     let newUser;
 
     if (role === rolesMapped.ST) {
+      const classGrade = normalizeClassValue(req.body.classGrade);
+      const classStream = normalizeClassValue(req.body.classStream);
       const hashedPassword = await bcrypt.hash("student123", 10);
       newUser = await studentModel.create({
         studentsName: req.body.name,
@@ -558,11 +629,12 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
         gender: req.body.gender,
         guardianName: req.body.guardianName,
         guardianPhone: req.body.guardianPhone,
-        class: req.body.classGrade,
-        classStream: req.body.classStream,
+        class: classGrade,
+        classStream: classStream,
         status: req.body.status || "active",
         role: rolesMapped.ST,
         password: hashedPassword,
+        enrolledSubjects: sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream),
       });
     } else {
       const hashedPassword = await bcrypt.hash("staff123", 10);
@@ -741,7 +813,20 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
         {
           updateOne: {
             filter: { _id: userDoc._id },
-            update: { $set: { class: shiftedClass } },
+            update: {
+              $set: {
+                class: shiftedClass,
+                enrolledSubjects:
+                  (userDoc as any).__t === rolesMapped.ST && Array.isArray((userDoc as any).enrolledSubjects)
+                    ? (userDoc as any).enrolledSubjects.map((enrollment: any) => ({
+                        ...enrollment,
+                        classGrade:
+                          shiftClassName(enrollment.classGrade, newYear - userYear) ||
+                          enrollment.classGrade,
+                      }))
+                    : (userDoc as any).enrolledSubjects,
+              },
+            },
           },
         },
       ];
@@ -848,15 +933,18 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
     
     let updateData: any = {};
     if (role === rolesMapped.ST) {
+      const classGrade = normalizeClassValue(req.body.classGrade);
+      const classStream = normalizeClassValue(req.body.classStream);
       updateData = {
         studentsName: req.body.name,
         ADM: req.body.admissionNo,
         gender: req.body.gender,
         guardianName: req.body.guardianName,
         guardianPhone: req.body.guardianPhone,
-        class: req.body.classGrade,
-        classStream: req.body.classStream,
+        class: classGrade,
+        classStream: classStream,
         status: req.body.status,
+        enrolledSubjects: sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream),
       };
     } else {
       const rolesArray = Array.isArray(req.body.roles) ? req.body.roles : [req.body.role].filter(Boolean);

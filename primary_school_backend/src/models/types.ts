@@ -1,3 +1,5 @@
+import type { StudentSubjectEnrollment } from "../utils/subjectEnrollment.js";
+
 export interface user {
   status: string;
   class: string | null;
@@ -35,4 +37,5 @@ export interface student {
   guardianPhone: string;
   gender: string;
   joinDate: string;
+  enrolledSubjects: StudentSubjectEnrollment[];
 }
