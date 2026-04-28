@@ -290,44 +290,46 @@ export const TimetableLibrary: React.FC<TimetableLibraryProps> = ({
                 </p>
               </div>
 
-              <a
-                href={selected.pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  background: "var(--gold)",
-                  color: "#fff",
-                  textDecoration: "none",
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Open PDF
-              </a>
-              {allowDelete && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <a
+                  href={selected.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     padding: "10px 14px",
                     borderRadius: 10,
-                    background: "var(--dText)",
+                    background: "var(--gold)",
                     color: "#fff",
-                    border: "none",
+                    textDecoration: "none",
                     fontSize: 12.5,
                     fontWeight: 700,
                     whiteSpace: "nowrap",
-                    cursor: deleting ? "not-allowed" : "pointer",
-                    opacity: deleting ? 0.7 : 1,
                   }}
                 >
-                  {deleting ? "Deleting..." : "Delete Timetable"}
-                </button>
-              )}
+                  Open PDF
+                </a>
+                {allowDelete && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      background: "var(--dText)",
+                      color: "#fff",
+                      border: "none",
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                      cursor: deleting ? "not-allowed" : "pointer",
+                      opacity: deleting ? 0.7 : 1,
+                    }}
+                  >
+                    {deleting ? "Deleting..." : "Delete Timetable"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {selected.aiSummary ? (

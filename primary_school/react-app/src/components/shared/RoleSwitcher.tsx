@@ -28,6 +28,9 @@ const roleLabels: Record<string, string> = {
 export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isCompact, setIsCompact] = React.useState(
+    () => typeof window !== "undefined" && window.innerWidth <= 640,
+  );
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   
   // Robustly extract roles array
@@ -73,8 +76,18 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
         setIsOpen(false);
       }
     };
+
+    const handleResize = () => {
+      setIsCompact(window.innerWidth <= 640);
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   if (roles.length <= 1) return null;
@@ -90,21 +103,33 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
           display: "flex",
           alignItems: "center",
           gap: 8,
-          padding: "6px 14px",
+          padding: isCompact ? "7px 10px" : "6px 14px",
           borderRadius: 8,
           border: "1.5px solid var(--gold)",
           background: "var(--white)",
           color: "var(--text)",
-          fontSize: "12px",
+          fontSize: isCompact ? "11px" : "12px",
           fontWeight: 700,
           cursor: "pointer",
           transition: "all 0.2s ease",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-          whiteSpace: "nowrap"
+          boxShadow: "0 8px 20px rgba(11, 32, 24, 0.08)",
+          whiteSpace: "nowrap",
+          maxWidth: isCompact ? 160 : 240,
         }}
       >
-        <span style={{ color: "var(--gold)", fontSize: "10px", fontWeight: 800 }}>DASHBOARD:</span>
-        {roleLabels[currentRole] || currentRole}
+        {!isCompact && (
+          <span style={{ color: "var(--gold)", fontSize: "10px", fontWeight: 800 }}>
+            DASHBOARD:
+          </span>
+        )}
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {roleLabels[currentRole] || currentRole}
+        </span>
         <svg 
           width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
           style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}
@@ -118,12 +143,12 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
           position: "absolute",
           top: "120%",
           right: 0,
-          background: "#fff",
+          background: "var(--white)",
           border: "1px solid var(--border)",
           borderRadius: 10,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+          boxShadow: "0 16px 36px rgba(11, 32, 24, 0.16)",
           padding: "6px",
-          minWidth: "180px",
+          minWidth: isCompact ? "150px" : "180px",
           display: "flex",
           flexDirection: "column",
           gap: 2,
@@ -145,7 +170,7 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
                   padding: "10px 12px",
                   borderRadius: 6,
                   border: "none",
-                  background: isActive ? "var(--sand)" : "transparent",
+                  background: isActive ? "var(--goldP)" : "transparent",
                   color: isActive ? "var(--gold)" : "var(--text)",
                   textAlign: "left",
                   fontSize: "12.5px",

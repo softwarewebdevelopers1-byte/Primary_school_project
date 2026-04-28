@@ -18,6 +18,59 @@ interface TimetableBreakForm {
   endTime: string;
 }
 
+const parseTimeToMinutes = (value: string) => {
+  const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    throw new Error("Use valid break times in HH:MM format.");
+  }
+  return hours * 60 + minutes;
+};
+
+const validateBreakConfiguration = (
+  schoolStartTime: string,
+  subjectDurationMinutes: number,
+  breaks: TimetableBreakForm[],
+) => {
+  const schoolStartMinutes = parseTimeToMinutes(schoolStartTime);
+  const sortedBreaks = [...breaks]
+    .map((item, index) => ({
+      ...item,
+      label: item.label.trim() || `Break ${index + 1}`,
+      startMinutes: parseTimeToMinutes(item.startTime),
+      endMinutes: parseTimeToMinutes(item.endTime),
+    }))
+    .sort((left, right) => left.startMinutes - right.startMinutes);
+
+  let lessonCursorMinutes = schoolStartMinutes;
+  let previousBreakEnd = schoolStartMinutes;
+
+  sortedBreaks.forEach((currentBreak) => {
+    if (currentBreak.endMinutes <= currentBreak.startMinutes) {
+      throw new Error(`Break "${currentBreak.label}" must end after it starts.`);
+    }
+
+    if (currentBreak.startMinutes < previousBreakEnd) {
+      throw new Error("Break times cannot overlap.");
+    }
+
+    if (currentBreak.startMinutes <= schoolStartMinutes) {
+      throw new Error(
+        `Break "${currentBreak.label}" must start after the school day begins at ${schoolStartTime}.`,
+      );
+    }
+
+    const gapMinutes = currentBreak.startMinutes - lessonCursorMinutes;
+    if (gapMinutes % subjectDurationMinutes !== 0) {
+      throw new Error(
+        `Break "${currentBreak.label}" must begin after a full lesson slot when the day starts at ${schoolStartTime}.`,
+      );
+    }
+
+    lessonCursorMinutes = currentBreak.endMinutes;
+    previousBreakEnd = currentBreak.endMinutes;
+  });
+};
+
 export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeriod }) => {
   const [schoolStartTime, setSchoolStartTime] = useState("08:00");
   const [subjectsPerDay, setSubjectsPerDay] = useState(7);
@@ -69,6 +122,8 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
     setStatus(null);
 
     try {
+      validateBreakConfiguration(schoolStartTime, subjectDurationMinutes, breaks);
+
       const response = await api.post<{ message: string }>("/school/timetables/generate", {
         schoolStartTime,
         subjectsPerDay,
@@ -171,7 +226,7 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
                 />
               </Field>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                 <Field label="Subjects Per Day">
                   <input
                     type="number"
@@ -252,7 +307,7 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
                       />
                     </Field>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
                       <Field label="Start Time">
                         <input
                           type="time"
@@ -280,7 +335,7 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                 gap: 12,
               }}
             >

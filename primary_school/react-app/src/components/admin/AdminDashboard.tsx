@@ -201,6 +201,8 @@ const primaryButtonStyle: React.CSSProperties = {
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -282,6 +284,25 @@ const AdminDashboard: React.FC = () => {
     void loadDashboardUsers();
     void refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 900);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(false);
+    } else {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
+
+  const handleSelectTab = (tabId: string) => {
+    setActiveTab(tabId);
+    setMobileMenuOpen(false);
+  };
 
   const closeModal = () => setModalContent(null);
   const showModal = (content: React.ReactNode) => setModalContent(content);
@@ -757,8 +778,21 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className={styles.dashboard} data-theme={theme}>
+      {mobileMenuOpen && isMobile && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(11, 32, 24, 0.34)",
+            zIndex: 18,
+          }}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <Sidebar
-        collapsed={collapsed}
+        collapsed={isMobile ? false : collapsed}
+        isMobile={isMobile}
+        mobileOpen={mobileMenuOpen}
         activeTab={activeTab}
         navItems={navItems}
         classesCount={classes.length}
@@ -768,7 +802,7 @@ const AdminDashboard: React.FC = () => {
         totalClasses={classes.length}
         unassignedCount={unassignedCount}
         onToggleCollapse={() => setCollapsed((current) => !current)}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         onLogout={handleLogout}
         teacherInitials={teacherInitials}
         teacherAvatarColor={teacherAvatarColor}
@@ -778,20 +812,22 @@ const AdminDashboard: React.FC = () => {
         <TopBar
           title={tabTitle}
           unassignedCount={unassignedCount}
-          onSwitchTab={setActiveTab}
+          onSwitchTab={handleSelectTab}
           teacherInitials={teacherInitials}
           teacherAvatarColor={teacherAvatarColor}
           theme={theme}
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}
           user={user}
+          isMobile={isMobile}
+          onOpenMenu={() => setMobileMenuOpen(true)}
         />
 
         <div
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: "18px 20px 24px",
+            padding: isMobile ? "16px" : "18px 20px 24px",
             background: "var(--panelBg)",
           }}
         >

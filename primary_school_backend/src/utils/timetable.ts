@@ -189,6 +189,38 @@ const normalizeBreaks = (breaks: TimetableBreakInput[]) => {
   }));
 };
 
+const validateBreakSchedule = (
+  schoolStartTime: string,
+  subjectDurationMinutes: number,
+  breaks: ReturnType<typeof normalizeBreaks>,
+) => {
+  const schoolStartMinutes = parseTimeToMinutes(schoolStartTime);
+  let lessonCursorMinutes = schoolStartMinutes;
+
+  breaks.forEach((currentBreak) => {
+    if (currentBreak.startMinutes <= schoolStartMinutes) {
+      throw new Error(
+        `Break "${currentBreak.label}" must start after the school day begins at ${schoolStartTime}.`,
+      );
+    }
+
+    if (currentBreak.startMinutes < lessonCursorMinutes) {
+      throw new Error(
+        `Break "${currentBreak.label}" overlaps an earlier lesson or break. Adjust the timetable setup and try again.`,
+      );
+    }
+
+    const gapMinutes = currentBreak.startMinutes - lessonCursorMinutes;
+    if (gapMinutes % subjectDurationMinutes !== 0) {
+      throw new Error(
+        `Break "${currentBreak.label}" must begin after a full lesson slot when lessons start at ${schoolStartTime} and run for ${subjectDurationMinutes} minutes.`,
+      );
+    }
+
+    lessonCursorMinutes = currentBreak.endMinutes;
+  });
+};
+
 const buildDailyTemplate = (
   schoolStartTime: string,
   subjectsPerDay: number,
@@ -215,16 +247,10 @@ const buildDailyTemplate = (
       continue;
     }
 
-    if (nextBreak && currentMinutes + subjectDurationMinutes > nextBreak.startMinutes) {
-      template.push({
-        type: "break",
-        label: nextBreak.label,
-        startTime: nextBreak.startTime,
-        endTime: nextBreak.endTime,
-      });
-      currentMinutes = nextBreak.endMinutes;
-      nextBreakIndex += 1;
-      continue;
+    if (nextBreak && currentMinutes < nextBreak.startMinutes && currentMinutes + subjectDurationMinutes > nextBreak.startMinutes) {
+      throw new Error(
+        `Break "${nextBreak.label}" interrupts a lesson block. Adjust the break time or the lesson duration so the break starts at the end of a lesson.`,
+      );
     }
 
     const startTime = formatMinutesAsTime(currentMinutes);
@@ -1024,7 +1050,6 @@ const validateTimetableInput = (input: CreateSchoolTimetableInput) => {
   const schoolStartTime = input.schoolStartTime?.trim() || "08:00";
   const subjectsPerDay = Number(input.subjectsPerDay);
   const subjectDurationMinutes = Number(input.subjectDurationMinutes);
-  const normalizedBreaks = normalizeBreaks(input.breaks || []);
 
   if (!Number.isInteger(subjectsPerDay) || subjectsPerDay < 1 || subjectsPerDay > 12) {
     throw new Error("Subjects per day must be a whole number between 1 and 12.");
@@ -1035,6 +1060,8 @@ const validateTimetableInput = (input: CreateSchoolTimetableInput) => {
   }
 
   parseTimeToMinutes(schoolStartTime);
+  const normalizedBreaks = normalizeBreaks(input.breaks || []);
+  validateBreakSchedule(schoolStartTime, subjectDurationMinutes, normalizedBreaks);
 
   return {
     schoolStartTime,

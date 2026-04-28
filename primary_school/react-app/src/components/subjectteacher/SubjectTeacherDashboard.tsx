@@ -16,6 +16,33 @@ import { api } from "../../lib/api";
 
 import { initials, avatarColor, avatar, gc } from "../../lib/dashboardHelpers";
 
+type SubjectMarksMap = MarksData[string];
+type StudentMarksRow = SubjectMarksMap[string];
+
+const hasRecordedMarkValue = (value: unknown) =>
+  value !== null && value !== undefined && value !== "";
+
+const hasStoredMarks = (marks?: StudentMarksRow) =>
+  Boolean(
+    marks &&
+      [
+        marks.cat1,
+        marks.cat2,
+        marks.cat3,
+        marks.cat4,
+        marks.cat5,
+        marks.exam,
+        marks.finalScore,
+      ].some(hasRecordedMarkValue),
+  );
+
+const collectStudentsWithStoredMarks = (subjectMarks?: SubjectMarksMap) =>
+  new Set(
+    Object.entries(subjectMarks || {})
+      .filter(([, marks]) => hasStoredMarks(marks))
+      .map(([studentId]) => studentId),
+  );
+
 const SubjectTeacherDashboard: React.FC = () => {
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("user");
@@ -29,6 +56,8 @@ const SubjectTeacherDashboard: React.FC = () => {
   });
 
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const [activeTab, setActiveTab] = useState("subjects");
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -47,6 +76,21 @@ const SubjectTeacherDashboard: React.FC = () => {
     localStorage.removeItem("user");
     window.location.href = "/login";
   };
+
+  const syncPushState = useCallback((subjectId: string, subjectMarks?: SubjectMarksMap) => {
+    const recordedStudents = collectStudentsWithStoredMarks(subjectMarks);
+
+    setPushedStudents(recordedStudents);
+    setPushedSubjects((current) => {
+      const next = new Set(current);
+      if (recordedStudents.size > 0) {
+        next.add(subjectId);
+      } else {
+        next.delete(subjectId);
+      }
+      return next;
+    });
+  }, []);
 
   const loadAssignments = useCallback(async () => {
     if (!currentUser?.id) {
@@ -158,21 +202,25 @@ const SubjectTeacherDashboard: React.FC = () => {
         pushed: false
       }));
 
+      const subjectMarks = data.reduce((acc, item) => {
+        const sid = item.studentId.toString();
+        acc[sid] = item.marks;
+        return acc;
+      }, {} as SubjectMarksMap);
+
       setStudents(mappedStudents);
+      syncPushState(activeSubjectId, subjectMarks);
 
       // Update marksData
       setMarksData(prev => ({
         ...prev,
-        [activeSubjectId]: data.reduce((acc, item) => {
-          const sid = item.studentId.toString();
-          acc[sid] = item.marks;
-          return acc;
-        }, {} as any)
+        [activeSubjectId]: subjectMarks
       }));
     } catch (err) {
       setStudents([]);
+      setPushedStudents(new Set());
     }
-  }, [activeSubjectId, subjects, term, year, examType]);
+  }, [activeSubjectId, subjects, term, year, examType, syncPushState]);
 
   // Clear state when switching period
   useEffect(() => {
@@ -181,14 +229,30 @@ const SubjectTeacherDashboard: React.FC = () => {
   }, [term, year, examType]);
 
   useEffect(() => {
-    if (activeSubjectId) loadStudentsAndMarks();
-  }, [activeSubjectId, loadStudentsAndMarks, term, examType]);
+    if (!activeSubjectId) return;
+    setPushedStudents(new Set());
+    loadStudentsAndMarks();
+  }, [activeSubjectId, loadStudentsAndMarks, term, year, examType]);
 
   // Clear pushed status when period changes
   useEffect(() => {
     setPushedSubjects(new Set());
     setPushedStudents(new Set());
-  }, [term, examType]);
+  }, [term, year, examType]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 900);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(false);
+    } else {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
 
   const teacherName = currentUser?.name || "Teacher";
   const teacherInitials = initials(teacherName);
@@ -267,7 +331,7 @@ const SubjectTeacherDashboard: React.FC = () => {
     });
   };
 
-  const handleSaveMarks = async (assignmentId: string, catConfigs?: any) => {
+  const handleSaveMarks = useCallback(async (assignmentId: string, catConfigs?: any) => {
     const currentSubject = subjects.find(s => s.id === assignmentId);
     if (!currentSubject) return;
 
@@ -290,6 +354,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         marksData: data,
         catConfigs
       });
+      syncPushState(assignmentId, subjectMarks);
       setMsg({ text: "Marks saved successfully!", type: "success" });
       setTimeout(() => setMsg(null), 3000);
       loadStudentsAndMarks();
@@ -297,10 +362,10 @@ const SubjectTeacherDashboard: React.FC = () => {
       setMsg({ text: "Failed to save marks.", type: "error" });
       setTimeout(() => setMsg(null), 3000);
     }
-  };
+  }, [examType, loadStudentsAndMarks, marksData, subjects, syncPushState, term, year]);
 
 
-  const handlePushMarks = async (subjectId: string) => {
+  const handlePushMarks = useCallback(async (subjectId: string) => {
     const currentSubject = subjects.find(s => s.id === subjectId);
     if (!currentSubject) return;
 
@@ -322,7 +387,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         examType: examType,
         marksData: data
       });
-      setPushedSubjects((prev) => new Set(prev).add(subjectId));
+      syncPushState(subjectId, subjectMarks);
       setMsg({ text: `Marks saved and pushed for ${currentSubject.grade}`, type: "success" });
       setTimeout(() => setMsg(null), 3000);
       loadStudentsAndMarks();
@@ -330,11 +395,16 @@ const SubjectTeacherDashboard: React.FC = () => {
       setMsg({ text: "Failed to push marks.", type: "error" });
       setTimeout(() => setMsg(null), 3000);
     }
-  };
+  }, [examType, loadStudentsAndMarks, marksData, subjects, syncPushState, term, year]);
 
   const getTabTitle = () => {
     const titles: Record<string, string> = { subjects: "My Subjects", marks: "Mark Entry", timetable: "My Timetable", assessments: "Assessments", progress: "Student Progress", resources: "Resources" };
     return titles[activeTab] || "My Subjects";
+  };
+
+  const handleSelectTab = (tabId: string) => {
+    setActiveTab(tabId);
+    setMobileMenuOpen(false);
   };
 
   const renderContent = () => {
@@ -370,11 +440,19 @@ const SubjectTeacherDashboard: React.FC = () => {
 
   return (
     <div className={styles.dashboard} data-theme={theme}>
+      {mobileMenuOpen && isMobile && (
+        <div
+          className={styles.mobileOverlay}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <Sidebar
-        collapsed={collapsed}
+        collapsed={isMobile ? false : collapsed}
+        isMobile={isMobile}
+        mobileOpen={mobileMenuOpen}
         activeTab={activeTab}
         onToggleCollapse={() => setCollapsed(!collapsed)}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         teacherName={teacherName}
         teacherInitials={teacherInitials}
         teacherAvatarColor={teacherAvatarColor}
@@ -390,6 +468,8 @@ const SubjectTeacherDashboard: React.FC = () => {
           teacherName={teacherName}
           teacherInitials={teacherInitials}
           teacherAvatarColor={teacherAvatarColor}
+          isMobile={isMobile}
+          onOpenMenu={() => setMobileMenuOpen(true)}
           theme={theme}
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}

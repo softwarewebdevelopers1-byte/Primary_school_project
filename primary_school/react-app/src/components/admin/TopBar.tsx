@@ -9,6 +9,8 @@ interface TopBarProps {
   onSwitchTab: (tab: string) => void;
   teacherInitials: string;
   teacherAvatarColor: string;
+  isMobile: boolean;
+  onOpenMenu: () => void;
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -21,6 +23,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSwitchTab,
   teacherInitials,
   teacherAvatarColor,
+  isMobile,
+  onOpenMenu,
   theme,
   onToggleTheme,
   onLogout,
@@ -38,16 +42,39 @@ export const TopBar: React.FC<TopBarProps> = ({
       style={{
         background: "var(--cream)",
         borderBottom: "1px solid var(--border)",
-        padding: "0 20px",
-        height: 54,
+        height: isMobile ? "auto" : 54,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         flexShrink: 0,
         gap: 12,
+        flexWrap: "wrap",
+        minHeight: isMobile ? 72 : 54,
+        padding: isMobile ? "14px 16px" : "0 20px",
       }}
     >
-      <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            aria-label="Open navigation menu"
+            style={{
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "var(--sand)",
+              color: "var(--textM)",
+              fontFamily: "var(--sans)",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Menu
+          </button>
+        )}
+        <div style={{ minWidth: 0 }}>
         <p
           style={{
             fontSize: 9.5,
@@ -72,8 +99,9 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           {title}
         </h2>
+        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
         {unassignedCount > 0 && (
           <button
             onClick={() => onSwitchTab("classes")}
@@ -90,6 +118,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               fontSize: 11.5,
               fontWeight: 700,
               color: "var(--dText)",
+              flexShrink: 0,
             }}
           >
             <svg
@@ -130,7 +159,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           {theme === "dark" ? "Light" : "Dark"}
         </button>
-        <p style={{ fontSize: 11.5, color: "var(--textF)", margin: 0 }}>
+        <p style={{ fontSize: 11.5, color: "var(--textF)", margin: 0, whiteSpace: "nowrap" }}>
           {date}
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -4,6 +4,8 @@ import styles from "./SubjectTeacherDashboard.module.css";
 
 interface SidebarProps {
   collapsed: boolean;
+  isMobile: boolean;
+  mobileOpen: boolean;
   activeTab: string;
   onToggleCollapse: () => void;
   onSelectTab: (tab: string) => void;
@@ -27,6 +29,8 @@ const navItems = [
 
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
+  isMobile,
+  mobileOpen,
   activeTab,
   onToggleCollapse,
   onSelectTab,
@@ -39,7 +43,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
 }) => {
   return (
-    <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`}>
+    <aside
+      className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""} ${mobileOpen ? styles.mobileOpen : ""}`}
+    >
       <div className={styles.sbLogo}>
         <div
           style={{
@@ -57,20 +63,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
-        <button className={styles.sbToggle} onClick={onToggleCollapse}>
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d={collapsed ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"} />
-          </svg>
-        </button>
+        {!isMobile && (
+          <button className={styles.sbToggle} onClick={onToggleCollapse}>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d={collapsed ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"} />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className={styles.sbProfile}>

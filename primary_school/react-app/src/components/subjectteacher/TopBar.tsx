@@ -10,6 +10,8 @@ interface TopBarProps {
   teacherName: string;
   teacherInitials: string;
   teacherAvatarColor: string;
+  isMobile: boolean;
+  onOpenMenu: () => void;
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -22,6 +24,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   teacherName,
   teacherInitials,
   teacherAvatarColor,
+  isMobile,
+  onOpenMenu,
   theme,
   onToggleTheme,
   onLogout,
@@ -37,9 +41,21 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <div className={styles.topbar}>
-      <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        {isMobile && (
+          <button
+            type="button"
+            className={styles.menuBtn}
+            onClick={onOpenMenu}
+            aria-label="Open navigation menu"
+          >
+            Menu
+          </button>
+        )}
+        <div style={{ minWidth: 0 }}>
         <p className={styles.topbarTitleSub}>Subject Teacher Portal</p>
         <h2 className={styles.topbarTitle}>{title}</h2>
+        </div>
       </div>
       <div className={styles.topbarRight}>
         <p style={{ fontSize: "11.5px", color: "var(--textF)", margin: 0 }}>

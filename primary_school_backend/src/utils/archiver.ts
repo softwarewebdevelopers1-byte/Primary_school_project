@@ -322,31 +322,6 @@ export async function archiveClassMarks(
     alternateRowStyles: { fillColor: [250, 248, 242] },
   });
 
-  const gradeTableStartY = (((doc as any).lastAutoTable?.finalY as number | undefined) || 45) + 10;
-  doc.setFontSize(11);
-  doc.setTextColor(80);
-  doc.text("Grading Scale", 14, gradeTableStartY);
-
-  autoTable(doc, {
-    head: [["Grade", "Points", "Range", "Remark"]],
-    body: GRADE_SCALE.map((band) => [
-      band.grade,
-      String(band.points),
-      `${band.min} - ${band.max}`,
-      band.remark,
-    ]),
-    startY: gradeTableStartY + 4,
-    theme: "grid",
-    styles: { fontSize: 8, cellPadding: 2.5 },
-    headStyles: { fillColor: [44, 77, 64], textColor: 255, fontStyle: "bold" },
-    columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 28 },
-    },
-  });
-
   const pdfOutput = doc.output("arraybuffer");
   const pdfBuffer = Buffer.from(pdfOutput);
   const fileName = `archives/${year}/Term${term}/${normalizedExamType}/${classGrade}_${classStream}_${Date.now()}.pdf`

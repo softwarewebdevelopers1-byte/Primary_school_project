@@ -3,6 +3,8 @@ import React from "react";
 
 interface SidebarProps {
   collapsed: boolean;
+  isMobile: boolean;
+  mobileOpen: boolean;
   activeTab: string;
   navItems: any[];
   classesCount: number;
@@ -20,6 +22,8 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
+  isMobile,
+  mobileOpen,
   activeTab,
   navItems,
   classesCount,
@@ -41,10 +45,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         background: "var(--cg)",
         display: "flex",
         flexDirection: "column",
-        transition: "width 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
+        transition: "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), width 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
         overflow: "hidden",
         flexShrink: 0,
-        zIndex: 5,
+        zIndex: 20,
+        position: isMobile ? "fixed" : "relative",
+        inset: isMobile ? "0 auto 0 0" : "auto",
+        transform: isMobile ? (mobileOpen ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
+        boxShadow: isMobile ? "0 18px 40px rgba(11, 32, 24, 0.24)" : "none",
+        maxWidth: "100%",
       }}
     >
       {/* Logo */}
@@ -104,35 +113,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
-        <button
-          onClick={onToggleCollapse}
-          style={{
-            width: 25,
-            height: 25,
-            borderRadius: 6,
-            background: "rgba(255,255,255,.06)",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#9eb8aa",
-            flexShrink: 0,
-            transition: "background .15s",
-          }}
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
+        {!isMobile && (
+          <button
+            onClick={onToggleCollapse}
+            style={{
+              width: 25,
+              height: 25,
+              borderRadius: 6,
+              background: "rgba(255,255,255,.06)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#9eb8aa",
+              flexShrink: 0,
+              transition: "background .15s",
+            }}
           >
-            <path d={collapsed ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"} />
-          </svg>
-        </button>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+            >
+              <path d={collapsed ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"} />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Profile */}

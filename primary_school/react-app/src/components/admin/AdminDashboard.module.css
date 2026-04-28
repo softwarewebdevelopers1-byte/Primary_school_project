@@ -116,10 +116,12 @@
 /* Dashboard Layout */
 .dashboard {
   display: flex;
-  height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   font-family: var(--sans);
   background: var(--sand);
   overflow: hidden;
+  position: relative;
 }
 
 /* Modal Styles */
