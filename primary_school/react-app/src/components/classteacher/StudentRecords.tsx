@@ -101,6 +101,46 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
       (s.admissionNo && s.admissionNo.includes(search)),
   );
 
+  const displaySubjects = React.useMemo(() => {
+    if (!subjects) return [];
+    const grouped: any[] = [];
+    const usedIds = new Set<string>();
+
+    subjects.forEach((s) => {
+      if (usedIds.has(s.id)) return;
+
+      if (s.sharedSlotId) {
+        const siblings = subjects.filter(
+          (other) => other.sharedSlotId === s.sharedSlotId && other.id !== s.id,
+        );
+        if (siblings.length > 0) {
+          const groupName = [s, ...siblings]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((item) => item.name.substring(0, 3))
+            .join("/");
+
+          grouped.push({
+            id: `group-${s.sharedSlotId}`,
+            name: groupName,
+            fullName: [s, ...siblings]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((item) => item.name)
+              .join("/"),
+            isGroup: true,
+            memberIds: [s.id, ...siblings.map((sib) => sib.id)],
+          });
+          [s, ...siblings].forEach((item) => usedIds.add(item.id));
+          return;
+        }
+      }
+
+      grouped.push({ ...s, isGroup: false });
+      usedIds.add(s.id);
+    });
+
+    return grouped;
+  }, [subjects]);
+
   return (
     <div className="ct-anim">
       <SectionHeader
@@ -162,7 +202,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   {h}
                 </th>
               ))}
-              {subjects && subjects.map(s => (
+              {displaySubjects.map(s => (
                 <th
                   key={s.id}
                   style={{
@@ -176,9 +216,9 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
                   }}
-                  title={s.name}
+                  title={s.fullName || s.name}
                 >
-                  {s.name.substring(0, 3)}
+                  {s.name}
                 </th>
               ))}
               {[
@@ -248,8 +288,20 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   <td style={{ padding: "12px 14px" }}>
                     <StatusPill status={s.status} />
                   </td>
-                  {subjects && subjects.map(sub => {
-                    const mark = s.marks ? s.marks[sub.id] : null;
+                  {displaySubjects.map(sub => {
+                    let mark = null;
+                    if (sub.isGroup) {
+                      // Pick the mark from the first member that has one (since students usually take only one in a pair)
+                      for (const mid of sub.memberIds) {
+                        if (s.marks && s.marks[mid] != null) {
+                          mark = s.marks[mid];
+                          break;
+                        }
+                      }
+                    } else {
+                      mark = s.marks ? s.marks[sub.id] : null;
+                    }
+                    
                     return (
                       <td key={sub.id} style={{ 
                         padding: "12px 14px",

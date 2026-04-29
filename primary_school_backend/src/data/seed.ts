@@ -94,6 +94,3 @@ export let newStaff = async () => {
     
   }
 };
-
-
-

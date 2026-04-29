@@ -1105,9 +1105,33 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
 router.delete("/:id", authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const deletedUser = await userModel.findByIdAndDelete(id);
-    if (!deletedUser) return res.status(404).json({ message: "User not found" });
-    res.json({ message: "User deleted successfully" });
+    const user = await userModel.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const classGrade = (user as any).class;
+    const classStream = (user as any).classStream;
+
+    await userModel.findByIdAndDelete(id);
+
+    // Delete all marks for this student
+    await MarkModel.deleteMany({ studentId: id as any });
+
+    // If this was the last student in the class, clean up class metadata
+    if (classGrade) {
+      const remainingStudents = await studentModel.countDocuments({
+        class: classGrade,
+        classStream: classStream || "",
+      });
+
+      if (remainingStudents === 0) {
+        await Promise.all([
+          AssignmentModel.deleteMany({ classGrade, classStream: classStream || "" }),
+          ClassSubjectSettingModel.deleteMany({ classGrade, classStream: classStream || "" }),
+        ]);
+      }
+    }
+
+    res.json({ message: "User deleted successfully and data cleaned up" });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

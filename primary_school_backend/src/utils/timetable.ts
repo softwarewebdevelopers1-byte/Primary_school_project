@@ -667,20 +667,44 @@ const generateFallbackPlan = (
 
         let selectedSubject = null;
         let finalSelectedLessons: ClassSubjectContext[] = [];
-        
+
+        // 1. Try to pick from viableCandidates (strict constraints)
         for (const candidate of viableCandidates) {
-           if (!candidate.sharedSlotId) {
-             selectedSubject = candidate;
-             finalSelectedLessons = [candidate];
-             break;
-           }
-           const siblings = currentClass.subjects.filter(s => s.sharedSlotId === candidate.sharedSlotId && s.subjectId !== candidate.subjectId);
-           const unavailableSibling = siblings.find(s => teacherBooked.has(s.teacherId));
-           if (!unavailableSibling) {
-             selectedSubject = candidate;
-             finalSelectedLessons = [candidate, ...siblings];
-             break;
-           }
+          if (!candidate.sharedSlotId) {
+            selectedSubject = candidate;
+            finalSelectedLessons = [candidate];
+            break;
+          }
+          const siblings = currentClass.subjects.filter(
+            (s) => s.sharedSlotId === candidate.sharedSlotId && s.subjectId !== candidate.subjectId,
+          );
+          const unavailableSibling = siblings.find((s) => teacherBooked.has(s.teacherId));
+          if (!unavailableSibling) {
+            selectedSubject = candidate;
+            finalSelectedLessons = [candidate, ...siblings];
+            break;
+          }
+        }
+
+        // 2. Fallback: Relax constraints if no viable candidate was found
+        if (!selectedSubject && candidatePool.length > 0) {
+          const desperatePool = [...candidatePool].sort((a, b) => b.remaining - a.remaining);
+          for (const candidate of desperatePool) {
+            if (!candidate.sharedSlotId) {
+              selectedSubject = candidate;
+              finalSelectedLessons = [candidate];
+              break;
+            }
+            const siblings = currentClass.subjects.filter(
+              (s) => s.sharedSlotId === candidate.sharedSlotId && s.subjectId !== candidate.subjectId,
+            );
+            const unavailableSibling = siblings.find((s) => teacherBooked.has(s.teacherId));
+            if (!unavailableSibling) {
+              selectedSubject = candidate;
+              finalSelectedLessons = [candidate, ...siblings];
+              break;
+            }
+          }
         }
 
         if (selectedSubject) {
@@ -692,9 +716,9 @@ const generateFallbackPlan = (
           for (const lesson of finalSelectedLessons) {
             teacherBooked.add(lesson.teacherId);
             subjectCountsForDay.set(lesson.subjectId, (subjectCountsForDay.get(lesson.subjectId) || 0) + 1);
-            
+
             const currentRem = remainingByClass.get(classKey)?.get(lesson.subjectId) || 0;
-            remainingByClass.get(classKey)?.set(lesson.subjectId, currentRem - 1);
+            remainingByClass.get(classKey)?.set(lesson.subjectId, Math.max(0, currentRem - 1));
           }
 
           previousSubjectIdsByClass.set(
