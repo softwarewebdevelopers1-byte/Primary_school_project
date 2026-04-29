@@ -552,6 +552,7 @@ const generateFallbackPlan = (
   const totalWeeklySlots = SCHOOL_DAYS.length * subjectsPerDay;
   const classPlans = new Map<string, ClassTimetablePlan>();
   const remainingByClass = new Map<string, Map<string, number>>();
+  const weeklyTargetByClass = new Map<string, Map<string, number>>();
 
   classes.forEach((currentClass) => {
     const classKey = buildClassKey(currentClass.classGrade, currentClass.classStream);
@@ -564,9 +565,24 @@ const generateFallbackPlan = (
       currentClass.subjects.forEach((subject, index) => {
         counts.set(subject.subjectId, baseCount + (index < remainder ? 1 : 0));
       });
+      
+      const sharedGroups = new Map<string, number>();
+      currentClass.subjects.forEach(subject => {
+        if (subject.sharedSlotId) {
+          const count = counts.get(subject.subjectId) || 0;
+          sharedGroups.set(subject.sharedSlotId, Math.max(sharedGroups.get(subject.sharedSlotId) || 0, count));
+        }
+      });
+      currentClass.subjects.forEach(subject => {
+        if (subject.sharedSlotId) {
+          counts.set(subject.subjectId, sharedGroups.get(subject.sharedSlotId)!);
+        }
+      });
     }
 
-    remainingByClass.set(classKey, counts);
+    remainingByClass.set(classKey, new Map(counts));
+    weeklyTargetByClass.set(classKey, new Map(counts));
+    
     classPlans.set(classKey, {
       classGrade: currentClass.classGrade,
       classStream: currentClass.classStream,
@@ -599,12 +615,13 @@ const generateFallbackPlan = (
 
         const previousSubjectIds = previousSubjectIdsByClass.get(classKey) || new Set<string>();
         const remainingDays = SCHOOL_DAYS.length - dayIndex;
-
+        
         const candidatePool: FallbackCandidate[] = currentClass.subjects
           .map((subject) => {
             const remaining = remainingByClass.get(classKey)?.get(subject.subjectId) || 0;
             const dayCount = subjectCountsForDay.get(subject.subjectId) || 0;
-            const dailyCap = Math.max(1, Math.ceil(remaining / Math.max(1, remainingDays)));
+            const weeklyTarget = weeklyTargetByClass.get(classKey)?.get(subject.subjectId) || 0;
+            const dailyCap = Math.max(1, Math.ceil(weeklyTarget / 5));
             return {
               ...subject,
               remaining,
@@ -612,7 +629,10 @@ const generateFallbackPlan = (
               dailyCap,
             };
           })
-          .filter((subject) => subject.remaining > 0 && !teacherBooked.has(subject.teacherId));
+          .filter((subject) => {
+             if (teacherBooked.has(subject.teacherId)) return false;
+             return subject.remaining > 0;
+          });
 
         let viableCandidates = candidatePool.filter(
           (subject) => !previousSubjectIds.has(subject.subjectId) && subject.dayCount < subject.dailyCap,
@@ -634,72 +654,52 @@ const generateFallbackPlan = (
           const leftUrgency = left.remaining / Math.max(1, remainingDays);
           const rightUrgency = right.remaining / Math.max(1, remainingDays);
           
-          // Add small random noise to urgency to avoid deterministic patterns across classes
-          const leftUrgencyFinal = leftUrgency + (Math.random() * 0.05);
-          const rightUrgencyFinal = rightUrgency + (Math.random() * 0.05);
-
-          if (Math.abs(rightUrgencyFinal - leftUrgencyFinal) > 0.01) return rightUrgencyFinal - leftUrgencyFinal;
+          if (Math.abs(rightUrgency - leftUrgency) > 0.01) return rightUrgency - leftUrgency;
           if (left.dayCount !== right.dayCount) return left.dayCount - right.dayCount;
+          
+          const leftWeeklyTarget = weeklyTargetByClass.get(classKey)?.get(left.subjectId) || 0;
+          const rightWeeklyTarget = weeklyTargetByClass.get(classKey)?.get(right.subjectId) || 0;
+          const leftDeficit = leftWeeklyTarget - left.remaining;
+          const rightDeficit = rightWeeklyTarget - right.remaining;
+          if (leftDeficit !== rightDeficit) return leftDeficit - rightDeficit;
           return left.subjectName.localeCompare(right.subjectName);
         });
 
-        const selectedSubject = viableCandidates[0];
+        let selectedSubject = null;
+        let finalSelectedLessons: ClassSubjectContext[] = [];
+        
+        for (const candidate of viableCandidates) {
+           if (!candidate.sharedSlotId) {
+             selectedSubject = candidate;
+             finalSelectedLessons = [candidate];
+             break;
+           }
+           const siblings = currentClass.subjects.filter(s => s.sharedSlotId === candidate.sharedSlotId && s.subjectId !== candidate.subjectId);
+           const unavailableSibling = siblings.find(s => teacherBooked.has(s.teacherId));
+           if (!unavailableSibling) {
+             selectedSubject = candidate;
+             finalSelectedLessons = [candidate, ...siblings];
+             break;
+           }
+        }
 
         if (selectedSubject) {
-          const selectedLessons: ClassSubjectContext[] = [selectedSubject];
-          const localTeacherBooked = new Set<string>([...teacherBooked, selectedSubject.teacherId]);
-          const occupiedStudentIds = new Set<string>(selectedSubject.studentIds);
-
-          if (selectedSubject.sharedSlotId) {
-            const siblingCandidates = candidatePool
-              .filter(
-                (subject) =>
-                  subject.subjectId !== selectedSubject.subjectId &&
-                  subject.sharedSlotId === selectedSubject.sharedSlotId &&
-                  !localTeacherBooked.has(subject.teacherId) &&
-                  !previousSubjectIds.has(subject.subjectId),
-              )
-              .sort((left, right) => {
-                const leftUrgency = left.remaining / Math.max(1, remainingDays);
-                const rightUrgency = right.remaining / Math.max(1, remainingDays);
-
-                if (Math.abs(rightUrgency - leftUrgency) > 0.01) return rightUrgency - leftUrgency;
-                if (left.dayCount !== right.dayCount) return left.dayCount - right.dayCount;
-                return left.subjectName.localeCompare(right.subjectName);
-              });
-
-            for (const sibling of siblingCandidates) {
-              if (sibling.dayCount >= sibling.dailyCap) {
-                continue;
-              }
-
-              if (sibling.studentIds.some((studentId) => occupiedStudentIds.has(studentId))) {
-                continue;
-              }
-
-              selectedLessons.push(sibling);
-              localTeacherBooked.add(sibling.teacherId);
-              sibling.studentIds.forEach((studentId) => occupiedStudentIds.add(studentId));
-            }
-          }
-
           const plan = classPlans.get(classKey);
           if (plan) {
-            plan.lessonPlan[day]!.push(createTimetableSlot(selectedLessons));
+            plan.lessonPlan[day]!.push(createTimetableSlot(finalSelectedLessons));
           }
 
-          for (const lesson of selectedLessons) {
+          for (const lesson of finalSelectedLessons) {
             teacherBooked.add(lesson.teacherId);
             subjectCountsForDay.set(lesson.subjectId, (subjectCountsForDay.get(lesson.subjectId) || 0) + 1);
-            remainingByClass.get(classKey)?.set(
-              lesson.subjectId,
-              (remainingByClass.get(classKey)?.get(lesson.subjectId) || 0) - 1,
-            );
+            
+            const currentRem = remainingByClass.get(classKey)?.get(lesson.subjectId) || 0;
+            remainingByClass.get(classKey)?.set(lesson.subjectId, currentRem - 1);
           }
 
           previousSubjectIdsByClass.set(
             classKey,
-            new Set(selectedLessons.map((lesson) => lesson.subjectId)),
+            new Set(finalSelectedLessons.map((lesson) => lesson.subjectId)),
           );
         } else {
           const plan = classPlans.get(classKey);
@@ -711,6 +711,34 @@ const generateFallbackPlan = (
       }
     }
   }
+
+  classPlans.forEach((plan, classKey) => {
+     for (const day of SCHOOL_DAYS) {
+        const slots = plan.lessonPlan[day]!;
+        const counts = new Map<string, number>();
+        slots.forEach(slot => {
+           if (slot.subjectId) counts.set(slot.subjectId, (counts.get(slot.subjectId) || 0) + 1);
+        });
+        
+        counts.forEach((count, subjectId) => {
+           if (count > 1) {
+              const candidateDay = SCHOOL_DAYS.find(d => {
+                 const dSlots = plan.lessonPlan[d]!;
+                 return dSlots.every(s => s.subjectId !== subjectId);
+              });
+              if (candidateDay) {
+                 const duplicateIdx = slots.findIndex(s => s.subjectId === subjectId);
+                 const swapIdx = plan.lessonPlan[candidateDay]!.findIndex(s => s.subjectId !== subjectId);
+                 if (duplicateIdx !== -1 && swapIdx !== -1) {
+                    const temp = slots[duplicateIdx]!;
+                    slots[duplicateIdx] = plan.lessonPlan[candidateDay]![swapIdx]!;
+                    plan.lessonPlan[candidateDay]![swapIdx] = temp;
+                 }
+              }
+           }
+        });
+     }
+  });
 
   return {
     generationMode: "balanced-fallback",

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
-import { ClassSubjectSettingModel, MarkModel } from "../models/school.model.js";
+import { AssignmentModel, ClassSubjectSettingModel, MarkModel } from "../models/school.model.js";
 import { userModel, rolesMapped, studentModel } from "../models/user.model.js";
 import { authenticate } from "../middleware/auth.js";
 import { buildClassSubjectSettingMap, filterStudentsForSubject } from "../utils/subjectEnrollment.js";
@@ -8,6 +8,135 @@ import { buildClassSubjectSettingMap, filterStudentsForSubject } from "../utils/
 const router = Router();
 
 router.use(authenticate);
+
+const toFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(typeof value === "string" ? value.trim() : value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const computeMarkPercentage = (mark: any): number | null => {
+  const finalScore = toFiniteNumber(mark?.finalScore);
+  if (finalScore !== null) return Math.min(100, Math.max(0, finalScore));
+
+  const cats = [mark?.cat1, mark?.cat2, mark?.cat3, mark?.cat4, mark?.cat5];
+  const catMaxes = [mark?.cat1Max, mark?.cat2Max, mark?.cat3Max, mark?.cat4Max, mark?.cat5Max];
+  const exam = toFiniteNumber(mark?.exam);
+  const examMax = toFiniteNumber(mark?.examMax) ?? 100;
+
+  let totalScore = 0;
+  let totalMax = 0;
+  let hasAnyValue = false;
+
+  for (let i = 0; i < cats.length; i++) {
+    const val = toFiniteNumber(cats[i]);
+    if (val !== null) {
+      totalScore += val;
+      totalMax += toFiniteNumber(catMaxes[i]) ?? 40;
+      hasAnyValue = true;
+    }
+  }
+
+  if (exam !== null) {
+    totalScore += exam;
+    totalMax += examMax;
+    hasAnyValue = true;
+  }
+
+  if (!hasAnyValue || totalMax <= 0) return null;
+  return Math.round((totalScore / totalMax) * 100);
+};
+
+// GET averages per assignment for a teacher
+router.get("/averages/teacher/:teacherId", async (req: Request, res: Response) => {
+  try {
+    const { teacherId } = req.params;
+    const { term, year, examType } = req.query;
+
+    if (!teacherId) {
+      return res.status(400).json({ message: "teacherId is required." });
+    }
+
+    const [assignments, classSubjectSettings, students] = await Promise.all([
+      AssignmentModel.find({ teacherId } as any).lean(),
+      ClassSubjectSettingModel.find().lean(),
+      studentModel
+        .find({ class: { $ne: null }, classStream: { $ne: null } } as any)
+        .select("_id class classStream enrolledSubjects")
+        .lean(),
+    ]);
+
+    const settingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
+
+    const studentsByClass = new Map<string, any[]>();
+    for (const student of students as any[]) {
+      const key = `${(student.class || "").trim()}::${(student.classStream || "").trim()}`;
+      const list = studentsByClass.get(key) || [];
+      list.push(student);
+      studentsByClass.set(key, list);
+    }
+
+    const markQuery: any = {};
+    if (term) markQuery.term = Number(term);
+    if (year) markQuery.year = Number(year);
+    if (examType) markQuery.examType = examType;
+
+    const averages: Record<string, number> = {};
+
+    for (const assignment of assignments as any[]) {
+      const assignmentId = assignment._id.toString();
+      const subjectId = assignment.subjectId?.toString();
+      const classGrade = (assignment.classGrade || "").trim();
+      const classStream = (assignment.classStream || "").trim();
+
+      if (!subjectId || !classGrade) continue;
+
+      const classStudents = studentsByClass.get(`${classGrade}::${classStream}`) || [];
+      const enrolled = filterStudentsForSubject(
+        classStudents,
+        { subjectId, classGrade, classStream },
+        settingsMap,
+      );
+
+      if (enrolled.length === 0) {
+        averages[assignmentId] = 0;
+        continue;
+      }
+
+      const marks = await MarkModel.find({
+        subjectId,
+        classGrade,
+        classStream,
+        studentId: { $in: enrolled.map((s: any) => s._id) },
+        ...markQuery,
+      } as any).lean();
+
+      const markByStudent = new Map<string, any>();
+      for (const m of marks as any[]) {
+        markByStudent.set(m.studentId.toString(), m);
+      }
+
+      let totalPct = 0;
+      let scoredCount = 0;
+
+      for (const student of enrolled) {
+        const mark = markByStudent.get(student._id.toString());
+        if (!mark) continue;
+        const pct = computeMarkPercentage(mark);
+        if (pct !== null) {
+          totalPct += pct;
+          scoredCount += 1;
+        }
+      }
+
+      averages[assignmentId] = scoredCount > 0 ? Math.round(totalPct / scoredCount) : 0;
+    }
+
+    res.json(averages);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // GET marks for a specific subject and class
 router.get("/", async (req: Request, res: Response) => {

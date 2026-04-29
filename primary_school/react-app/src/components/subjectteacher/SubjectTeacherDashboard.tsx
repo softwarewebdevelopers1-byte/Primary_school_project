@@ -91,7 +91,6 @@ const SubjectTeacherDashboard: React.FC = () => {
       return next;
     });
   }, []);
-
   const loadAssignments = useCallback(async () => {
     if (!currentUser?.id) {
       setLoading(false);
@@ -99,39 +98,48 @@ const SubjectTeacherDashboard: React.FC = () => {
     }
     try {
       setLoading(true);
-      const data: any[] = await api.get(`/school/assignments/teacher/${currentUser.id}`);
-      const mapped: Subject[] = data.map((a: any) => ({
-        id: a._id || a.id,
-        subjectId: a.subjectId._id,
-        name: a.subjectId.name,
-        grade: `Grade ${a.classGrade} ${a.classStream}`.trim(),
-        classGrade: a.classGrade,
-        classStream: a.classStream,
-        students: a.studentCount || 0,
-        avg: 0,
-        pushed: false,
-        term: 1,
-        year: 2024,
-        lastAssess: "N/A",
-        enrollmentMode: a.enrollmentMode || "compulsory",
-        sharedSlotId: a.sharedSlotId || null,
-      }));
+      const [data, averages] = await Promise.all([
+        api.get(`/school/assignments/teacher/${currentUser.id}`) as Promise<any[]>,
+        api.get(`/marks/averages/teacher/${currentUser.id}`, {
+          term: currentUser.term || 1,
+          year: currentUser.year || 2024,
+          examType: currentUser.examType || "opener",
+        }),
+      ]);
+      const mapped = (data || []).map((a: any) => {
+        const assignmentId = a._id || a.id;
+        return {
+          id: assignmentId,
+          subjectId: a.subjectId._id,
+          name: a.subjectId.name,
+          grade: `Grade ${a.classGrade} ${a.classStream}`.trim(),
+          classGrade: a.classGrade,
+          classStream: a.classStream,
+          students: a.studentCount || 0,
+          avg: averages[assignmentId] ?? 0,
+          pushed: false,
+          term: currentUser.term || 1,
+          year: currentUser.year || 2024,
+          lastAssess: "N/A",
+          enrollmentMode: a.enrollmentMode || "compulsory",
+          sharedSlotId: a.sharedSlotId || null,
+        };
+      });
       setSubjects(mapped);
       if (mapped.length > 0) setActiveSubjectId(mapped[0].id);
 
     } catch (err) {
-      
+      // ignore
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.term, currentUser?.year, currentUser?.examType]);
 
   const refreshUser = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
       const freshUser: any = await api.get(`/users/${currentUser.id}`);
       if (freshUser) {
-        // Ensure roles is always an array
         let rolesArr = freshUser.roles;
         if (rolesArr && !Array.isArray(rolesArr)) {
           rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
@@ -139,7 +147,7 @@ const SubjectTeacherDashboard: React.FC = () => {
         const updated = {
           ...currentUser,
           ...freshUser,
-          id: freshUser._id,
+          id: freshUser._id || freshUser.id,
           roles: rolesArr || currentUser.roles || [],
         };
         const savedItem = localStorage.getItem("user");

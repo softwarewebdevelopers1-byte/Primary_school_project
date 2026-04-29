@@ -989,6 +989,47 @@ router.put("/bulk-update-term", authenticate, async (req: Request, res: Response
   }
 });
 
+// PUT bulk enroll students in an elective subject
+router.put("/bulk-enroll-elective", authenticate, async (req: Request, res: Response) => {
+  try {
+    const { studentIds, subjectId, classGrade, classStream, action } = req.body;
+    if (!Array.isArray(studentIds) || !subjectId || !classGrade) {
+      return res.status(400).json({ message: "Invalid payload." });
+    }
+
+    const students = await studentModel.find({ _id: { $in: studentIds } });
+    let updatedCount = 0;
+
+    for (const student of students) {
+      const doc = student;
+      let enrolled = Array.isArray((doc as any).enrolledSubjects) ? [...(doc as any).enrolledSubjects] : [];
+      
+      if (action === "enroll") {
+        const exists = enrolled.find(e => e.subjectId === subjectId);
+        if (!exists) {
+          enrolled.push({
+            subjectId,
+            classGrade: (classGrade || '').trim(),
+            classStream: (classStream || '').trim(),
+            isActive: true,
+          });
+        }
+      } else {
+        enrolled = enrolled.filter(e => e.subjectId !== subjectId);
+      }
+
+      await validateStudentElectiveEnrollments(enrolled, classGrade, classStream || "");
+      (doc as any).enrolledSubjects = enrolled;
+      await doc.save();
+      updatedCount++;
+    }
+
+    res.json({ message: `Successfully updated ${updatedCount} students.` });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // PUT update a user
 router.put("/:id", authenticate, async (req: Request, res: Response) => {
   try {

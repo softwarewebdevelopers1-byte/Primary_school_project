@@ -133,10 +133,7 @@ const smallLabelStyle: React.CSSProperties = {
 };
 
 const generateElectivePairId = () =>
-  `EL-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random()
-    .toString(36)
-    .slice(2, 6)
-    .toUpperCase()}`;
+  `EL-${crypto.randomUUID()}`;
 
 const metricValueStyle: React.CSSProperties = {
   fontFamily: "var(--serif)",
@@ -259,11 +256,7 @@ const SubjectConfigurationModal: React.FC<{
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  React.useEffect(() => {
-    if (enrollmentMode === "elective" && !sharedSlotId.trim()) {
-      setSharedSlotId(generateElectivePairId());
-    }
-  }, [enrollmentMode, sharedSlotId]);
+
 
   return (
     <div>
@@ -684,7 +677,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                               <p style={rowMetaTextStyle}>{assignedTeacher.department}</p>
                             </div>
                           </div>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", flex: "1 1 260px" }}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", flex: "0 0 auto" }}>
                             <button 
                               onClick={() => openAssignmentModal(currentClass, subject)}
                               style={{ ...miniButtonStyle, background: "var(--cream)", color: "var(--textM)", border: "1px solid var(--border)" }}
@@ -727,7 +720,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                           </div>
                         </div>
                       ) : (
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", flex: "1 1 220px" }}>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", flex: "0 0 auto" }}>
                           <button 
                             onClick={() => openAssignmentModal(currentClass, subject)}
                             style={miniButtonStyle}
