@@ -54,6 +54,7 @@ const teachersSchema = new Schema<teachers>({
   email: {
     type: String,
     default: "",
+    unique: true,
   },
   phone: {
     type: String,
@@ -88,7 +89,10 @@ const teachersSchema = new Schema<teachers>({
       default: null,
     },
   },
-  teacherNumber: String,
+  teacherNumber: {
+    type: String,
+    unique: true,
+  },
   subjects: {
     subject1: {
       type: String,
@@ -107,7 +111,10 @@ const studentSchema = new Schema<student>({
   },
   studentsName: String,
   role: String,
-  ADM: String,
+  ADM: {
+    type: String,
+    unique: true,
+  },
   guardianName: {
     type: String,
     default: "",

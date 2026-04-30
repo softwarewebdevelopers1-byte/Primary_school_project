@@ -1253,15 +1253,6 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
 
     let updateData: any = {};
     if (role === rolesMapped.ST) {
-      const userWithAdmission = await studentModel.findOne({
-        ADM: req.body.admissionNo,
-      });
-      if (userWithAdmission) {
-        res
-          .status(400)
-          .json({ message: "Student with that admission already exists" });
-        return;
-      }
       const classGrade = normalizeClassValue(req.body.classGrade);
       const classStream = normalizeClassValue(req.body.classStream);
       const enrolledSubjects = sanitizeEnrolledSubjects(
