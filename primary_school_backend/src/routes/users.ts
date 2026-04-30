@@ -1,9 +1,27 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
 import bcrypt from "bcrypt";
-import { userModel, studentModel, adminModel, classTeacherModel, subjectTeacher, deputyModel, headTeacherModel, rolesMapped } from "../models/user.model.js";
-import { SubjectModel, AssignmentModel, ClassSubjectSettingModel, MarkModel } from "../models/school.model.js";
-import { archiveClassMarks, rollbackArchivedMarks, type ArchiveClassMarksResult } from "../utils/archiver.js";
+import {
+  userModel,
+  studentModel,
+  adminModel,
+  classTeacherModel,
+  subjectTeacher,
+  deputyModel,
+  headTeacherModel,
+  rolesMapped,
+} from "../models/user.model.js";
+import {
+  SubjectModel,
+  AssignmentModel,
+  ClassSubjectSettingModel,
+  MarkModel,
+} from "../models/school.model.js";
+import {
+  archiveClassMarks,
+  rollbackArchivedMarks,
+  type ArchiveClassMarksResult,
+} from "../utils/archiver.js";
 import {
   buildClassSubjectSettingMap,
   collectElectiveEnrollmentGroups,
@@ -28,11 +46,17 @@ const pluralize = (count: number, word: string) =>
 const normalizeClassValue = (value: string | null | undefined) =>
   typeof value === "string" ? value.trim() : "";
 
-const buildClassKey = (classGrade: string | null | undefined, classStream: string | null | undefined) =>
-  `${normalizeClassValue(classGrade)}::${normalizeClassValue(classStream)}`;
+const buildClassKey = (
+  classGrade: string | null | undefined,
+  classStream: string | null | undefined,
+) => `${normalizeClassValue(classGrade)}::${normalizeClassValue(classStream)}`;
 
-const formatClassLabel = (classGrade: string | null | undefined, classStream: string | null | undefined) =>
-  `${normalizeClassValue(classGrade)} ${normalizeClassValue(classStream)}`.trim() || "Unknown class";
+const formatClassLabel = (
+  classGrade: string | null | undefined,
+  classStream: string | null | undefined,
+) =>
+  `${normalizeClassValue(classGrade)} ${normalizeClassValue(classStream)}`.trim() ||
+  "Unknown class";
 
 const sanitizeEnrolledSubjects = (
   enrolledSubjects: unknown,
@@ -51,8 +75,10 @@ const sanitizeEnrolledSubjects = (
   return enrolledSubjects
     .map((entry: any) => {
       const subjectId = normalizeSubjectId(entry?.subjectId);
-      const enrollmentClassGrade = normalizeClassValue(entry?.classGrade) || defaultClassGrade;
-      const enrollmentClassStream = normalizeClassValue(entry?.classStream) || defaultClassStream;
+      const enrollmentClassGrade =
+        normalizeClassValue(entry?.classGrade) || defaultClassGrade;
+      const enrollmentClassStream =
+        normalizeClassValue(entry?.classStream) || defaultClassStream;
 
       if (!subjectId || !enrollmentClassGrade) {
         return null;
@@ -94,7 +120,9 @@ const validateStudentElectiveEnrollments = async (
 ) => {
   if (!classGrade) {
     if (enrolledSubjects.length > 0) {
-      throw new Error("Students must be assigned to a class before elective subjects can be selected.");
+      throw new Error(
+        "Students must be assigned to a class before elective subjects can be selected.",
+      );
     }
     return;
   }
@@ -103,8 +131,12 @@ const validateStudentElectiveEnrollments = async (
     classGrade,
     classStream,
   }).lean();
-  const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
-  const activeElectiveSelections = enrolledSubjects.filter((entry) => entry.isActive !== false);
+  const classSubjectSettingsMap = buildClassSubjectSettingMap(
+    classSubjectSettings as any[],
+  );
+  const activeElectiveSelections = enrolledSubjects.filter(
+    (entry) => entry.isActive !== false,
+  );
 
   for (const enrollment of activeElectiveSelections) {
     const setting = getClassSubjectEnrollmentSetting(classSubjectSettingsMap, {
@@ -114,7 +146,9 @@ const validateStudentElectiveEnrollments = async (
     });
 
     if (!setting.isOffered || setting.enrollmentMode !== "elective") {
-      throw new Error("Only active elective subjects can be saved as per-student selections.");
+      throw new Error(
+        "Only active elective subjects can be saved as per-student selections.",
+      );
     }
   }
 
@@ -143,14 +177,23 @@ const toFiniteNumber = (value: unknown): number | null => {
   }
 
   const numericValue =
-    typeof value === "number" ? value : Number(typeof value === "string" ? value.trim() : value);
+    typeof value === "number"
+      ? value
+      : Number(typeof value === "string" ? value.trim() : value);
 
   return Number.isFinite(numericValue) ? numericValue : null;
 };
 
 const hasRecordedScore = (mark: any) =>
-  [mark?.cat1, mark?.cat2, mark?.cat3, mark?.cat4, mark?.cat5, mark?.exam, mark?.finalScore]
-    .some((value) => toFiniteNumber(value) !== null);
+  [
+    mark?.cat1,
+    mark?.cat2,
+    mark?.cat3,
+    mark?.cat4,
+    mark?.cat5,
+    mark?.exam,
+    mark?.finalScore,
+  ].some((value) => toFiniteNumber(value) !== null);
 
 type CycleCompletionIssue =
   | {
@@ -231,19 +274,34 @@ const collectCycleCompletionIssues = async (
   ]);
 
   const relevantAssignments = assignments.filter((assignment: any) =>
-    studentsByClass.has(buildClassKey(assignment.classGrade, assignment.classStream)),
+    studentsByClass.has(
+      buildClassKey(assignment.classGrade, assignment.classStream),
+    ),
   );
-  const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
+  const classSubjectSettingsMap = buildClassSubjectSettingMap(
+    classSubjectSettings as any[],
+  );
 
   const subjectIds = Array.from(
-    new Set(relevantAssignments.map((assignment: any) => assignment.subjectId?.toString()).filter(Boolean)),
+    new Set(
+      relevantAssignments
+        .map((assignment: any) => assignment.subjectId?.toString())
+        .filter(Boolean),
+    ),
   );
-  const subjects = await SubjectModel.find({ _id: { $in: subjectIds } } as any).lean();
-  const subjectNameById = new Map(subjects.map((subject: any) => [subject._id.toString(), subject.name]));
+  const subjects = await SubjectModel.find({
+    _id: { $in: subjectIds },
+  } as any).lean();
+  const subjectNameById = new Map(
+    subjects.map((subject: any) => [subject._id.toString(), subject.name]),
+  );
 
   const assignmentsByClass = new Map<string, any[]>();
   for (const assignment of relevantAssignments as any[]) {
-    const classKey = buildClassKey(assignment.classGrade, assignment.classStream);
+    const classKey = buildClassKey(
+      assignment.classGrade,
+      assignment.classStream,
+    );
     const classAssignments = assignmentsByClass.get(classKey) || [];
     classAssignments.push(assignment);
     assignmentsByClass.set(classKey, classAssignments);
@@ -266,7 +324,9 @@ const collectCycleCompletionIssues = async (
   }
 
   const issues: CycleCompletionIssue[] = [];
-  const sortedClassKeys = Array.from(studentsByClass.keys()).sort((left, right) => left.localeCompare(right));
+  const sortedClassKeys = Array.from(studentsByClass.keys()).sort(
+    (left, right) => left.localeCompare(right),
+  );
 
   for (const classKey of sortedClassKeys) {
     const [rawClassGrade = "", rawClassStream = ""] = classKey.split("::");
@@ -324,7 +384,10 @@ const collectCycleCompletionIssues = async (
   return issues;
 };
 
-const shiftClassName = (className: string | null | undefined, offset: number) => {
+const shiftClassName = (
+  className: string | null | undefined,
+  offset: number,
+) => {
   if (!className || offset === 0) return className ?? null;
 
   const match = className.match(/\d+/);
@@ -348,18 +411,20 @@ const extractRoles = async (user: any) => {
     if (user.roles?.role1) rolesSet.add(user.roles.role1);
     if (user.roles?.role2) rolesSet.add(user.roles.role2);
     if (user.roles?.role3) rolesSet.add(user.roles.role3);
-    
+
     // Discriminator
     if (user.__t) rolesSet.add(user.__t);
-    
+
     // Legacy subjects check
     if (user.subjects?.subject1 || user.subjects?.subject2) {
       rolesSet.add(rolesMapped.SJ);
     }
-    
+
     // Check assignments
     try {
-      const hasAssignments = await AssignmentModel.exists({ teacherId: user._id });
+      const hasAssignments = await AssignmentModel.exists({
+        teacherId: user._id,
+      });
       if (hasAssignments) {
         rolesSet.add(rolesMapped.SJ);
       }
@@ -375,11 +440,13 @@ router.post("/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
-    const user: any = await userModel.findOne({ 
-      $or: [{ email }, { ADM: email }] // Support email or Admission No (for students)
+    const user: any = await userModel.findOne({
+      $or: [{ email }, { ADM: email }], // Support email or Admission No (for students)
     });
 
     if (!user) {
@@ -394,7 +461,11 @@ router.post("/login", async (req: Request, res: Response) => {
     // Extract all roles
     const roles = await extractRoles(user);
 
-    const token = jwt.sign({ id: user._id, email: user.email || user.ADM, roles }, SECRET, { expiresIn: "1d" });
+    const token = jwt.sign(
+      { id: user._id, email: user.email || user.ADM, roles },
+      SECRET,
+      { expiresIn: "1d" },
+    );
 
     res.json({
       token,
@@ -407,12 +478,14 @@ router.post("/login", async (req: Request, res: Response) => {
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.teachersName || user.studentsName)}&background=random&color=fff`,
         classGrade: user.class,
         classStream: user.classStream,
-        subjects: user.subjects ? [user.subjects.subject1, user.subjects.subject2].filter(Boolean) : [],
+        subjects: user.subjects
+          ? [user.subjects.subject1, user.subjects.subject2].filter(Boolean)
+          : [],
         enrolledSubjects: user.enrolledSubjects || [],
         term: user.term,
         year: user.year,
-        examType: user.examType
-      }
+        examType: user.examType,
+      },
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -422,67 +495,97 @@ router.post("/login", async (req: Request, res: Response) => {
 // GET all users (staff and students) + subjects and assignments
 router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
-    const [allUsers, allSubjects, allAssignments, allMarks] = await Promise.all([
-      userModel.find(),
-      SubjectModel.find(),
-      AssignmentModel.find(),
-      MarkModel.find(),
-    ]);
-    
+    const [allUsers, allSubjects, allAssignments, allMarks] = await Promise.all(
+      [
+        userModel.find(),
+        SubjectModel.find(),
+        AssignmentModel.find(),
+        MarkModel.find(),
+      ],
+    );
+
     const students = allUsers.filter((u: any) => u.__t === rolesMapped.ST);
     const staff = allUsers.filter((u: any) => u.__t !== rolesMapped.ST);
 
     // Calculate subject stats first to match frontend MarksEntry logic
-    const subjectStats: Record<string, { catsCount: number, catConfigs: any }> = {};
+    const subjectStats: Record<string, { catsCount: number; catConfigs: any }> =
+      {};
     allMarks.forEach((m: any) => {
       const subId = m.subjectId.toString();
       if (!subjectStats[subId]) {
-        subjectStats[subId] = { catsCount: 0, catConfigs: {
-          cat1Max: m.cat1Max || 40,
-          cat2Max: m.cat2Max || 40,
-          cat3Max: m.cat3Max || 40,
-          cat4Max: m.cat4Max || 40,
-          cat5Max: m.cat5Max || 40,
-          examMax: m.examMax || 100
-        } };
+        subjectStats[subId] = {
+          catsCount: 0,
+          catConfigs: {
+            cat1Max: m.cat1Max || 40,
+            cat2Max: m.cat2Max || 40,
+            cat3Max: m.cat3Max || 40,
+            cat4Max: m.cat4Max || 40,
+            cat5Max: m.cat5Max || 40,
+            examMax: m.examMax || 100,
+          },
+        };
       }
-      if (m.cat5 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 5);
-      else if (m.cat4 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 4);
-      else if (m.cat3 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 3);
-      else if (m.cat2 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 2);
-      else if (m.cat1 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 1);
+      if (m.cat5 !== null)
+        subjectStats[subId].catsCount = Math.max(
+          subjectStats[subId].catsCount,
+          5,
+        );
+      else if (m.cat4 !== null)
+        subjectStats[subId].catsCount = Math.max(
+          subjectStats[subId].catsCount,
+          4,
+        );
+      else if (m.cat3 !== null)
+        subjectStats[subId].catsCount = Math.max(
+          subjectStats[subId].catsCount,
+          3,
+        );
+      else if (m.cat2 !== null)
+        subjectStats[subId].catsCount = Math.max(
+          subjectStats[subId].catsCount,
+          2,
+        );
+      else if (m.cat1 !== null)
+        subjectStats[subId].catsCount = Math.max(
+          subjectStats[subId].catsCount,
+          1,
+        );
     });
 
     // Map backend models to frontend expected format if necessary
     const mappedStudents = students.map((s: any) => {
       // Find marks for this student
-      const studentMarksList = allMarks.filter((m: any) => m.studentId.toString() === s._id.toString());
+      const studentMarksList = allMarks.filter(
+        (m: any) => m.studentId.toString() === s._id.toString(),
+      );
       const marksObj: Record<string, number> = {};
       studentMarksList.forEach((m: any) => {
         if (m.finalScore != null) {
           marksObj[m.subjectId.toString()] = Number(m.finalScore);
         } else {
-           const stats = subjectStats[m.subjectId.toString()];
-           if (stats) {
-             let maxTotal = stats.catConfigs.examMax;
-             if (stats.catsCount > 0) maxTotal += stats.catConfigs.cat1Max;
-             if (stats.catsCount > 1) maxTotal += stats.catConfigs.cat2Max;
-             if (stats.catsCount > 2) maxTotal += stats.catConfigs.cat3Max;
-             if (stats.catsCount > 3) maxTotal += stats.catConfigs.cat4Max;
-             if (stats.catsCount > 4) maxTotal += stats.catConfigs.cat5Max;
+          const stats = subjectStats[m.subjectId.toString()];
+          if (stats) {
+            let maxTotal = stats.catConfigs.examMax;
+            if (stats.catsCount > 0) maxTotal += stats.catConfigs.cat1Max;
+            if (stats.catsCount > 1) maxTotal += stats.catConfigs.cat2Max;
+            if (stats.catsCount > 2) maxTotal += stats.catConfigs.cat3Max;
+            if (stats.catsCount > 3) maxTotal += stats.catConfigs.cat4Max;
+            if (stats.catsCount > 4) maxTotal += stats.catConfigs.cat5Max;
 
-             const total = 
-               (stats.catsCount > 0 ? (m.cat1 || 0) : 0) +
-               (stats.catsCount > 1 ? (m.cat2 || 0) : 0) +
-               (stats.catsCount > 2 ? (m.cat3 || 0) : 0) +
-               (stats.catsCount > 3 ? (m.cat4 || 0) : 0) +
-               (stats.catsCount > 4 ? (m.cat5 || 0) : 0) +
-               (m.exam || 0);
+            const total =
+              (stats.catsCount > 0 ? m.cat1 || 0 : 0) +
+              (stats.catsCount > 1 ? m.cat2 || 0 : 0) +
+              (stats.catsCount > 2 ? m.cat3 || 0 : 0) +
+              (stats.catsCount > 3 ? m.cat4 || 0 : 0) +
+              (stats.catsCount > 4 ? m.cat5 || 0 : 0) +
+              (m.exam || 0);
 
-             if (maxTotal > 0) {
-               marksObj[m.subjectId.toString()] = Math.round((total / maxTotal) * 100);
-             }
-           }
+            if (maxTotal > 0) {
+              marksObj[m.subjectId.toString()] = Math.round(
+                (total / maxTotal) * 100,
+              );
+            }
+          }
         }
       });
 
@@ -514,11 +617,15 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         department: t.department,
         roles: staffRoles,
         role: t.__t,
-        roleLabel: t.__t ? t.__t.charAt(0).toUpperCase() + t.__t.slice(1) : "Staff",
+        roleLabel: t.__t
+          ? t.__t.charAt(0).toUpperCase() + t.__t.slice(1)
+          : "Staff",
         status: t.status,
         classGrade: t.class,
         classStream: t.classStream,
-        subjects: t.subjects ? [t.subjects.subject1, t.subjects.subject2].filter(Boolean) : [],
+        subjects: t.subjects
+          ? [t.subjects.subject1, t.subjects.subject2].filter(Boolean)
+          : [],
         teacherNumber: t.teacherNumber,
         joinDate: t.joinDate,
         term: t.term,
@@ -573,100 +680,134 @@ router.get("/:id", authenticate, async (req: Request, res: Response) => {
   }
 });
 
-router.get("/class/:grade/:stream", authenticate, async (req: Request, res: Response) => {
-  try {
-    const { grade, stream } = req.params;
-    const { term, year } = req.query;
-    
-    const students = await userModel.find({ 
-      __t: rolesMapped.ST, 
-      class: grade, 
-      classStream: stream 
-    } as any);
-    
-    // Fetch all marks for these students in this class for the specific period
-    const studentIds = students.map(s => s._id);
-    const allMarks = await MarkModel.find({
-      studentId: { $in: studentIds },
-      classGrade: grade,
-      classStream: stream,
-      term: term ? Number(term) : 1,
-      year: year ? Number(year) : 2024
-    } as any);
+router.get(
+  "/class/:grade/:stream",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const { grade, stream } = req.params;
+      const { term, year } = req.query;
 
-    // Calculate subject stats first to match frontend MarksEntry logic
-    const subjectStats: Record<string, { catsCount: number, catConfigs: any }> = {};
-    allMarks.forEach(m => {
-      const subId = m.subjectId.toString();
-      if (!subjectStats[subId]) {
-        subjectStats[subId] = { catsCount: 0, catConfigs: {
-          cat1Max: m.cat1Max || 40,
-          cat2Max: m.cat2Max || 40,
-          cat3Max: m.cat3Max || 40,
-          cat4Max: m.cat4Max || 40,
-          cat5Max: m.cat5Max || 40,
-          examMax: m.examMax || 100
-        } };
-      }
-      if (m.cat5 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 5);
-      else if (m.cat4 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 4);
-      else if (m.cat3 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 3);
-      else if (m.cat2 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 2);
-      else if (m.cat1 !== null) subjectStats[subId].catsCount = Math.max(subjectStats[subId].catsCount, 1);
-    });
+      const students = await userModel.find({
+        __t: rolesMapped.ST,
+        class: grade,
+        classStream: stream,
+      } as any);
 
-    const mapped = students.map((s: any) => {
-      // Create a marks object: { subjectId: score }
-      // We prioritize finalScore, then cat/exam average
-      const studentMarks: Record<string, number> = {};
-      
-      allMarks.filter(m => m.studentId.toString() === s._id.toString()).forEach(m => {
-        if (m.finalScore !== null) {
-          studentMarks[m.subjectId.toString()] = m.finalScore;
-        } else {
-          // Calculate using max values globally for the subject
-          const stats = subjectStats[m.subjectId.toString()];
-          if (stats) {
-            let maxTotal = stats.catConfigs.examMax;
-            if (stats.catsCount > 0) maxTotal += stats.catConfigs.cat1Max;
-            if (stats.catsCount > 1) maxTotal += stats.catConfigs.cat2Max;
-            if (stats.catsCount > 2) maxTotal += stats.catConfigs.cat3Max;
-            if (stats.catsCount > 3) maxTotal += stats.catConfigs.cat4Max;
-            if (stats.catsCount > 4) maxTotal += stats.catConfigs.cat5Max;
+      // Fetch all marks for these students in this class for the specific period
+      const studentIds = students.map((s) => s._id);
+      const allMarks = await MarkModel.find({
+        studentId: { $in: studentIds },
+        classGrade: grade,
+        classStream: stream,
+        term: term ? Number(term) : 1,
+        year: year ? Number(year) : 2024,
+      } as any);
 
-            const total = 
-              (stats.catsCount > 0 ? (m.cat1 || 0) : 0) +
-              (stats.catsCount > 1 ? (m.cat2 || 0) : 0) +
-              (stats.catsCount > 2 ? (m.cat3 || 0) : 0) +
-              (stats.catsCount > 3 ? (m.cat4 || 0) : 0) +
-              (stats.catsCount > 4 ? (m.cat5 || 0) : 0) +
-              (m.exam || 0);
-
-            if (maxTotal > 0) {
-              studentMarks[m.subjectId.toString()] = Math.round((total / maxTotal) * 100);
-            }
-          }
+      // Calculate subject stats first to match frontend MarksEntry logic
+      const subjectStats: Record<
+        string,
+        { catsCount: number; catConfigs: any }
+      > = {};
+      allMarks.forEach((m) => {
+        const subId = m.subjectId.toString();
+        if (!subjectStats[subId]) {
+          subjectStats[subId] = {
+            catsCount: 0,
+            catConfigs: {
+              cat1Max: m.cat1Max || 40,
+              cat2Max: m.cat2Max || 40,
+              cat3Max: m.cat3Max || 40,
+              cat4Max: m.cat4Max || 40,
+              cat5Max: m.cat5Max || 40,
+              examMax: m.examMax || 100,
+            },
+          };
         }
+        if (m.cat5 !== null)
+          subjectStats[subId].catsCount = Math.max(
+            subjectStats[subId].catsCount,
+            5,
+          );
+        else if (m.cat4 !== null)
+          subjectStats[subId].catsCount = Math.max(
+            subjectStats[subId].catsCount,
+            4,
+          );
+        else if (m.cat3 !== null)
+          subjectStats[subId].catsCount = Math.max(
+            subjectStats[subId].catsCount,
+            3,
+          );
+        else if (m.cat2 !== null)
+          subjectStats[subId].catsCount = Math.max(
+            subjectStats[subId].catsCount,
+            2,
+          );
+        else if (m.cat1 !== null)
+          subjectStats[subId].catsCount = Math.max(
+            subjectStats[subId].catsCount,
+            1,
+          );
       });
 
-      return {
-        id: s._id,
-        name: s.studentsName,
-        admissionNumber: s.ADM,
-        gender: s.gender,
-        parentName: s.guardianName,
-        parentPhone: s.guardianPhone,
-        status: s.status,
-        enrolledSubjects: s.enrolledSubjects || [],
-        marks: studentMarks
-      };
-    });
-    
-    res.json(mapped);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
+      const mapped = students.map((s: any) => {
+        // Create a marks object: { subjectId: score }
+        // We prioritize finalScore, then cat/exam average
+        const studentMarks: Record<string, number> = {};
+
+        allMarks
+          .filter((m) => m.studentId.toString() === s._id.toString())
+          .forEach((m) => {
+            if (m.finalScore !== null) {
+              studentMarks[m.subjectId.toString()] = m.finalScore;
+            } else {
+              // Calculate using max values globally for the subject
+              const stats = subjectStats[m.subjectId.toString()];
+              if (stats) {
+                let maxTotal = stats.catConfigs.examMax;
+                if (stats.catsCount > 0) maxTotal += stats.catConfigs.cat1Max;
+                if (stats.catsCount > 1) maxTotal += stats.catConfigs.cat2Max;
+                if (stats.catsCount > 2) maxTotal += stats.catConfigs.cat3Max;
+                if (stats.catsCount > 3) maxTotal += stats.catConfigs.cat4Max;
+                if (stats.catsCount > 4) maxTotal += stats.catConfigs.cat5Max;
+
+                const total =
+                  (stats.catsCount > 0 ? m.cat1 || 0 : 0) +
+                  (stats.catsCount > 1 ? m.cat2 || 0 : 0) +
+                  (stats.catsCount > 2 ? m.cat3 || 0 : 0) +
+                  (stats.catsCount > 3 ? m.cat4 || 0 : 0) +
+                  (stats.catsCount > 4 ? m.cat5 || 0 : 0) +
+                  (m.exam || 0);
+
+                if (maxTotal > 0) {
+                  studentMarks[m.subjectId.toString()] = Math.round(
+                    (total / maxTotal) * 100,
+                  );
+                }
+              }
+            }
+          });
+
+        return {
+          id: s._id,
+          name: s.studentsName,
+          admissionNumber: s.ADM,
+          gender: s.gender,
+          parentName: s.guardianName,
+          parentPhone: s.guardianPhone,
+          status: s.status,
+          enrolledSubjects: s.enrolledSubjects || [],
+          marks: studentMarks,
+        };
+      });
+
+      res.json(mapped);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+);
 
 // POST a new user
 router.post("/", authenticate, async (req: Request, res: Response) => {
@@ -675,7 +816,9 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
     if (role !== rolesMapped.ST) {
       const existing = await userModel.findOne({ email: req.body.email });
       if (existing) {
-        return res.status(400).json({ message: "Staff with this email already exists." });
+        return res
+          .status(400)
+          .json({ message: "Staff with this email already exists." });
       }
     }
 
@@ -684,8 +827,24 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
     if (role === rolesMapped.ST) {
       const classGrade = normalizeClassValue(req.body.classGrade);
       const classStream = normalizeClassValue(req.body.classStream);
-      const enrolledSubjects = sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream);
-      await validateStudentElectiveEnrollments(enrolledSubjects, classGrade, classStream);
+      const enrolledSubjects = sanitizeEnrolledSubjects(
+        req.body.enrolledSubjects,
+        classGrade,
+        classStream,
+      );
+      // if student with that email exists then no data is added to the database
+      let existing_student = await studentModel.findOne({
+        ADM: req.body.admissionNo,
+      });
+      if (existing_student) {
+        res.status(400).json({ message: "Student with this admission exists" });
+        return;
+      }
+      await validateStudentElectiveEnrollments(
+        enrolledSubjects,
+        classGrade,
+        classStream,
+      );
       const hashedPassword = await bcrypt.hash("student123", 10);
       newUser = await studentModel.create({
         studentsName: req.body.name,
@@ -702,7 +861,9 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
       });
     } else {
       const hashedPassword = await bcrypt.hash("staff123", 10);
-      const rolesArray = Array.isArray(req.body.roles) ? req.body.roles : [req.body.role].filter(Boolean);
+      const rolesArray = Array.isArray(req.body.roles)
+        ? req.body.roles
+        : [req.body.role].filter(Boolean);
       const staffData = {
         teachersName: req.body.name,
         email: req.body.email,
@@ -726,11 +887,16 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
       // Determine primary discriminator based on first role
       const primaryRole = rolesArray[0] || rolesMapped.SJ;
 
-      if (primaryRole === rolesMapped.ADM) newUser = await adminModel.create(staffData);
-      else if (primaryRole === rolesMapped.CT) newUser = await classTeacherModel.create(staffData);
-      else if (primaryRole === rolesMapped.SJ) newUser = await subjectTeacher.create(staffData);
-      else if (primaryRole === rolesMapped.DT) newUser = await deputyModel.create(staffData);
-      else if (primaryRole === rolesMapped.HT) newUser = await headTeacherModel.create(staffData);
+      if (primaryRole === rolesMapped.ADM)
+        newUser = await adminModel.create(staffData);
+      else if (primaryRole === rolesMapped.CT)
+        newUser = await classTeacherModel.create(staffData);
+      else if (primaryRole === rolesMapped.SJ)
+        newUser = await subjectTeacher.create(staffData);
+      else if (primaryRole === rolesMapped.DT)
+        newUser = await deputyModel.create(staffData);
+      else if (primaryRole === rolesMapped.HT)
+        newUser = await headTeacherModel.create(staffData);
       else throw new Error("Invalid role provided");
     }
 
@@ -741,307 +907,373 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
 });
 
 // Bulk update term and year for all users
-router.put("/bulk-update-term", authenticate, async (req: Request, res: Response) => {
-  try {
-    const { term, year, examType } = req.body;
-    const normalizedExamType = typeof examType === "string" ? examType.trim().toLowerCase() : "";
-
-    if (term === undefined || year === undefined || !normalizedExamType) {
-      return res.status(400).json({ message: "Term, Year and Exam phase are required." });
-    }
-
-    const newYear = Number(year);
-    const newTerm = Number(term);
-
-    if (!Number.isInteger(newTerm) || newTerm < 1 || newTerm > 3) {
-      return res.status(400).json({ message: "Term must be 1, 2 or 3." });
-    }
-
-    if (!Number.isInteger(newYear) || newYear < 1) {
-      return res.status(400).json({ message: "Year must be a valid positive number." });
-    }
-
-    if (!allowedExamTypes.has(normalizedExamType)) {
-      return res.status(400).json({ message: "Exam phase must be opener, midterm or closing." });
-    }
-
-    const sampleUser = await userModel.findOne({ term: { $ne: null } } as any);
-    const currentTerm = Number(sampleUser?.term ?? 1);
-    const currentYear = Number(sampleUser?.year ?? 2024);
-    const currentExamType = String(sampleUser?.examType ?? "opener").trim().toLowerCase();
-    const currentCycleLabel = formatCycleLabel(currentTerm, currentYear, currentExamType);
-
-    const cycleCompletionIssues = await collectCycleCompletionIssues(
-      currentTerm,
-      currentYear,
-      currentExamType,
-    );
-
-    if (cycleCompletionIssues.length > 0) {
-      return res.status(400).json({
-        message: buildCycleCompletionMessage(cycleCompletionIssues, currentCycleLabel),
-        issues: cycleCompletionIssues,
-      });
-    }
-
-    const classesWithMarks = await MarkModel.aggregate([
-      {
-        $match: {
-          term: currentTerm,
-          year: currentYear,
-          examType: currentExamType,
-        },
-      },
-      {
-        $group: {
-          _id: {
-            classGrade: "$classGrade",
-            classStream: "$classStream",
-          },
-          markCount: { $sum: 1 },
-        },
-      },
-      {
-        $sort: {
-          "_id.classGrade": 1,
-          "_id.classStream": 1,
-        },
-      },
-    ]);
-
-    const archivedClasses: ArchiveClassMarksResult[] = [];
-
+router.put(
+  "/bulk-update-term",
+  authenticate,
+  async (req: Request, res: Response) => {
     try {
-      for (const cls of classesWithMarks) {
-        const classGrade = cls?._id?.classGrade;
-        const classStream = cls?._id?.classStream;
+      const { term, year, examType } = req.body;
+      const normalizedExamType =
+        typeof examType === "string" ? examType.trim().toLowerCase() : "";
 
-        if (!classGrade || !classStream) {
-          throw new Error("Some marks are missing class grade or class stream information.");
-        }
-
-        const archiveResult = await archiveClassMarks(
-          classGrade,
-          classStream,
-          currentTerm,
-          currentYear,
-          currentExamType,
-        );
-
-        if (!archiveResult) {
-          throw new Error(
-            `No PDF archive was created for ${classGrade} ${classStream} even though marks exist for ${currentCycleLabel}.`,
-          );
-        }
-
-        archivedClasses.push(archiveResult);
-      }
-    } catch (archiveError: any) {
-      if (archivedClasses.length > 0) {
-        try {
-          await rollbackArchivedMarks(archivedClasses);
-        } catch (cleanupError: any) {
-          return res.status(500).json({
-            message:
-              `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated. ` +
-              `Cleanup of partial archives also failed: ${cleanupError.message}`,
-          });
-        }
+      if (term === undefined || year === undefined || !normalizedExamType) {
+        return res
+          .status(400)
+          .json({ message: "Term, Year and Exam phase are required." });
       }
 
-      return res.status(500).json({
-        message: `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated.`,
-      });
-    }
+      const newYear = Number(year);
+      const newTerm = Number(term);
 
-    const usersToProcess = await userModel.find({
-      $or: [
-        { __t: rolesMapped.ST },
-        { "roles.role1": rolesMapped.CT },
-        { "roles.role2": rolesMapped.CT },
-        { "roles.role3": rolesMapped.CT },
-      ],
-      class: { $ne: null },
-    } as any);
-
-    const userClassUpdates = usersToProcess.flatMap((userDoc) => {
-      const currentClass = userDoc.class;
-      const userYear = Number(userDoc.year ?? currentYear);
-      const shiftedClass = shiftClassName(currentClass, newYear - userYear);
-
-      if (!currentClass || !shiftedClass || shiftedClass === currentClass) {
-        return [];
+      if (!Number.isInteger(newTerm) || newTerm < 1 || newTerm > 3) {
+        return res.status(400).json({ message: "Term must be 1, 2 or 3." });
       }
 
-      return [
+      if (!Number.isInteger(newYear) || newYear < 1) {
+        return res
+          .status(400)
+          .json({ message: "Year must be a valid positive number." });
+      }
+
+      if (!allowedExamTypes.has(normalizedExamType)) {
+        return res
+          .status(400)
+          .json({ message: "Exam phase must be opener, midterm or closing." });
+      }
+
+      const sampleUser = await userModel.findOne({
+        term: { $ne: null },
+      } as any);
+      const currentTerm = Number(sampleUser?.term ?? 1);
+      const currentYear = Number(sampleUser?.year ?? 2024);
+      const currentExamType = String(sampleUser?.examType ?? "opener")
+        .trim()
+        .toLowerCase();
+      const currentCycleLabel = formatCycleLabel(
+        currentTerm,
+        currentYear,
+        currentExamType,
+      );
+
+      const cycleCompletionIssues = await collectCycleCompletionIssues(
+        currentTerm,
+        currentYear,
+        currentExamType,
+      );
+
+      if (cycleCompletionIssues.length > 0) {
+        return res.status(400).json({
+          message: buildCycleCompletionMessage(
+            cycleCompletionIssues,
+            currentCycleLabel,
+          ),
+          issues: cycleCompletionIssues,
+        });
+      }
+
+      const classesWithMarks = await MarkModel.aggregate([
         {
-          updateOne: {
-            filter: { _id: userDoc._id },
-            update: {
-              $set: {
-                class: shiftedClass,
-                enrolledSubjects:
-                  (userDoc as any).__t === rolesMapped.ST && Array.isArray((userDoc as any).enrolledSubjects)
-                    ? (userDoc as any).enrolledSubjects.map((enrollment: any) => ({
-                        ...enrollment,
-                        classGrade:
-                          shiftClassName(enrollment.classGrade, newYear - userYear) ||
-                          enrollment.classGrade,
-                      }))
-                    : (userDoc as any).enrolledSubjects,
+          $match: {
+            term: currentTerm,
+            year: currentYear,
+            examType: currentExamType,
+          },
+        },
+        {
+          $group: {
+            _id: {
+              classGrade: "$classGrade",
+              classStream: "$classStream",
+            },
+            markCount: { $sum: 1 },
+          },
+        },
+        {
+          $sort: {
+            "_id.classGrade": 1,
+            "_id.classStream": 1,
+          },
+        },
+      ]);
+
+      const archivedClasses: ArchiveClassMarksResult[] = [];
+
+      try {
+        for (const cls of classesWithMarks) {
+          const classGrade = cls?._id?.classGrade;
+          const classStream = cls?._id?.classStream;
+
+          if (!classGrade || !classStream) {
+            throw new Error(
+              "Some marks are missing class grade or class stream information.",
+            );
+          }
+
+          const archiveResult = await archiveClassMarks(
+            classGrade,
+            classStream,
+            currentTerm,
+            currentYear,
+            currentExamType,
+          );
+
+          if (!archiveResult) {
+            throw new Error(
+              `No PDF archive was created for ${classGrade} ${classStream} even though marks exist for ${currentCycleLabel}.`,
+            );
+          }
+
+          archivedClasses.push(archiveResult);
+        }
+      } catch (archiveError: any) {
+        if (archivedClasses.length > 0) {
+          try {
+            await rollbackArchivedMarks(archivedClasses);
+          } catch (cleanupError: any) {
+            return res.status(500).json({
+              message:
+                `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated. ` +
+                `Cleanup of partial archives also failed: ${cleanupError.message}`,
+            });
+          }
+        }
+
+        return res.status(500).json({
+          message: `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated.`,
+        });
+      }
+
+      const usersToProcess = await userModel.find({
+        $or: [
+          { __t: rolesMapped.ST },
+          { "roles.role1": rolesMapped.CT },
+          { "roles.role2": rolesMapped.CT },
+          { "roles.role3": rolesMapped.CT },
+        ],
+        class: { $ne: null },
+      } as any);
+
+      const userClassUpdates = usersToProcess.flatMap((userDoc) => {
+        const currentClass = userDoc.class;
+        const userYear = Number(userDoc.year ?? currentYear);
+        const shiftedClass = shiftClassName(currentClass, newYear - userYear);
+
+        if (!currentClass || !shiftedClass || shiftedClass === currentClass) {
+          return [];
+        }
+
+        return [
+          {
+            updateOne: {
+              filter: { _id: userDoc._id },
+              update: {
+                $set: {
+                  class: shiftedClass,
+                  enrolledSubjects:
+                    (userDoc as any).__t === rolesMapped.ST &&
+                    Array.isArray((userDoc as any).enrolledSubjects)
+                      ? (userDoc as any).enrolledSubjects.map(
+                          (enrollment: any) => ({
+                            ...enrollment,
+                            classGrade:
+                              shiftClassName(
+                                enrollment.classGrade,
+                                newYear - userYear,
+                              ) || enrollment.classGrade,
+                          }),
+                        )
+                      : (userDoc as any).enrolledSubjects,
+                },
               },
             },
           },
-        },
-      ];
-    });
-
-    if (userClassUpdates.length > 0) {
-      await userModel.bulkWrite(userClassUpdates);
-    }
-
-    const assignmentClassOffset = newYear - currentYear;
-    if (assignmentClassOffset !== 0) {
-      const assignments = await AssignmentModel.find();
-      const assignmentUpdates = assignments.flatMap((assignment) => {
-        const shiftedClass = shiftClassName(assignment.classGrade, assignmentClassOffset);
-
-        if (!shiftedClass || shiftedClass === assignment.classGrade) {
-          return [];
-        }
-
-        return [
-          {
-            updateOne: {
-              filter: { _id: assignment._id },
-              update: { $set: { classGrade: shiftedClass } },
-            },
-          },
         ];
       });
 
-      if (assignmentUpdates.length > 0) {
-        await AssignmentModel.bulkWrite(assignmentUpdates);
+      if (userClassUpdates.length > 0) {
+        await userModel.bulkWrite(userClassUpdates);
       }
 
-      const classSubjectSettings = await ClassSubjectSettingModel.find();
-      const classSubjectUpdates = classSubjectSettings.flatMap((setting) => {
-        const shiftedClass = shiftClassName(setting.classGrade, assignmentClassOffset);
+      const assignmentClassOffset = newYear - currentYear;
+      if (assignmentClassOffset !== 0) {
+        const assignments = await AssignmentModel.find();
+        const assignmentUpdates = assignments.flatMap((assignment) => {
+          const shiftedClass = shiftClassName(
+            assignment.classGrade,
+            assignmentClassOffset,
+          );
 
-        if (!shiftedClass || shiftedClass === setting.classGrade) {
-          return [];
+          if (!shiftedClass || shiftedClass === assignment.classGrade) {
+            return [];
+          }
+
+          return [
+            {
+              updateOne: {
+                filter: { _id: assignment._id },
+                update: { $set: { classGrade: shiftedClass } },
+              },
+            },
+          ];
+        });
+
+        if (assignmentUpdates.length > 0) {
+          await AssignmentModel.bulkWrite(assignmentUpdates);
         }
 
-        return [
-          {
-            updateOne: {
-              filter: { _id: setting._id },
-              update: { $set: { classGrade: shiftedClass } },
+        const classSubjectSettings = await ClassSubjectSettingModel.find();
+        const classSubjectUpdates = classSubjectSettings.flatMap((setting) => {
+          const shiftedClass = shiftClassName(
+            setting.classGrade,
+            assignmentClassOffset,
+          );
+
+          if (!shiftedClass || shiftedClass === setting.classGrade) {
+            return [];
+          }
+
+          return [
+            {
+              updateOne: {
+                filter: { _id: setting._id },
+                update: { $set: { classGrade: shiftedClass } },
+              },
             },
+          ];
+        });
+
+        if (classSubjectUpdates.length > 0) {
+          await ClassSubjectSettingModel.bulkWrite(classSubjectUpdates);
+        }
+      }
+
+      await userModel.updateMany(
+        {},
+        {
+          $set: {
+            term: newTerm,
+            year: newYear,
+            examType: normalizedExamType,
           },
-        ];
+        },
+      );
+
+      const deletedMarks = await MarkModel.deleteMany({
+        term: currentTerm,
+        year: currentYear,
+        examType: currentExamType,
       });
 
-      if (classSubjectUpdates.length > 0) {
-        await ClassSubjectSettingModel.bulkWrite(classSubjectUpdates);
-      }
+      const deletedCount = deletedMarks.deletedCount ?? 0;
+      const message =
+        archivedClasses.length > 0
+          ? `Academic cycle updated. Uploaded ${pluralize(archivedClasses.length, "PDF archive")} to Supabase for ${currentCycleLabel} and deleted ${pluralize(deletedCount, "mark record")}.`
+          : `Academic cycle updated. No marks were found for ${currentCycleLabel}, so nothing was archived or deleted.`;
+
+      res.json({
+        message,
+        summary: {
+          archivedClasses: archivedClasses.length,
+          deletedMarks: deletedCount,
+          previousCycle: {
+            term: currentTerm,
+            year: currentYear,
+            examType: currentExamType,
+          },
+          newCycle: {
+            term: newTerm,
+            year: newYear,
+            examType: normalizedExamType,
+          },
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
-
-    await userModel.updateMany({}, {
-      $set: {
-        term: newTerm,
-        year: newYear,
-        examType: normalizedExamType,
-      },
-    });
-
-    const deletedMarks = await MarkModel.deleteMany({
-      term: currentTerm,
-      year: currentYear,
-      examType: currentExamType,
-    });
-
-    const deletedCount = deletedMarks.deletedCount ?? 0;
-    const message =
-      archivedClasses.length > 0
-        ? `Academic cycle updated. Uploaded ${pluralize(archivedClasses.length, "PDF archive")} to Supabase for ${currentCycleLabel} and deleted ${pluralize(deletedCount, "mark record")}.`
-        : `Academic cycle updated. No marks were found for ${currentCycleLabel}, so nothing was archived or deleted.`;
-
-    res.json({
-      message,
-      summary: {
-        archivedClasses: archivedClasses.length,
-        deletedMarks: deletedCount,
-        previousCycle: {
-          term: currentTerm,
-          year: currentYear,
-          examType: currentExamType,
-        },
-        newCycle: {
-          term: newTerm,
-          year: newYear,
-          examType: normalizedExamType,
-        },
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
+  },
+);
 
 // PUT bulk enroll students in an elective subject
-router.put("/bulk-enroll-elective", authenticate, async (req: Request, res: Response) => {
-  try {
-    const { studentIds, subjectId, classGrade, classStream, action } = req.body;
-    if (!Array.isArray(studentIds) || !subjectId || !classGrade) {
-      return res.status(400).json({ message: "Invalid payload." });
-    }
-
-    const students = await studentModel.find({ _id: { $in: studentIds } });
-    let updatedCount = 0;
-
-    for (const student of students) {
-      const doc = student;
-      let enrolled = Array.isArray((doc as any).enrolledSubjects) ? [...(doc as any).enrolledSubjects] : [];
-      
-      if (action === "enroll") {
-        const exists = enrolled.find(e => e.subjectId === subjectId);
-        if (!exists) {
-          enrolled.push({
-            subjectId,
-            classGrade: (classGrade || '').trim(),
-            classStream: (classStream || '').trim(),
-            isActive: true,
-          });
-        }
-      } else {
-        enrolled = enrolled.filter(e => e.subjectId !== subjectId);
+router.put(
+  "/bulk-enroll-elective",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const { studentIds, subjectId, classGrade, classStream, action } =
+        req.body;
+      if (!Array.isArray(studentIds) || !subjectId || !classGrade) {
+        return res.status(400).json({ message: "Invalid payload." });
       }
 
-      await validateStudentElectiveEnrollments(enrolled, classGrade, classStream || "");
-      (doc as any).enrolledSubjects = enrolled;
-      await doc.save();
-      updatedCount++;
-    }
+      const students = await studentModel.find({ _id: { $in: studentIds } });
+      let updatedCount = 0;
 
-    res.json({ message: `Successfully updated ${updatedCount} students.` });
-  } catch (error: any) {
-    res.status(400).json({ message: error.message });
-  }
-});
+      for (const student of students) {
+        const doc = student;
+        let enrolled = Array.isArray((doc as any).enrolledSubjects)
+          ? [...(doc as any).enrolledSubjects]
+          : [];
+
+        if (action === "enroll") {
+          const exists = enrolled.find((e) => e.subjectId === subjectId);
+          if (!exists) {
+            enrolled.push({
+              subjectId,
+              classGrade: (classGrade || "").trim(),
+              classStream: (classStream || "").trim(),
+              isActive: true,
+            });
+          }
+        } else {
+          enrolled = enrolled.filter((e) => e.subjectId !== subjectId);
+        }
+
+        await validateStudentElectiveEnrollments(
+          enrolled,
+          classGrade,
+          classStream || "",
+        );
+        (doc as any).enrolledSubjects = enrolled;
+        await doc.save();
+        updatedCount++;
+      }
+
+      res.json({ message: `Successfully updated ${updatedCount} students.` });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  },
+);
 
 // PUT update a user
 router.put("/:id", authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    
+
     let updateData: any = {};
     if (role === rolesMapped.ST) {
+      const userWithAdmission = await studentModel.findOne({
+        ADM: req.body.admissionNo,
+      });
+      if (userWithAdmission) {
+        res
+          .status(400)
+          .json({ message: "Student with that admission already exists" });
+        return;
+      }
       const classGrade = normalizeClassValue(req.body.classGrade);
       const classStream = normalizeClassValue(req.body.classStream);
-      const enrolledSubjects = sanitizeEnrolledSubjects(req.body.enrolledSubjects, classGrade, classStream);
-      await validateStudentElectiveEnrollments(enrolledSubjects, classGrade, classStream);
+      const enrolledSubjects = sanitizeEnrolledSubjects(
+        req.body.enrolledSubjects,
+        classGrade,
+        classStream,
+      );
+      await validateStudentElectiveEnrollments(
+        enrolledSubjects,
+        classGrade,
+        classStream,
+      );
       updateData = {
         studentsName: req.body.name,
         ADM: req.body.admissionNo,
@@ -1054,13 +1286,19 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
         enrolledSubjects,
       };
     } else {
-      const rolesArray = Array.isArray(req.body.roles) ? req.body.roles : [req.body.role].filter(Boolean);
+      const rolesArray = Array.isArray(req.body.roles)
+        ? req.body.roles
+        : [req.body.role].filter(Boolean);
       // Prevent assigning a teacher who is already assigned to another class
       if (rolesArray.includes("classteacher") && req.body.classGrade) {
         const targetTeacher = await userModel.findById(id);
-        if (targetTeacher && targetTeacher.class && targetTeacher.class !== req.body.classGrade) {
-          return res.status(400).json({ 
-            message: `${(targetTeacher as any).teachersName} is already assigned as a class teacher for ${targetTeacher.class}. Please unassign them first.` 
+        if (
+          targetTeacher &&
+          targetTeacher.class &&
+          targetTeacher.class !== req.body.classGrade
+        ) {
+          return res.status(400).json({
+            message: `${(targetTeacher as any).teachersName} is already assigned as a class teacher for ${targetTeacher.class}. Please unassign them first.`,
           });
         }
       }
@@ -1078,7 +1316,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
           subject2: req.body.subjects?.[1] || null,
         },
       };
-      
+
       if (rolesArray.length > 0) {
         updateData.roles = {
           role1: rolesArray[0] || null,
@@ -1093,7 +1331,8 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
 
     user.set(updateData);
     const updatedUser = await user.save();
-    if (!updatedUser) return res.status(404).json({ message: "User not found" });
+    if (!updatedUser)
+      return res.status(404).json({ message: "User not found" });
 
     res.json(updatedUser);
   } catch (error: any) {
@@ -1125,8 +1364,14 @@ router.delete("/:id", authenticate, async (req: Request, res: Response) => {
 
       if (remainingStudents === 0) {
         await Promise.all([
-          AssignmentModel.deleteMany({ classGrade, classStream: classStream || "" }),
-          ClassSubjectSettingModel.deleteMany({ classGrade, classStream: classStream || "" }),
+          AssignmentModel.deleteMany({
+            classGrade,
+            classStream: classStream || "",
+          }),
+          ClassSubjectSettingModel.deleteMany({
+            classGrade,
+            classStream: classStream || "",
+          }),
         ]);
       }
     }
