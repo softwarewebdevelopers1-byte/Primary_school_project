@@ -157,7 +157,7 @@ const StaffFormModal: React.FC<{
     subjects?: string[];
   }) => Promise<void>;
 }> = ({ teacher, classes, onClose, onSave }) => {
-  const [role, setRole] = useState<string[]>(teacher?.roles || ["subjectteacher"]);
+  const [role, setRole] = useState<string[]>(teacher?.roles || []);
   const [name, setName] = useState(teacher?.name || "");
   const [email, setEmail] = useState(teacher?.email || "");
   const [phone, setPhone] = useState(teacher?.phone || "");
@@ -465,7 +465,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--sand)" }}>
-              {["Staff", "Role", "Department", "Contact", "Scope", "Status", ""].map((heading) => (
+              {["Staff", "First assigned Role", "Department", "Contact", "Scope", "Status", ""].map((heading) => (
                 <th key={heading} style={tableHeadingStyle}>
                   {heading}
                 </th>

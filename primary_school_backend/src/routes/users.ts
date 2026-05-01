@@ -617,7 +617,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         department: t.department,
         roles: staffRoles,
         role: t.__t,
-        roleLabel: t.__t
+        roleLabel: t.roles
           ? t.__t.charAt(0).toUpperCase() + t.__t.slice(1)
           : "Staff",
         status: t.status,
@@ -1293,8 +1293,9 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
           });
         }
       }
-
+      console.log(req.body.roles || "No roles");
       updateData = {
+        __t: rolesArray[0],
         teachersName: req.body.name,
         email: req.body.email,
         phone: req.body.phone,
@@ -1317,16 +1318,26 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
       }
     }
 
-    const user = await userModel.findById(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    user.set(updateData);
-    const updatedUser = await user.save();
-    if (!updatedUser)
+    const user = await userModel.findByIdAndUpdate(id, updateData, {
+      returnDocument: "after",
+      overwriteDiscriminatorKey: true,
+      runValidators: true,
+    });
+    if (!user) {
+      console.log("User not found");
       return res.status(404).json({ message: "User not found" });
+    }
 
-    res.json(updatedUser);
+    // user.set(updateData);
+    console.log(user);
+    // const updatedUser = await user.save();
+    // if (!updatedUser)
+    //   return res.status(404).json({ message: "User not found" });
+
+    res.json(user);
+    console.log(user);
   } catch (error: any) {
+    console.log(error);
     res.status(400).json({ message: error.message });
   }
 });

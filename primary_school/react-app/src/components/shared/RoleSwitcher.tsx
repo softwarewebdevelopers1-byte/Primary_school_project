@@ -32,7 +32,7 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
     () => typeof window !== "undefined" && window.innerWidth <= 640,
   );
   const dropdownRef = React.useRef<HTMLDivElement>(null);
-  
+
   // Robustly extract roles array
   let roles: string[] = [];
   if (user?.roles) {
@@ -40,25 +40,23 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
       roles = user.roles;
     } else {
       // Handle object format { role1, role2, role3 }
-      roles = [user.roles.role1, user.roles.role2, user.roles.role3].filter(Boolean);
+      roles = [user.roles.role1, user.roles.role2, user.roles.role3].filter(
+        Boolean,
+      );
     }
   }
-  
-  // Also include discriminator if not already present
-  if (user?.__t && !roles.includes(user.__t)) {
-    roles.push(user.__t);
-  }
+
   if (user?.role && !roles.includes(user.role)) {
     roles.push(user.role);
   }
 
   // Remove duplicates and filter to valid dashboard roles
-  const validRoles = Array.from(new Set(roles)).filter(r => rolePaths[r]);
+  const validRoles = Array.from(new Set(roles)).filter((r) => rolePaths[r]);
 
   // Keep only one role per unique path (e.g. if admin and superadmin both point to /admin)
   const uniquePathRoles: string[] = [];
   const seenPaths = new Set<string>();
-  
+
   for (const r of validRoles) {
     const path = rolePaths[r];
     if (path && !seenPaths.has(path)) {
@@ -72,7 +70,10 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -93,7 +94,10 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
   if (roles.length <= 1) return null;
 
   const currentPath = window.location.pathname;
-  const currentRole = roles.find(r => rolePaths[r]?.toLowerCase() === currentPath.toLowerCase()) || roles[0];
+  const currentRole =
+    roles.find(
+      (r) => rolePaths[r]?.toLowerCase() === currentPath.toLowerCase(),
+    ) || roles[0];
 
   return (
     <div ref={dropdownRef} style={{ position: "relative", zIndex: 100 }}>
@@ -118,7 +122,9 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
         }}
       >
         {!isCompact && (
-          <span style={{ color: "var(--gold)", fontSize: "10px", fontWeight: 800 }}>
+          <span
+            style={{ color: "var(--gold)", fontSize: "10px", fontWeight: 800 }}
+          >
             DASHBOARD:
           </span>
         )}
@@ -130,35 +136,47 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
         >
           {roleLabels[currentRole] || currentRole}
         </span>
-        <svg 
-          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: isOpen ? "rotate(180deg)" : "none",
+            transition: "transform 0.2s",
+          }}
         >
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </button>
 
       {isOpen && (
-        <div style={{
-          position: "absolute",
-          top: "120%",
-          right: 0,
-          background: "var(--white)",
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          boxShadow: "0 16px 36px rgba(11, 32, 24, 0.16)",
-          padding: "6px",
-          minWidth: isCompact ? "150px" : "180px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          animation: "scaleIn 0.2s ease-out"
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "120%",
+            right: 0,
+            background: "var(--white)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            boxShadow: "0 16px 36px rgba(11, 32, 24, 0.16)",
+            padding: "6px",
+            minWidth: isCompact ? "150px" : "180px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            animation: "scaleIn 0.2s ease-out",
+          }}
+        >
           {roles.map((r: string) => {
             const path = rolePaths[r];
             if (!path) return null;
             const isActive = currentPath.toLowerCase() === path.toLowerCase();
-            
+
             return (
               <button
                 key={r}
@@ -179,12 +197,19 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
                   transition: "all 0.15s",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between"
+                  justifyContent: "space-between",
                 }}
               >
                 {roleLabels[r] || r}
                 {isActive && (
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--gold)" }} />
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "var(--gold)",
+                    }}
+                  />
                 )}
               </button>
             );
