@@ -2,7 +2,7 @@
 import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { admissionNo, avg, sum, gradeColor, grade, rankByTotal } from "./shared/helpers";
+import { avg, sum, gradeColor, grade } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -86,7 +86,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
     },
   ];
 
-  const sortedStudents = rankByTotal(students);
+  const sortedStudents = [...students].sort((a, b) => avg(b.marks || {}) - avg(a.marks || {}));
   const topStudent = sortedStudents.length > 0 ? sortedStudents[0] : null;
   const leastStudent = sortedStudents.length > 0 ? sortedStudents[sortedStudents.length - 1] : null;
 
@@ -103,10 +103,10 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
         const tableColumn = ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg", "Grade"];
-        const tableRows = sortedStudents.map((s) => [
-          s.rank,
+        const tableRows = sortedStudents.map((s, i) => [
+          i + 1,
           s.name,
-          admissionNo(s),
+          s.adm || "-",
           ...subjects.map(sub => (s.marks || {})[sub.id] ?? "-"),
           sum(s.marks || {}),
           avg(s.marks || {}) + "%",
@@ -142,7 +142,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setFontSize(12);
         doc.setTextColor(50, 50, 50);
         doc.text(`Name: ${slip.name}`, 20, 40);
-        doc.text(`Admission No: ${admissionNo(slip)}`, 20, 48);
+        doc.text(`Admission No: ${slip.adm || "-"}`, 20, 48);
         doc.text(`Term: ${term} | Year: ${year} | Phase: ${examType.toUpperCase()}`, 20, 56);
         
         doc.setLineWidth(0.5);
@@ -362,17 +362,16 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               </tr>
             </thead>
             <tbody>
-              {sortedStudents.map((s) => {
+              {sortedStudents.map((s, idx) => {
                 const a = avg(s.marks || {});
                 return (
                   <tr key={s.id} style={{ borderTop: `1px solid ${C.borderLight}` }}>
-                    <td style={tdStyle}>{s.rank}</td>
+                    <td style={tdStyle}>{idx + 1}</td>
                     <td style={tdStyle}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <Avatar name={s.name} size={24} />
                         <span style={{ fontWeight: 600 }}>{s.name}</span>
                       </div>
-                      <p style={{ margin: "4px 0 0", fontSize: 11, color: C.textMuted }}>Adm: {admissionNo(s)}</p>
                     </td>
                     {subjects.slice(0, 5).map(sub => {
                       const mark = (s.marks || {})[sub.id];

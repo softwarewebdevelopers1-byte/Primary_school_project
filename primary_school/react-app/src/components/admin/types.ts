@@ -62,7 +62,6 @@ export interface Student {
   classGrade: string;
   classStream?: string;
   enrolledSubjects: StudentSubjectEnrollment[];
-  marks?: Record<string, number>;
   status?: string;
   term?: number;
   year?: number;
@@ -100,7 +99,6 @@ export interface ApiStudent {
   classStream?: string;
   joinDate?: string;
   enrolledSubjects?: StudentSubjectEnrollment[];
-  marks?: Record<string, number>;
   term?: number;
   year?: number;
   examType?: string;
