@@ -9,6 +9,30 @@ export const sum = (marks: Record<string, number>): number => {
   return Object.values(marks).reduce((a, b) => a + b, 0);
 };
 
+export const admissionNo = (student: any): string =>
+  student?.admissionNo || student?.admissionNumber || student?.adm || "-";
+
+export const rankByTotal = <T extends { marks?: Record<string, number> }>(
+  students: T[],
+) => {
+  let previousTotal: number | null = null;
+  let previousRank = 0;
+  let distinctRank = 0;
+
+  return [...students]
+    .sort((left, right) => sum(right.marks || {}) - sum(left.marks || {}))
+    .map((student) => {
+      const total = sum(student.marks || {});
+      const rank = previousTotal === total ? previousRank : distinctRank + 1;
+      if (previousTotal !== total) {
+        distinctRank = rank;
+      }
+      previousTotal = total;
+      previousRank = rank;
+      return { ...student, total, rank };
+    });
+};
+
 export const grade = (v: number): string => {
   if (v >= 80) return "A";
   if (v >= 75) return "A-";

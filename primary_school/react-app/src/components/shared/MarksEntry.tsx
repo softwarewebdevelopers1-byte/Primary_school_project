@@ -165,6 +165,42 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
     onConfigUpdate?.(activeSubjectId, key, nextValue);
   };
 
+  const getStudentTotal = (studentId: string) => {
+    const marks = (subjectMarks[studentId] || createEmptyMarks()) as MarkRow;
+    let catsSum: number | null = null;
+
+    if (catsCount > 0) {
+      for (let index = 0; index < catsCount; index += 1) {
+        const value = marks[getCatKey(index + 1)];
+        if (value !== null && value !== "") {
+          catsSum = (catsSum === null ? 0 : catsSum) + Number(value);
+        }
+      }
+    }
+
+    if (catsCount === 0) {
+      return marks.exam !== null && marks.exam !== "" ? Number(marks.exam) : null;
+    }
+
+    return catsSum !== null && marks.exam !== null && marks.exam !== ""
+      ? catsSum + Number(marks.exam)
+      : null;
+  };
+
+  const studentPositions = new Map<string, number>();
+  let previousTotal: number | null = null;
+  let previousPosition = 0;
+  students
+    .map((student) => ({ id: student.id, total: getStudentTotal(student.id) }))
+    .filter((item): item is { id: string; total: number } => item.total !== null)
+    .sort((left, right) => right.total - left.total)
+    .forEach((item, index) => {
+      const position = previousTotal === item.total ? previousPosition : index + 1;
+      studentPositions.set(item.id, position);
+      previousTotal = item.total;
+      previousPosition = position;
+    });
+
   return (
     <div className={styles.anim}>
       <div className={styles.sectionHeader}>
@@ -307,6 +343,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                 </th>
                 <th>Total</th>
                 <th>Final (%)</th>
+                <th>Position</th>
                 {mode === "subject" && <th>Status</th>}
               </tr>
             </thead>
@@ -404,6 +441,15 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                       ) : marks.finalScore !== null || calculatedPercentage !== null ? (
                         <span style={{ fontFamily: "var(--serif)", fontSize: "15px", fontWeight: 700, color: "var(--gold)" }}>
                           {marks.finalScore !== null ? marks.finalScore : calculatedPercentage}%
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--textF)", fontSize: "11px" }}>Pending</span>
+                      )}
+                    </td>
+                    <td>
+                      {studentPositions.has(student.id) ? (
+                        <span style={{ fontFamily: "var(--serif)", fontSize: "15px", fontWeight: 700 }}>
+                          {studentPositions.get(student.id)}
                         </span>
                       ) : (
                         <span style={{ color: "var(--textF)", fontSize: "11px" }}>Pending</span>

@@ -12,7 +12,7 @@ interface AdminMarksTabProps {
   onRefresh: () => Promise<void>;
   avatar: (name: string, size: number) => string;
 }
-
+zz
 const panelStyle: React.CSSProperties = {
   background: "var(--white)",
   border: "1px solid var(--border)",
@@ -409,6 +409,72 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
           <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--textMut)" }}>
             {(currentClass?.examType || "opener").toUpperCase()}
           </p>
+        </div>
+      </div>
+
+      <div style={{ ...panelStyle, display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".09em", margin: "0 0 4px" }}>
+              Grade performance
+            </p>
+            <h3 style={{ margin: 0, fontFamily: "var(--serif)", color: "var(--text)", fontSize: "1.25rem" }}>
+              Grade {selectedPerformanceGrade || "-"} ranking across streams
+            </h3>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "end", flexWrap: "wrap" }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={labelStyle}>Grade</span>
+              <select
+                value={selectedPerformanceGrade}
+                onChange={(event) => setPerformanceGrade(event.target.value)}
+                style={{ ...inputStyle, width: 160 }}
+              >
+                {gradeOptions.map((gradeValue) => (
+                  <option key={gradeValue} value={gradeValue}>
+                    Grade {gradeValue}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={downloadGradePerformance} style={{ ...inputStyle, width: "auto", cursor: "pointer", fontWeight: 700 }}>
+              Download combined marks
+            </button>
+          </div>
+        </div>
+
+        <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 10 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
+            <thead>
+              <tr style={{ background: "var(--sand)" }}>
+                {["Rank", "Student", "Adm. No", "Stream", "Total", "Average", "Grade"].map((heading) => (
+                  <th key={heading} style={{ padding: "9px 11px", textAlign: "left", fontSize: 10, color: "var(--textMut)", textTransform: "uppercase" }}>
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {performanceStudents.map((student) => (
+                <tr key={student.id} style={{ borderTop: "1px solid var(--borderL)" }}>
+                  <td style={{ padding: "9px 11px", fontWeight: 700 }}>{student.rank}</td>
+                  <td style={{ padding: "9px 11px" }}>{student.name}</td>
+                  <td style={{ padding: "9px 11px" }}>{admissionNo(student)}</td>
+                  <td style={{ padding: "9px 11px" }}>{student.classStream || "-"}</td>
+                  <td style={{ padding: "9px 11px", fontWeight: 700 }}>{student.total}</td>
+                  <td style={{ padding: "9px 11px" }}>{avg(student.marks || {})}%</td>
+                  <td style={{ padding: "9px 11px" }}>{grade(avg(student.marks || {}))}</td>
+                </tr>
+              ))}
+              {performanceStudents.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: 18, textAlign: "center", color: "var(--textMut)" }}>
+                    No students found for this grade.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
