@@ -422,6 +422,16 @@ const validateParallelSlotGroups = (classes: ClassTimetableContext[]) => {
     }
 
     for (const [sharedSlotId, groupedSubjects] of lessonsBySharedSlotId.entries()) {
+      const teacherIds = new Set<string>();
+      for (const subject of groupedSubjects) {
+        if (teacherIds.has(subject.teacherId)) {
+          throw new Error(
+            `${currentClass.classGrade} ${currentClass.classStream}: shared elective slot "${sharedSlotId}" assigns ${subject.teacherName} to more than one parallel elective. Assign a different teacher before generating the timetable.`,
+          );
+        }
+        teacherIds.add(subject.teacherId);
+      }
+
       for (let leftIndex = 0; leftIndex < groupedSubjects.length; leftIndex += 1) {
         const leftSubject = groupedSubjects[leftIndex]!;
 
@@ -434,6 +444,41 @@ const validateParallelSlotGroups = (classes: ClassTimetableContext[]) => {
               `${currentClass.classGrade} ${currentClass.classStream}: shared slot "${sharedSlotId}" is invalid because ${leftSubject.subjectName} and ${rightSubject.subjectName} share ${overlapCount} student(s).`,
             );
           }
+        }
+      }
+    }
+  }
+};
+
+const validateTeacherSlotConflicts = (
+  plan: GeneratedSchoolTimetablePlan,
+  subjectsPerDay: number,
+) => {
+  for (const day of SCHOOL_DAYS) {
+    for (let slotIndex = 0; slotIndex < subjectsPerDay; slotIndex += 1) {
+      const teacherOccupancy = new Map<string, string>();
+
+      for (const currentClass of plan.classes) {
+        const lesson = currentClass.lessonPlan[day]?.[slotIndex];
+        const classLabel = `${currentClass.classGrade} ${currentClass.classStream}`.trim();
+        const teacherIdsInClassSlot = new Set<string>();
+
+        for (const scheduledLesson of getScheduledLessonsForSlot(lesson)) {
+          if (teacherIdsInClassSlot.has(scheduledLesson.teacherId)) {
+            throw new Error(
+              `Timetable conflict: ${scheduledLesson.teacherName || scheduledLesson.teacherId} is assigned to more than one parallel lesson in ${classLabel} on ${day} period ${slotIndex + 1}.`,
+            );
+          }
+          teacherIdsInClassSlot.add(scheduledLesson.teacherId);
+
+          const existingClass = teacherOccupancy.get(scheduledLesson.teacherId);
+          if (existingClass) {
+            throw new Error(
+              `Timetable conflict: ${scheduledLesson.teacherName || scheduledLesson.teacherId} is assigned to both ${existingClass} and ${classLabel} on ${day} period ${slotIndex + 1}.`,
+            );
+          }
+
+          teacherOccupancy.set(scheduledLesson.teacherId, classLabel);
         }
       }
     }
@@ -1406,6 +1451,7 @@ export async function generateAndStoreSchoolTimetables(input: CreateSchoolTimeta
   if (!allowedTimetableModes.has(finalPlan.generationMode)) {
     throw new Error("Invalid timetable generation mode.");
   }
+  validateTeacherSlotConflicts(finalPlan, validatedInput.subjectsPerDay);
 
   const batchId = randomUUID();
   const dailyTemplate = buildDailyTemplate(

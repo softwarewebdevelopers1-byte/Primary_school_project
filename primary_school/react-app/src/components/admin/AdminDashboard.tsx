@@ -685,6 +685,32 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const bulkEnrollElective = async (
+    studentIds: string[],
+    subjectId: string,
+    classGrade: string,
+    classStream: string,
+    action: "enroll" | "unenroll",
+  ) => {
+    try {
+      const response = await api.put<{ message?: string }>("/users/bulk-enroll-elective", {
+        studentIds,
+        subjectId,
+        classGrade,
+        classStream,
+        action,
+      });
+      await loadDashboardUsers();
+      showSuccess(response.message || "Elective enrollments updated successfully.");
+    } catch (err) {
+      showError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update elective enrollments.",
+      );
+    }
+  };
+
   const unassignClassTeacher = async (teacherId: string) => {
     try {
       const teacher = teachers.find((t) => t.id === teacherId);
@@ -856,6 +882,7 @@ const AdminDashboard: React.FC = () => {
           subjects={subjects}
           classSubjectSettings={classSubjectSettings}
           onSaveStudent={saveStudent}
+          onBulkEnrollElective={bulkEnrollElective}
           onDeleteStudent={deleteStudent}
           pill={pill}
           showModal={showModal}
@@ -917,6 +944,7 @@ const AdminDashboard: React.FC = () => {
           onSaveAssignment={saveAssignment}
           onUnassignTeacher={unassignSubjectTeacher}
           onToggleSubjectOffering={toggleSubjectOffering}
+          onBulkEnrollElective={bulkEnrollElective}
           avatar={avatar}
           pill={pill}
           showModal={showModal}

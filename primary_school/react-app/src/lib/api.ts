@@ -6,6 +6,18 @@ export interface LoginResponse {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(message: string, status: number, data: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
 const request = async <T>(
   input: string,
   init?: RequestInit,
@@ -39,7 +51,7 @@ const request = async <T>(
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
-    throw new Error(data.message || "Request failed.");
+    throw new ApiError(data.message || "Request failed.", response.status, data);
   }
 
   return data as T;

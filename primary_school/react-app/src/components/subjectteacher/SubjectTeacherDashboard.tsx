@@ -104,7 +104,7 @@ const SubjectTeacherDashboard: React.FC = () => {
           term: currentUser.term || 1,
           year: currentUser.year || 2024,
           examType: currentUser.examType || "opener",
-        }),
+        }) as Promise<Record<string, number>>,
       ]);
       const mapped = (data || []).map((a: any) => {
         const assignmentId = a._id || a.id;

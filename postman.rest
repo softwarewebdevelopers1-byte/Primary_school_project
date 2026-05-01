@@ -1,7 +1,0 @@
-POST http://localhost:8000/api/users/login
-
-
-{
-"email":"carlosmaina198@gmail.com",
-"password":"staff123"
-}

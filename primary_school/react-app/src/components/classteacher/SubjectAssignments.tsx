@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { C, FONT } from "./shared/constants";
 import { formatSubjectOfferingTag, type SubjectEnrollmentMode } from "../../lib/subjectEnrollment";
 
+const generateElectivePairId = () => `EL-${crypto.randomUUID()}`;
+
 interface SubjectAssignmentsProps {
   subjects: any[];
   assignments: any[];
@@ -40,11 +42,13 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
   const [configSubjectId, setConfigSubjectId] = useState("");
   const [configMode, setConfigMode] = useState<SubjectEnrollmentMode>("compulsory");
   const [configSharedSlot, setConfigSharedSlot] = useState("");
+  const [configSharedSlotCopied, setConfigSharedSlotCopied] = useState(false);
 
   const handleOpenConfig = (subject: any) => {
     setConfigSubjectId(subject.id);
     setConfigMode(subject.enrollmentMode || "compulsory");
     setConfigSharedSlot(subject.sharedSlotId || "");
+    setConfigSharedSlotCopied(false);
     setConfigModalOpen(true);
   };
 
@@ -69,19 +73,12 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
     setSelectedStudents(next);
   };
 
-  const handleSelectAll = (isLinkedPair: boolean, pairSubjectIds: string[]) => {
+  const handleSelectAll = () => {
     if (!selectedElective) return;
     const next = new Set<string>();
-    
+
     students.forEach(s => {
-      if (isLinkedPair) {
-         const enrolledInOther = (s.enrolledSubjects || []).some((e: any) => 
-           e.isActive && pairSubjectIds.includes(e.subjectId) && e.subjectId !== selectedElective
-         );
-         if (!enrolledInOther) next.add(s.id);
-      } else {
-         next.add(s.id);
-      }
+      next.add(s.id);
     });
     setSelectedStudents(next);
   };
@@ -554,10 +551,41 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
                 <input 
                   type="text" 
                   value={configSharedSlot} 
-                  onChange={e => setConfigSharedSlot(e.target.value)}
-                  placeholder="e.g. bio-phy-slot"
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, boxSizing: "border-box" }}
+                  onChange={e => {
+                    setConfigSharedSlot(e.target.value);
+                    setConfigSharedSlotCopied(false);
+                  }}
+                  placeholder="Generated automatically for linked electives"
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, boxSizing: "border-box", marginBottom: 8 }}
                 />
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfigSharedSlot(generateElectivePairId());
+                      setConfigSharedSlotCopied(false);
+                    }}
+                    style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.cream, cursor: "pointer" }}
+                  >
+                    Generate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!configSharedSlot.trim()) return;
+                      try {
+                        await navigator.clipboard.writeText(configSharedSlot.trim());
+                        setConfigSharedSlotCopied(true);
+                      } catch (error) {
+                        setConfigSharedSlotCopied(false);
+                      }
+                    }}
+                    disabled={!configSharedSlot.trim()}
+                    style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.cream, cursor: configSharedSlot.trim() ? "pointer" : "default", opacity: configSharedSlot.trim() ? 1 : 0.55 }}
+                  >
+                    {configSharedSlotCopied ? "Copied" : "Copy ID"}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -599,7 +627,7 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
             return (
               <div>
                 <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-                  <button onClick={() => handleSelectAll(isLinkedPair, pairSubjectIds)} style={{ padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Select All Eligible</button>
+                  <button onClick={handleSelectAll} style={{ padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Select All</button>
                   <button onClick={() => setSelectedStudents(new Set())} style={{ padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Deselect All</button>
                   <span style={{ flex: 1 }} />
                   <button onClick={() => void handleBulkEnroll("enroll")} disabled={selectedStudents.size === 0} style={{ padding: "6px 16px", borderRadius: 8, background: C.green, color: "white", border: "none", cursor: "pointer", opacity: selectedStudents.size === 0 ? 0.5 : 1 }}>Enroll Selected</button>
@@ -627,7 +655,6 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
                                 type="checkbox" 
                                 checked={selectedStudents.has(s.id)}
                                 onChange={() => handleToggleStudent(s.id)}
-                                disabled={enrolledInOther && !isEnrolled}
                               />
                             </td>
                             <td style={{ padding: "8px 12px", fontFamily: FONT.sans, fontSize: 13 }}>{s.name}</td>
@@ -635,7 +662,7 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
                               {isEnrolled ? (
                                 <span style={{ color: C.green, fontWeight: 600 }}>Enrolled</span>
                               ) : enrolledInOther ? (
-                                <span style={{ color: C.textMuted }}>Enrolled in pair</span>
+                                <span style={{ color: C.textMuted }}>Will switch</span>
                               ) : (
                                 <span style={{ color: C.textMuted }}>Not enrolled</span>
                               )}

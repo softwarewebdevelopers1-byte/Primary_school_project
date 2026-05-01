@@ -117,7 +117,11 @@ const validateStudentElectiveEnrollments = async (
   }>,
   classGrade: string,
   classStream: string,
+  options: { requireCompleteLinkedGroups?: boolean } = {},
 ) => {
+  const requireCompleteLinkedGroups =
+    options.requireCompleteLinkedGroups !== false;
+
   if (!classGrade) {
     if (enrolledSubjects.length > 0) {
       throw new Error(
@@ -163,12 +167,48 @@ const validateStudentElectiveEnrollments = async (
       group.subjectIds.includes(entry.subjectId),
     ).length;
 
-    if (selectedCount !== 1) {
+    if (
+      requireCompleteLinkedGroups
+        ? selectedCount !== 1
+        : selectedCount > 1
+    ) {
       throw new Error(
-        `Each linked elective block requires exactly one subject choice. Block ${group.sharedSlotId} currently has ${selectedCount} selection(s).`,
+        requireCompleteLinkedGroups
+          ? `Each linked elective block requires exactly one subject choice. Block ${group.sharedSlotId} currently has ${selectedCount} selection(s).`
+          : `Each linked elective block allows only one subject choice. Block ${group.sharedSlotId} currently has ${selectedCount} selection(s).`,
       );
     }
   }
+};
+
+const hasRole = (roles: unknown, role: string) =>
+  Array.isArray(roles) && roles.includes(role);
+
+const canManageClassElectiveEnrollments = async (
+  req: Request,
+  classGrade: string,
+  classStream: string,
+) => {
+  const authUser = (req as any).user;
+  const roles = authUser?.roles;
+
+  if (hasRole(roles, rolesMapped.ADM)) {
+    return true;
+  }
+
+  if (!hasRole(roles, rolesMapped.CT) || !authUser?.id) {
+    return false;
+  }
+
+  const currentUser: any = await userModel
+    .findById(authUser.id)
+    .select("class classStream")
+    .lean();
+
+  return (
+    normalizeClassValue(currentUser?.class) === classGrade &&
+    normalizeClassValue(currentUser?.classStream) === classStream
+  );
 };
 
 const toFiniteNumber = (value: unknown): number | null => {
@@ -195,31 +235,20 @@ const hasRecordedScore = (mark: any) =>
     mark?.finalScore,
   ].some((value) => toFiniteNumber(value) !== null);
 
-type CycleCompletionIssue =
-  | {
-      type: "missing-assignment";
-      classGrade: string;
-      classStream: string;
-      totalStudents: number;
-    }
-  | {
-      type: "missing-marks";
-      classGrade: string;
-      classStream: string;
-      subjectName: string;
-      missingStudents: number;
-      totalStudents: number;
-    };
+type CycleCompletionIssue = {
+  type: "missing-marks";
+  classGrade: string;
+  classStream: string;
+  subjectName: string;
+  missingStudents: number;
+  totalStudents: number;
+};
 
 const buildCycleCompletionMessage = (
   issues: CycleCompletionIssue[],
   currentCycleLabel: string,
 ) => {
   const issueSummaries = issues.slice(0, 8).map((issue) => {
-    if (issue.type === "missing-assignment") {
-      return `${formatClassLabel(issue.classGrade, issue.classStream)} has ${pluralize(issue.totalStudents, "student")} but no subject assignments.`;
-    }
-
     return `${formatClassLabel(issue.classGrade, issue.classStream)} - ${issue.subjectName}: ${pluralize(issue.missingStudents, "student")} missing marks out of ${issue.totalStudents}.`;
   });
 
@@ -336,12 +365,6 @@ const collectCycleCompletionIssues = async (
     const classAssignments = assignmentsByClass.get(classKey) || [];
 
     if (classAssignments.length === 0) {
-      issues.push({
-        type: "missing-assignment",
-        classGrade,
-        classStream,
-        totalStudents: classStudents.length,
-      });
       continue;
     }
 
@@ -844,6 +867,7 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
         enrolledSubjects,
         classGrade,
         classStream,
+        { requireCompleteLinkedGroups: false },
       );
       const hashedPassword = await bcrypt.hash("student123", 10);
       newUser = await studentModel.create({
@@ -954,12 +978,41 @@ router.put(
         currentYear,
         currentExamType,
       );
-
-      const cycleCompletionIssues = await collectCycleCompletionIssues(
-        currentTerm,
-        currentYear,
-        currentExamType,
+      const currentCycleMarks = await MarkModel.find({
+        term: currentTerm,
+        year: currentYear,
+        examType: currentExamType,
+      } as any).lean();
+      const hasRecordedCycleMarks = (currentCycleMarks as any[]).some(
+        hasRecordedScore,
       );
+
+      if (!hasRecordedCycleMarks) {
+        return res.status(400).json({
+          message:
+            `Cannot update the academic cycle yet. No marks have been recorded for ${currentCycleLabel}. Enter and save all student marks first, then update the exam, term, or year.`,
+          summary: {
+            previousCycle: {
+              term: currentTerm,
+              year: currentYear,
+              examType: currentExamType,
+            },
+            requestedCycle: {
+              term: newTerm,
+              year: newYear,
+              examType: normalizedExamType,
+            },
+          },
+        });
+      }
+
+      const cycleCompletionIssues = hasRecordedCycleMarks
+        ? await collectCycleCompletionIssues(
+            currentTerm,
+            currentYear,
+            currentExamType,
+          )
+        : [];
 
       if (cycleCompletionIssues.length > 0) {
         return res.status(400).json({
@@ -971,30 +1024,32 @@ router.put(
         });
       }
 
-      const classesWithMarks = await MarkModel.aggregate([
-        {
-          $match: {
-            term: currentTerm,
-            year: currentYear,
-            examType: currentExamType,
-          },
-        },
-        {
-          $group: {
-            _id: {
-              classGrade: "$classGrade",
-              classStream: "$classStream",
+      const classesWithMarks = hasRecordedCycleMarks
+        ? await MarkModel.aggregate([
+            {
+              $match: {
+                term: currentTerm,
+                year: currentYear,
+                examType: currentExamType,
+              },
             },
-            markCount: { $sum: 1 },
-          },
-        },
-        {
-          $sort: {
-            "_id.classGrade": 1,
-            "_id.classStream": 1,
-          },
-        },
-      ]);
+            {
+              $group: {
+                _id: {
+                  classGrade: "$classGrade",
+                  classStream: "$classStream",
+                },
+                markCount: { $sum: 1 },
+              },
+            },
+            {
+              $sort: {
+                "_id.classGrade": 1,
+                "_id.classStream": 1,
+              },
+            },
+          ])
+        : [];
 
       const archivedClasses: ArchiveClassMarksResult[] = [];
 
@@ -1168,7 +1223,9 @@ router.put(
       const message =
         archivedClasses.length > 0
           ? `Academic cycle updated. Uploaded ${pluralize(archivedClasses.length, "PDF archive")} to Supabase for ${currentCycleLabel} and deleted ${pluralize(deletedCount, "mark record")}.`
-          : `Academic cycle updated. No marks were found for ${currentCycleLabel}, so nothing was archived or deleted.`;
+          : hasRecordedCycleMarks
+            ? `Academic cycle updated. No class mark archives were created for ${currentCycleLabel}, and ${pluralize(deletedCount, "mark record")} were deleted.`
+            : `Academic cycle updated. Admin validation: no marks were recorded for ${currentCycleLabel}, so no Supabase mark archive was uploaded. Classes, class teachers, subject assignments, and student elective enrollments were promoted.`;
 
       res.json({
         message,
@@ -1185,6 +1242,9 @@ router.put(
             year: newYear,
             examType: normalizedExamType,
           },
+          warning: hasRecordedCycleMarks
+            ? null
+            : `No marks were recorded for ${currentCycleLabel}; Supabase archive upload was skipped.`,
         },
       });
     } catch (error: any) {
@@ -1201,11 +1261,74 @@ router.put(
     try {
       const { studentIds, subjectId, classGrade, classStream, action } =
         req.body;
-      if (!Array.isArray(studentIds) || !subjectId || !classGrade) {
+      const normalizedSubjectId = normalizeSubjectId(subjectId);
+      const normalizedClassGrade = normalizeClassValue(classGrade);
+      const normalizedClassStream = normalizeClassValue(classStream);
+      const normalizedAction =
+        action === "enroll" || action === "unenroll" || action === "unassign"
+          ? action
+          : "";
+
+      if (
+        !Array.isArray(studentIds) ||
+        studentIds.length === 0 ||
+        !normalizedSubjectId ||
+        !normalizedClassGrade ||
+        !normalizedAction
+      ) {
         return res.status(400).json({ message: "Invalid payload." });
       }
 
-      const students = await studentModel.find({ _id: { $in: studentIds } });
+      const isAllowed = await canManageClassElectiveEnrollments(
+        req,
+        normalizedClassGrade,
+        normalizedClassStream,
+      );
+      if (!isAllowed) {
+        return res.status(403).json({
+          message:
+            "Only admins or the assigned class teacher can update elective enrollments for this class.",
+        });
+      }
+
+      const classSubjectSettings = await ClassSubjectSettingModel.find({
+        classGrade: normalizedClassGrade,
+        classStream: normalizedClassStream,
+      }).lean();
+      const classSubjectSettingsMap = buildClassSubjectSettingMap(
+        classSubjectSettings as any[],
+      );
+      const targetSetting = getClassSubjectEnrollmentSetting(
+        classSubjectSettingsMap,
+        {
+          subjectId: normalizedSubjectId,
+          classGrade: normalizedClassGrade,
+          classStream: normalizedClassStream,
+        },
+      );
+
+      if (
+        !targetSetting.isOffered ||
+        targetSetting.enrollmentMode !== "elective"
+      ) {
+        return res.status(400).json({
+          message:
+            "Bulk enrollment is only available for active elective subjects.",
+        });
+      }
+
+      const linkedGroup = collectElectiveEnrollmentGroups(
+        classSubjectSettingsMap,
+        normalizedClassGrade,
+        normalizedClassStream,
+      ).find((group) => group.subjectIds.includes(normalizedSubjectId));
+      const linkedSubjectIds = linkedGroup?.subjectIds || [normalizedSubjectId];
+
+      const students = await studentModel.find({
+        _id: { $in: studentIds },
+        class: normalizedClassGrade,
+        classStream: normalizedClassStream,
+      } as any);
       let updatedCount = 0;
 
       for (const student of students) {
@@ -1214,24 +1337,50 @@ router.put(
           ? [...(doc as any).enrolledSubjects]
           : [];
 
-        if (action === "enroll") {
-          const exists = enrolled.find((e) => e.subjectId === subjectId);
+        if (normalizedAction === "enroll") {
+          enrolled = enrolled.filter(
+            (entry) =>
+              !(
+                linkedSubjectIds.includes(normalizeSubjectId(entry.subjectId)) &&
+                normalizeClassValue(entry.classGrade) === normalizedClassGrade &&
+                normalizeClassValue(entry.classStream) === normalizedClassStream &&
+                normalizeSubjectId(entry.subjectId) !== normalizedSubjectId
+              ),
+          );
+          const exists = enrolled.find(
+            (entry) =>
+              normalizeSubjectId(entry.subjectId) === normalizedSubjectId &&
+              normalizeClassValue(entry.classGrade) === normalizedClassGrade &&
+              normalizeClassValue(entry.classStream) === normalizedClassStream,
+          );
           if (!exists) {
             enrolled.push({
-              subjectId,
-              classGrade: (classGrade || "").trim(),
-              classStream: (classStream || "").trim(),
+              subjectId: normalizedSubjectId,
+              classGrade: normalizedClassGrade,
+              classStream: normalizedClassStream,
               isActive: true,
+              enrolledAt: new Date(),
             });
+          } else {
+            exists.isActive = true;
+            exists.enrolledAt = exists.enrolledAt || new Date();
           }
         } else {
-          enrolled = enrolled.filter((e) => e.subjectId !== subjectId);
+          enrolled = enrolled.filter(
+            (entry) =>
+              !(
+                normalizeSubjectId(entry.subjectId) === normalizedSubjectId &&
+                normalizeClassValue(entry.classGrade) === normalizedClassGrade &&
+                normalizeClassValue(entry.classStream) === normalizedClassStream
+              ),
+          );
         }
 
         await validateStudentElectiveEnrollments(
           enrolled,
-          classGrade,
-          classStream || "",
+          normalizedClassGrade,
+          normalizedClassStream,
+          { requireCompleteLinkedGroups: false },
         );
         (doc as any).enrolledSubjects = enrolled;
         await doc.save();
@@ -1264,6 +1413,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
         enrolledSubjects,
         classGrade,
         classStream,
+        { requireCompleteLinkedGroups: false },
       );
       updateData = {
         studentsName: req.body.name,

@@ -23,8 +23,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm(`Are you sure you want to update ALL classes to Term ${term}, ${year} (${examType})? Existing marks will be archived to Supabase as PDFs first, and they will only be deleted if every upload succeeds.`)) return;
-    
+
     setLoading(true);
     try {
       await onBulkTermUpdate(term, year, examType);
@@ -43,7 +42,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
       <div style={noticeStyle}>
         <h4 style={{ margin: "0 0 8px", color: "var(--gold)", fontSize: 14 }}>⚠️ Critical Action</h4>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-          Updating the academic cycle is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> Before the cycle changes, the system archives the current marks to Supabase PDF storage. Marks are only cleared after every archive upload succeeds.
+          Updating the academic cycle is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> All required marks must be recorded before the cycle changes. Current marks are archived to Supabase PDF storage first, and marks are only cleared after every archive upload succeeds.
         </p>
       </div>
 
@@ -97,7 +96,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
               cursor: loading ? "not-allowed" : "pointer"
             }}
           >
-            {loading ? "Archiving Marks & Updating Classes..." : "Archive Marks and Update Classes"}
+            {loading ? "Validating & Updating Classes..." : "Validate and Update Classes"}
           </button>
         </form>
       </div>
