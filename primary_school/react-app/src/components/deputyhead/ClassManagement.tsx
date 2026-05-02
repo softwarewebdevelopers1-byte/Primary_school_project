@@ -175,7 +175,10 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({
         onClick={() => setSelectedClass(null)}
       >
         <div
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            console.log(selectedClass)
+          }}
           style={{
             background: C.white,
             borderRadius: 16,

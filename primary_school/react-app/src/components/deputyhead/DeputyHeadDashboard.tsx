@@ -55,7 +55,12 @@ export default function DeputyHeadDashboard({
       const freshUser: any = await api.get(`/users/${storedUser.id}`);
       if (freshUser) {
         const updated = { ...storedUser, ...freshUser, id: freshUser._id };
-        const savedItem = localStorage.getItem("user"); if (savedItem) { const parsed = JSON.parse(savedItem); parsed.user = updated; localStorage.setItem("user", JSON.stringify(parsed)); }
+        const savedItem = localStorage.getItem("user");
+        if (savedItem) {
+          const parsed = JSON.parse(savedItem);
+          parsed.user = updated;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        }
         setStoredUser(updated);
       }
     } catch (e) {}
@@ -69,20 +74,25 @@ export default function DeputyHeadDashboard({
     try {
       setLoading(true);
       const data: any = await api.get("/users");
+      console.log("data", data);
       setStudents(data.students || []);
       setSubjects(data.subjects || []);
 
       // Calculate teacher averages from their assignments
       const staffWithAvgs = (data.staff || []).map((t: any) => {
         // Find assignments for this teacher
-        const tAssignments = (data.assignments || []).filter((a: any) => a.teacherId === t.id);
+        const tAssignments = (data.assignments || []).filter(
+          (a: any) => a.teacherId === t.id,
+        );
         let totalMarks = 0;
         let count = 0;
 
         tAssignments.forEach((a: any) => {
           // Find students in this class
-          const classStudents = (data.students || []).filter((s: any) => 
-            String(s.classGrade) === String(a.classGrade) && s.classStream === a.classStream
+          const classStudents = (data.students || []).filter(
+            (s: any) =>
+              String(s.classGrade) === String(a.classGrade) &&
+              s.classStream === a.classStream,
           );
 
           classStudents.forEach((s: any) => {
@@ -96,15 +106,16 @@ export default function DeputyHeadDashboard({
 
         return {
           ...t,
-          avg: count > 0 ? Math.round(totalMarks / count) : 0
+          avg: count > 0 ? Math.round(totalMarks / count) : 0,
         };
       });
       setStaff(staffWithAvgs);
-      
+
       // Derive classes from students and assignments
       const classMap = new Map();
       (data.students || []).forEach((s: any) => {
         if (!s.classGrade) return;
+        console.log("---->",s)
         const key = `${s.classGrade}${s.classStream || ""}`;
         if (!classMap.has(key)) {
           classMap.set(key, {
@@ -116,9 +127,9 @@ export default function DeputyHeadDashboard({
             subjects: 0,
             avg: 0,
             term: storedUser?.term || 1,
-            teacher: "Unassigned",
+            teacher: "🔔",
             _totalAvg: 0, // Keep track to compute mean
-            _studentsWithMarks: 0
+            _studentsWithMarks: 0,
           });
         }
         classMap.get(key).students += 1;
@@ -130,7 +141,7 @@ export default function DeputyHeadDashboard({
       });
 
       // Compute final avg for classes
-      classMap.forEach(c => {
+      classMap.forEach((c) => {
         if (c._studentsWithMarks > 0) {
           c.avg = Math.round(c._totalAvg / c._studentsWithMarks);
         }
@@ -139,7 +150,8 @@ export default function DeputyHeadDashboard({
       // Find class teachers from staff
       (data.staff || []).forEach((t: any) => {
         if (
-          (t.roleLabel?.toLowerCase() === "classteacher" || t.role === "classTeacher") &&
+          (t.roleLabel?.toLowerCase() === "classteacher" ||
+            t.roles.includes("classTeacher")) &&
           t.classGrade
         ) {
           const key = `${t.classGrade}${t.classStream || ""}`;
@@ -159,7 +171,6 @@ export default function DeputyHeadDashboard({
 
       setClasses(Array.from(classMap.values()));
     } catch (err) {
-      
     } finally {
       setLoading(false);
     }
@@ -216,23 +227,58 @@ export default function DeputyHeadDashboard({
   };
 
   const renderContent = () => {
-    if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Loading dashboard...</div>;
+    if (loading)
+      return (
+        <div style={{ padding: 40, textAlign: "center" }}>
+          Loading dashboard...
+        </div>
+      );
 
     switch (tab) {
       case "overview":
-        return <SchoolOverview isHT={isHT} classes={classes} students={students} staff={staff} term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
+        return (
+          <SchoolOverview
+            isHT={isHT}
+            classes={classes}
+            students={students}
+            staff={staff}
+            term={storedUser?.term || 1}
+            year={storedUser?.year || 2024}
+          />
+        );
       case "teachers":
         return <TeacherManagement staff={staff} />;
       case "classes":
-        return <ClassManagement classes={classes} students={students} staff={staff} term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
+        return (
+          <ClassManagement
+            classes={classes}
+            students={students}
+            staff={staff}
+            term={storedUser?.term || 1}
+            year={storedUser?.year || 2024}
+          />
+        );
       case "students":
         return <StudentManagement students={students} subjects={subjects} />;
       case "analytics":
-        return <Analytics classes={classes} staff={staff} students={students} term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
+        return (
+          <Analytics
+            classes={classes}
+            staff={staff}
+            students={students}
+            term={storedUser?.term || 1}
+            year={storedUser?.year || 2024}
+          />
+        );
       case "topStudents":
         return <TopStudents students={students} classes={classes} />;
       case "reports":
-        return <Reports term={storedUser?.term || 1} year={storedUser?.year || 2024} />;
+        return (
+          <Reports
+            term={storedUser?.term || 1}
+            year={storedUser?.year || 2024}
+          />
+        );
       case "concerns":
         return <ParentConcerns />;
       default:
