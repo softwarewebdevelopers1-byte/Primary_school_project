@@ -1,10 +1,22 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
-import { ArchiveModel, AssignmentModel, ClassSubjectSettingModel, SubjectModel, TimetableModel } from "../models/school.model.js";
+import {
+  ArchiveModel,
+  AssignmentModel,
+  ClassSubjectSettingModel,
+  SubjectModel,
+  TimetableModel,
+} from "../models/school.model.js";
 import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
 import { authenticate, type AuthRequest } from "../middleware/auth.js";
-import { buildArchiveSearchQuery, deleteStoredArchiveById } from "../utils/archiver.js";
-import { deleteStoredTimetableById, generateAndStoreSchoolTimetables } from "../utils/timetable.js";
+import {
+  buildArchiveSearchQuery,
+  deleteStoredArchiveById,
+} from "../utils/archiver.js";
+import {
+  deleteStoredTimetableById,
+  generateAndStoreSchoolTimetables,
+} from "../utils/timetable.js";
 import {
   buildClassKey,
   buildClassSubjectSettingMap,
@@ -19,30 +31,34 @@ const router = Router();
 const mapTimetableRecord = (record: any, teacherId?: string) => {
   const myLessons = teacherId
     ? record.days.flatMap((day: any) =>
-        day.entries
-          .flatMap((entry: any) => {
-            if (entry.teacherId === teacherId) {
-              return [{
+        day.entries.flatMap((entry: any) => {
+          if (entry.teacherId === teacherId) {
+            return [
+              {
                 day: day.day,
                 ...entry,
-              }];
-            }
+              },
+            ];
+          }
 
-            const matchingParallelLessons = Array.isArray(entry.parallelLessons)
-              ? entry.parallelLessons.filter((lesson: any) => lesson.teacherId === teacherId)
-              : [];
+          const matchingParallelLessons = Array.isArray(entry.parallelLessons)
+            ? entry.parallelLessons.filter(
+                (lesson: any) => lesson.teacherId === teacherId,
+              )
+            : [];
 
-            return matchingParallelLessons.map((lesson: any) => ({
-              day: day.day,
-              ...entry,
-              subjectId: lesson.subjectId,
-              subjectName: lesson.subjectName,
-              teacherId: lesson.teacherId,
-              teacherName: lesson.teacherName,
-              enrollmentMode: lesson.enrollmentMode || entry.enrollmentMode || null,
-              sharedSlotId: lesson.sharedSlotId || entry.sharedSlotId || null,
-            }));
-          }),
+          return matchingParallelLessons.map((lesson: any) => ({
+            day: day.day,
+            ...entry,
+            subjectId: lesson.subjectId,
+            subjectName: lesson.subjectName,
+            teacherId: lesson.teacherId,
+            teacherName: lesson.teacherName,
+            enrollmentMode:
+              lesson.enrollmentMode || entry.enrollmentMode || null,
+            sharedSlotId: lesson.sharedSlotId || entry.sharedSlotId || null,
+          }));
+        }),
       )
     : [];
 
@@ -123,7 +139,10 @@ const canManageClassSubjects = async (
     return false;
   }
 
-  const currentUser: any = await userModel.findById(req.user.id).select("class classStream").lean();
+  const currentUser: any = await userModel
+    .findById(req.user.id)
+    .select("class classStream")
+    .lean();
   return (
     normalizeClassValue(currentUser?.class) === classGrade &&
     normalizeClassValue(currentUser?.classStream) === classStream
@@ -156,7 +175,11 @@ router.put("/subjects/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, department } = req.body;
-    const updatedSubject = await SubjectModel.findByIdAndUpdate(id, { name, department }, { returnDocument: 'after' });
+    const updatedSubject = await SubjectModel.findByIdAndUpdate(
+      id,
+      { name, department },
+      { returnDocument: "after" },
+    );
     res.json(updatedSubject);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -183,9 +206,18 @@ router.get("/class-subjects", async (req: AuthRequest, res: Response) => {
     const classStream = normalizeClassValue(req.query.classStream);
 
     if (classGrade) {
-      const isAllowed = await canManageClassSubjects(req, classGrade, classStream);
+      const isAllowed = await canManageClassSubjects(
+        req,
+        classGrade,
+        classStream,
+      );
       if (!isAllowed) {
-        return res.status(403).json({ message: "You do not have access to manage subjects for this class." });
+        return res
+          .status(403)
+          .json({
+            message:
+              "You do not have access to manage subjects for this class.",
+          });
       }
 
       const [subjects, settings] = await Promise.all([
@@ -210,7 +242,11 @@ router.get("/class-subjects", async (req: AuthRequest, res: Response) => {
     }
 
     if (!hasRole(roles, rolesMapped.ADM)) {
-      return res.status(403).json({ message: "Only admins can view school-wide class subject settings." });
+      return res
+        .status(403)
+        .json({
+          message: "Only admins can view school-wide class subject settings.",
+        });
     }
 
     const settings = await ClassSubjectSettingModel.find().lean();
@@ -232,24 +268,45 @@ router.get("/class-subjects", async (req: AuthRequest, res: Response) => {
 
 router.put("/class-subjects", async (req: AuthRequest, res: Response) => {
   try {
-    const subjectId = typeof req.body.subjectId === "string" ? req.body.subjectId.trim() : "";
+    const subjectId =
+      typeof req.body.subjectId === "string" ? req.body.subjectId.trim() : "";
     const classGrade = normalizeClassValue(req.body.classGrade);
     const classStream = normalizeClassValue(req.body.classStream);
     const isOffered = req.body.isOffered;
-    const enrollmentMode = normalizeSubjectEnrollmentMode(req.body.enrollmentMode);
+    const enrollmentMode = normalizeSubjectEnrollmentMode(
+      req.body.enrollmentMode,
+    );
     const sharedSlotId = normalizeSharedSlotId(req.body.sharedSlotId);
-
     if (!subjectId || !classGrade || typeof isOffered !== "boolean") {
-      return res.status(400).json({ message: "subjectId, classGrade, classStream and isOffered are required." });
+      console.log("issue one ---> ", subjectId, classGrade, isOffered);
+      return res
+        .status(400)
+        .json({
+          message:
+            "subjectId, classGrade, classStream and isOffered are required.",
+        });
     }
 
     if (sharedSlotId && enrollmentMode !== "elective") {
-      return res.status(400).json({ message: "sharedSlotId can only be used for elective subjects." });
+      console.log("issue two ---> ", sharedSlotId, enrollmentMode);
+      return res
+        .status(400)
+        .json({
+          message: "sharedSlotId can only be used for elective subjects.",
+        });
     }
 
-    const isAllowed = await canManageClassSubjects(req, classGrade, classStream);
+    const isAllowed = await canManageClassSubjects(
+      req,
+      classGrade,
+      classStream,
+    );
     if (!isAllowed) {
-      return res.status(403).json({ message: "You do not have access to update subjects for this class." });
+      return res
+        .status(403)
+        .json({
+          message: "You do not have access to update subjects for this class.",
+        });
     }
 
     const subjectExists = await SubjectModel.exists({ _id: subjectId } as any);
@@ -275,7 +332,11 @@ router.put("/class-subjects", async (req: AuthRequest, res: Response) => {
     );
 
     if (!isOffered) {
-      await AssignmentModel.deleteMany({ subjectId, classGrade, classStream } as any);
+      await AssignmentModel.deleteMany({
+        subjectId,
+        classGrade,
+        classStream,
+      } as any);
     }
 
     res.json({
@@ -298,7 +359,11 @@ router.get("/assignments", async (req: Request, res: Response) => {
     ]);
     const settingsMap = buildClassSubjectSettingMap(settings as any[]);
 
-    res.json(assignments.map((assignment: any) => mapAssignmentWithEnrollment(assignment.toObject(), settingsMap)));
+    res.json(
+      assignments.map((assignment: any) =>
+        mapAssignmentWithEnrollment(assignment.toObject(), settingsMap),
+      ),
+    );
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -310,14 +375,17 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
     const [assignments, settings, students] = await Promise.all([
       AssignmentModel.find({ teacherId: id } as any).populate("subjectId"),
       ClassSubjectSettingModel.find().lean(),
-      studentModel.find({ class: { $ne: null }, classStream: { $ne: null } } as any)
+      studentModel
+        .find({ class: { $ne: null }, classStream: { $ne: null } } as any)
         .select("_id class classStream enrolledSubjects")
         .lean(),
     ]);
     const settingsMap = buildClassSubjectSettingMap(settings as any[]);
-    
+
     // Filter out assignments where the subject no longer exists in the system
-    const validAssignments = assignments.filter((a: any) => a.subjectId != null);
+    const validAssignments = assignments.filter(
+      (a: any) => a.subjectId != null,
+    );
 
     const studentsByClass = new Map<string, any[]>();
     for (const student of students as any[]) {
@@ -328,20 +396,30 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
     }
 
     // Add student count to each valid assignment
-    const enrichedAssignments = await Promise.all(validAssignments.map(async (a: any) => {
-      const classStudents = studentsByClass.get(buildClassKey(a.classGrade, a.classStream)) || [];
-      const subjectId = a?.subjectId?._id?.toString?.() || a?.subjectId?.toString?.() || "";
-      const studentCount = filterStudentsForSubject(
-        classStudents,
-        { subjectId, classGrade: a.classGrade, classStream: a.classStream },
-        settingsMap,
-      ).length;
-      
-      return mapAssignmentWithEnrollment(a.toObject(), settingsMap, studentCount);
-    }));
+    const enrichedAssignments = await Promise.all(
+      validAssignments.map(async (a: any) => {
+        const classStudents =
+          studentsByClass.get(buildClassKey(a.classGrade, a.classStream)) || [];
+        const subjectId =
+          a?.subjectId?._id?.toString?.() || a?.subjectId?.toString?.() || "";
+        const studentCount = filterStudentsForSubject(
+          classStudents,
+          { subjectId, classGrade: a.classGrade, classStream: a.classStream },
+          settingsMap,
+        ).length;
+
+        return mapAssignmentWithEnrollment(
+          a.toObject(),
+          settingsMap,
+          studentCount,
+        );
+      }),
+    );
 
     // Filter out assignments that have no students (outdated/orphaned classes)
-    const activeAssignments = enrichedAssignments.filter(a => a.studentCount > 0);
+    const activeAssignments = enrichedAssignments.filter(
+      (a) => a.studentCount > 0,
+    );
 
     res.json(activeAssignments);
   } catch (error: any) {
@@ -352,8 +430,19 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
 router.post("/assignments", async (req: Request, res: Response) => {
   try {
     const { subjectId, teacherId, classGrade, classStream } = req.body;
-    if (!subjectId || !teacherId || !classGrade || classStream === undefined || classStream === null) {
-      return res.status(400).json({ message: "subjectId, teacherId, classGrade and classStream are required." });
+    if (
+      !subjectId ||
+      !teacherId ||
+      !classGrade ||
+      classStream === undefined ||
+      classStream === null
+    ) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "subjectId, teacherId, classGrade and classStream are required.",
+        });
     }
 
     const droppedSetting = await ClassSubjectSettingModel.findOne({
@@ -365,14 +454,15 @@ router.post("/assignments", async (req: Request, res: Response) => {
 
     if (droppedSetting) {
       return res.status(400).json({
-        message: "This subject is currently dropped for the selected class. Add it back before assigning a teacher.",
+        message:
+          "This subject is currently dropped for the selected class. Add it back before assigning a teacher.",
       });
     }
 
     const assignment = await AssignmentModel.findOneAndUpdate(
       { subjectId, classGrade, classStream },
       { teacherId },
-      { returnDocument: 'after', upsert: true }
+      { returnDocument: "after", upsert: true },
     );
 
     res.status(201).json(assignment);
@@ -396,7 +486,9 @@ router.post("/timetables/generate", async (req: AuthRequest, res: Response) => {
   try {
     const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
     if (!hasRole(roles, rolesMapped.ADM)) {
-      return res.status(403).json({ message: "Only admins can generate school timetables." });
+      return res
+        .status(403)
+        .json({ message: "Only admins can generate school timetables." });
     }
 
     const result = await generateAndStoreSchoolTimetables({
@@ -419,7 +511,9 @@ router.post("/timetables/generate", async (req: AuthRequest, res: Response) => {
       aiSummary: result.aiSummary,
       term: result.term,
       year: result.year,
-      timetables: result.timetables.map((record: any) => mapTimetableRecord(record)),
+      timetables: result.timetables.map((record: any) =>
+        mapTimetableRecord(record),
+      ),
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -428,7 +522,8 @@ router.post("/timetables/generate", async (req: AuthRequest, res: Response) => {
 
 router.get("/timetables", async (req: Request, res: Response) => {
   try {
-    const { classGrade, classStream, teacherId, latestOnly, term, year } = req.query;
+    const { classGrade, classStream, teacherId, latestOnly, term, year } =
+      req.query;
     const query: any = {};
 
     if (classGrade) query.classGrade = String(classGrade);
@@ -437,12 +532,18 @@ router.get("/timetables", async (req: Request, res: Response) => {
     if (term !== undefined) query.term = Number(term);
     if (year !== undefined) query.year = Number(year);
 
-    let timetables = await TimetableModel.find(query).sort({ createdAt: -1 }).lean();
+    let timetables = await TimetableModel.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
     if (latestOnly !== "false") {
       timetables = getLatestByClass(timetables);
     }
 
-    res.json(timetables.map((record: any) => mapTimetableRecord(record, teacherId ? String(teacherId) : undefined)));
+    res.json(
+      timetables.map((record: any) =>
+        mapTimetableRecord(record, teacherId ? String(teacherId) : undefined),
+      ),
+    );
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -451,7 +552,9 @@ router.get("/timetables", async (req: Request, res: Response) => {
 router.get("/timetables/my", async (req: AuthRequest, res: Response) => {
   try {
     const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
-    const view = String(req.query.view || "").trim().toLowerCase();
+    const view = String(req.query.view || "")
+      .trim()
+      .toLowerCase();
     const currentUser: any = await userModel.findById(req.user?.id).lean();
 
     if (!currentUser) {
@@ -466,11 +569,17 @@ router.get("/timetables/my", async (req: AuthRequest, res: Response) => {
 
     if (view === "class") {
       if (!hasRole(roles, rolesMapped.CT)) {
-        return res.status(403).json({ message: "You do not have access to a class timetable view." });
+        return res
+          .status(403)
+          .json({
+            message: "You do not have access to a class timetable view.",
+          });
       }
 
       if (!currentUser.class || !currentUser.classStream) {
-        return res.status(400).json({ message: "Your profile is not assigned to a class." });
+        return res
+          .status(400)
+          .json({ message: "Your profile is not assigned to a class." });
       }
 
       query.classGrade = currentUser.class;
@@ -480,17 +589,27 @@ router.get("/timetables/my", async (req: AuthRequest, res: Response) => {
       query.teacherIds = teacherId;
     } else if (hasRole(roles, rolesMapped.ADM)) {
       // Admins can access current-cycle school timetables through this route without extra filters.
-    } else if (hasRole(roles, rolesMapped.CT) && currentUser.class && currentUser.classStream) {
+    } else if (
+      hasRole(roles, rolesMapped.CT) &&
+      currentUser.class &&
+      currentUser.classStream
+    ) {
       query.classGrade = currentUser.class;
       query.classStream = currentUser.classStream;
     } else {
-      return res.status(403).json({ message: "No timetable view is available for your role." });
+      return res
+        .status(403)
+        .json({ message: "No timetable view is available for your role." });
     }
 
-    let timetables = await TimetableModel.find(query).sort({ createdAt: -1 }).lean();
+    let timetables = await TimetableModel.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
     timetables = getLatestByClass(timetables);
 
-    res.json(timetables.map((record: any) => mapTimetableRecord(record, teacherId)));
+    res.json(
+      timetables.map((record: any) => mapTimetableRecord(record, teacherId)),
+    );
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -500,10 +619,13 @@ router.delete("/timetables/:id", async (req: AuthRequest, res: Response) => {
   try {
     const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
     if (!hasRole(roles, rolesMapped.ADM)) {
-      return res.status(403).json({ message: "Only admins can delete published timetables." });
+      return res
+        .status(403)
+        .json({ message: "Only admins can delete published timetables." });
     }
 
-    const timetableId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    const timetableId =
+      typeof req.params.id === "string" ? req.params.id.trim() : "";
     if (!timetableId) {
       return res.status(400).json({ message: "Timetable id is required." });
     }
@@ -530,12 +652,15 @@ router.get("/archives", async (req: Request, res: Response) => {
       query.classStream = String(classStream).trim();
     }
 
-    const searchQuery = typeof search === "string" ? buildArchiveSearchQuery(search) : {};
+    const searchQuery =
+      typeof search === "string" ? buildArchiveSearchQuery(search) : {};
     if (Object.keys(searchQuery).length > 0) {
       Object.assign(query, searchQuery);
     }
 
-    const archives = await ArchiveModel.find(query).sort({ createdAt: -1 }).lean();
+    const archives = await ArchiveModel.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(archives);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -546,10 +671,13 @@ router.delete("/archives/:id", async (req: AuthRequest, res: Response) => {
   try {
     const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
     if (!hasRole(roles, rolesMapped.ADM)) {
-      return res.status(403).json({ message: "Only admins can delete archived reports." });
+      return res
+        .status(403)
+        .json({ message: "Only admins can delete archived reports." });
     }
 
-    const archiveId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    const archiveId =
+      typeof req.params.id === "string" ? req.params.id.trim() : "";
     if (!archiveId) {
       return res.status(400).json({ message: "Archive id is required." });
     }

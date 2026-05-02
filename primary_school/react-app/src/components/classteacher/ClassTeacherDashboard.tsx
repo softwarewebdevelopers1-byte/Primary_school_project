@@ -29,14 +29,54 @@ import { api } from "../../lib/api";
 import { type SubjectEnrollmentMode } from "../../lib/subjectEnrollment";
 
 const NAV = [
-  { id: "students", label: "Student records", desc: "Rosters, contacts, and learner profiles.", Icon: UsersIcon },
-  { id: "marks", label: "Marks management", desc: "Capture marks and review class performance.", Icon: MarkIcon },
-  { id: "assignments", label: "Subject assignments", desc: "See subjects and the assigned teachers.", Icon: HomeIcon },
-  { id: "timetable", label: "Timetable", desc: "View the published class timetable.", Icon: TimetableIcon },
-  { id: "results", label: "Results & reports", desc: "Downloadable reports for this stream.", Icon: FileIcon },
-  { id: "analytics", label: "Analytics", desc: "Averages, rankings, and class trends.", Icon: BarIcon },
-  { id: "archives", label: "Archives", desc: "Past performance reports (PDF).", Icon: ArchiveIcon },
-  { id: "settings", label: "Settings", desc: "Stream details and reporting preferences.", Icon: SettIcon },
+  {
+    id: "students",
+    label: "Student records",
+    desc: "Rosters, contacts, and learner profiles.",
+    Icon: UsersIcon,
+  },
+  {
+    id: "marks",
+    label: "Marks management",
+    desc: "Capture marks and review class performance.",
+    Icon: MarkIcon,
+  },
+  {
+    id: "assignments",
+    label: "Subject assignments",
+    desc: "See subjects and the assigned teachers.",
+    Icon: HomeIcon,
+  },
+  {
+    id: "timetable",
+    label: "Timetable",
+    desc: "View the published class timetable.",
+    Icon: TimetableIcon,
+  },
+  {
+    id: "results",
+    label: "Results & reports",
+    desc: "Downloadable reports for this stream.",
+    Icon: FileIcon,
+  },
+  {
+    id: "analytics",
+    label: "Analytics",
+    desc: "Averages, rankings, and class trends.",
+    Icon: BarIcon,
+  },
+  {
+    id: "archives",
+    label: "Archives",
+    desc: "Past performance reports (PDF).",
+    Icon: ArchiveIcon,
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    desc: "Stream details and reporting preferences.",
+    Icon: SettIcon,
+  },
 ];
 
 export default function ClassTeacherDashboard() {
@@ -75,15 +115,18 @@ export default function ClassTeacherDashboard() {
       setLoading(true);
       setError(null);
       const [studentsData, subjectsData, staffData] = (await Promise.all([
-        api.get(`/users/class/${currentUser.classGrade}/${currentUser.classStream}`, {
-          term: currentUser.term,
-          year: currentUser.year
-        }),
+        api.get(
+          `/users/class/${currentUser.classGrade}/${currentUser.classStream}`,
+          {
+            term: currentUser.term,
+            year: currentUser.year,
+          },
+        ),
         api.get("/school/class-subjects", {
           classGrade: currentUser.classGrade,
           classStream: currentUser.classStream,
         }),
-        api.get("/users") // Get assignments and staff names
+        api.get("/users"), // Get assignments and staff names
       ])) as [any[], any[], any];
       setStudents(studentsData);
       const mappedSubjects = subjectsData.map((subject: any) => ({
@@ -91,57 +134,73 @@ export default function ClassTeacherDashboard() {
         id: subject.id || subject._id,
       }));
       setClassSubjectCatalog(mappedSubjects);
-      setSubjects(mappedSubjects.filter((subject: any) => subject.isOffered !== false));
+      setSubjects(
+        mappedSubjects.filter((subject: any) => subject.isOffered !== false),
+      );
 
-    
       // Filter assignments for THIS class
-      const classAssignments = (staffData.assignments || []).filter(
-        (a: any) => a.classGrade === currentUser.classGrade && a.classStream === currentUser.classStream
-      ).map((a: any) => {
-        const teacher = staffData.staff.find((s: any) => s.id === a.teacherId);
-        return {
-          ...a,
-          teacherName: teacher ? teacher.name : "Unknown"
-        };
-      });
+      const classAssignments = (staffData.assignments || [])
+        .filter(
+          (a: any) =>
+            a.classGrade === currentUser.classGrade &&
+            a.classStream === currentUser.classStream,
+        )
+        .map((a: any) => {
+          const teacher = staffData.staff.find(
+            (s: any) => s.id === a.teacherId,
+          );
+          return {
+            ...a,
+            teacherName: teacher ? teacher.name : "Unknown",
+          };
+        });
       setAssignments(classAssignments);
     } catch (err: any) {
-      
       setError(err.message || "Failed to load records.");
     } finally {
       setLoading(false);
     }
   }, [currentUser]);
 
-  const toggleSubjectOffering = useCallback(async (
+  const toggleSubjectOffering = useCallback(
+    async (
+      subjectId: string,
+      isOffered: boolean,
+      enrollmentMode: SubjectEnrollmentMode = "compulsory",
+      sharedSlotId: string | null = null,
+    ) => {
+      if (!currentUser?.classGrade) {
+        throw new Error("No class is assigned to your profile.");
+      }
+      let payload: any = {
+        subjectId,
+        classGrade: currentUser.classGrade,
+        classStream: currentUser.classStream || "",
+        isOffered,
+        enrollmentMode,
+      };
+      if (enrollmentMode !== "compulsory") {
+        payload.sharedSlotId = sharedSlotId;
+      }
+
+      await api.put("/school/class-subjects", payload);
+      await loadData();
+    },
+    [currentUser, loadData],
+  );
+
+  const handleBulkEnrollElective = async (
+    studentIds: string[],
     subjectId: string,
-    isOffered: boolean,
-    enrollmentMode: SubjectEnrollmentMode = "compulsory",
-    sharedSlotId: string | null = null,
+    action: "enroll" | "unenroll",
   ) => {
-    if (!currentUser?.classGrade) {
-      throw new Error("No class is assigned to your profile.");
-    }
-
-    await api.put("/school/class-subjects", {
-      subjectId,
-      classGrade: currentUser.classGrade,
-      classStream: currentUser.classStream || "",
-      isOffered,
-      enrollmentMode,
-      sharedSlotId,
-    });
-    await loadData();
-  }, [currentUser, loadData]);
-
-  const handleBulkEnrollElective = async (studentIds: string[], subjectId: string, action: "enroll" | "unenroll") => {
     if (!currentUser?.classGrade) return;
     await api.put(`/users/bulk-enroll-elective`, {
       studentIds,
       subjectId,
       classGrade: currentUser.classGrade,
       classStream: currentUser.classStream,
-      action
+      action,
     });
     await loadData();
   };
@@ -158,10 +217,22 @@ export default function ClassTeacherDashboard() {
         // Ensure roles is always an array (backend may return object from DB)
         let rolesArr = freshUser.roles;
         if (rolesArr && !Array.isArray(rolesArr)) {
-          rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(Boolean);
+          rolesArr = [rolesArr.role1, rolesArr.role2, rolesArr.role3].filter(
+            Boolean,
+          );
         }
-        const updated = { ...currentUser, ...freshUser, id: freshUser._id || freshUser.id, roles: rolesArr || currentUser.roles || [] };
-        const savedItem = localStorage.getItem("user"); if (savedItem) { const parsed = JSON.parse(savedItem); parsed.user = updated; localStorage.setItem("user", JSON.stringify(parsed)); }
+        const updated = {
+          ...currentUser,
+          ...freshUser,
+          id: freshUser._id || freshUser.id,
+          roles: rolesArr || currentUser.roles || [],
+        };
+        const savedItem = localStorage.getItem("user");
+        if (savedItem) {
+          const parsed = JSON.parse(savedItem);
+          parsed.user = updated;
+          localStorage.setItem("user", JSON.stringify(parsed));
+        }
         setCurrentUser(updated);
       }
     } catch (e) {}
@@ -219,8 +290,18 @@ export default function ClassTeacherDashboard() {
   };
 
   const renderContent = () => {
-    if (loading) return <div style={{ padding: 40, textAlign: "center" }}>Loading records...</div>;
-    if (error) return <div style={{ padding: 40, textAlign: "center", color: C.dangerText }}>{error}</div>;
+    if (loading)
+      return (
+        <div style={{ padding: 40, textAlign: "center" }}>
+          Loading records...
+        </div>
+      );
+    if (error)
+      return (
+        <div style={{ padding: 40, textAlign: "center", color: C.dangerText }}>
+          {error}
+        </div>
+      );
 
     if (selectedStudent && tab === "students") {
       return (
@@ -233,9 +314,23 @@ export default function ClassTeacherDashboard() {
     }
     switch (tab) {
       case "students":
-        return <StudentRecords students={students} subjects={subjects} onViewStudent={setSelectedStudent} classInfo={`Grade ${currentUser?.classGrade}${currentUser?.classStream}`} />;
+        return (
+          <StudentRecords
+            students={students}
+            subjects={subjects}
+            onViewStudent={setSelectedStudent}
+            classInfo={`Grade ${currentUser?.classGrade}${currentUser?.classStream}`}
+          />
+        );
       case "marks":
-        return <MarksManagement students={students} subjects={subjects} onRefresh={loadData} user={currentUser} />;
+        return (
+          <MarksManagement
+            students={students}
+            subjects={subjects}
+            onRefresh={loadData}
+            user={currentUser}
+          />
+        );
       case "assignments":
         return (
           <SubjectAssignments
@@ -262,15 +357,44 @@ export default function ClassTeacherDashboard() {
           />
         );
       case "results":
-        return <ResultsReports students={students} subjects={subjects} term={currentUser.term} year={currentUser.year} examType={currentUser.examType} />;
+        return (
+          <ResultsReports
+            students={students}
+            subjects={subjects}
+            term={currentUser.term}
+            year={currentUser.year}
+            examType={currentUser.examType}
+          />
+        );
       case "analytics":
-        return <Analytics students={students} subjects={subjects} classGrade={currentUser.classGrade} classStream={currentUser.classStream} term={currentUser.term} year={currentUser.year} />;
+        return (
+          <Analytics
+            students={students}
+            subjects={subjects}
+            classGrade={currentUser.classGrade}
+            classStream={currentUser.classStream}
+            term={currentUser.term}
+            year={currentUser.year}
+          />
+        );
       case "archives":
-        return <ArchivesView classGrade={currentUser.classGrade} classStream={currentUser.classStream} title="Class Performance Archives" />;
+        return (
+          <ArchivesView
+            classGrade={currentUser.classGrade}
+            classStream={currentUser.classStream}
+            title="Class Performance Archives"
+          />
+        );
       case "settings":
-        return <Settings user={currentUser} studentsCount={students.length} onUserUpdate={() => {
-          window.location.reload(); // Simplest way to refresh everything with new term info
-        }} />;
+        return (
+          <Settings
+            user={currentUser}
+            studentsCount={students.length}
+            onUserUpdate={() => {
+              window.location.reload(); // Simplest way to refresh everything with new term info
+            }}
+          />
+        );
       default:
         return null;
     }
@@ -410,8 +534,9 @@ export default function ClassTeacherDashboard() {
                       lineHeight: 1.25,
                     }}
                   >
-                    Keep Grade {currentUser?.classGrade || ""} {currentUser?.classStream || ""} organized and
-                    ready for reporting.
+                    Keep Grade {currentUser?.classGrade || ""}{" "}
+                    {currentUser?.classStream || ""} organized and ready for
+                    reporting.
                   </h1>
                   <p
                     style={{
@@ -422,7 +547,8 @@ export default function ClassTeacherDashboard() {
                       maxWidth: 520,
                     }}
                   >
-                    {students.length} learners enrolled · Term {currentUser?.term || 1} well underway
+                    {students.length} learners enrolled · Term{" "}
+                    {currentUser?.term || 1} well underway
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
