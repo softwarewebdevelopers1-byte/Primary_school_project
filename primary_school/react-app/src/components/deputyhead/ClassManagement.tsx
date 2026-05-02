@@ -201,7 +201,7 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({
               <strong>Class Teacher:</strong> {selectedClass.teacher || "Unassigned"}
             </p>
           </div>
-          <div style={{ padding: 24, overflowY: "auto" }}>
+          <div style={{ padding: 24, overflowY: "auto",display:"flex",justifyContent:"center"}}>
             <h4 style={{ margin: "0 0 12px", fontFamily: F.sans, color: C.text }}>Enrolled Students ({students.filter(s => s.classGrade === selectedClass.grade && (s.classStream || "") === (selectedClass.stream || "")).length})</h4>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
