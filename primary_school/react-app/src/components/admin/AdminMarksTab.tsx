@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { api } from "../../lib/api";
 import { C } from "../classteacher/shared/constants";
 import { MarksEntry } from "../shared/MarksEntry";
-import { MarksData, Subject as MarksSubject, Student as MarksStudent } from "../subjectteacher/types";
+import {
+  MarksData,
+  Subject as MarksSubject,
+  Student as MarksStudent,
+} from "../subjectteacher/types";
 import { Class, Student, Subject } from "./types";
 
 interface AdminMarksTabProps {
@@ -47,6 +53,73 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
+const toFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : Number(typeof value === "string" ? value.trim() : value);
+
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const computeMarkPercentage = (marks: any): number | null => {
+  const finalScore = toFiniteNumber(marks?.finalScore);
+  if (finalScore !== null) {
+    return Math.min(100, Math.max(0, Math.round(finalScore)));
+  }
+
+  const cats = [marks?.cat1, marks?.cat2, marks?.cat3, marks?.cat4, marks?.cat5];
+  const catMaxes = [
+    marks?.cat1Max,
+    marks?.cat2Max,
+    marks?.cat3Max,
+    marks?.cat4Max,
+    marks?.cat5Max,
+  ];
+  const exam = toFiniteNumber(marks?.exam);
+  const examMax = toFiniteNumber(marks?.examMax) ?? 100;
+  let totalScore = 0;
+  let totalMax = 0;
+
+  cats.forEach((cat, index) => {
+    const score = toFiniteNumber(cat);
+    if (score !== null) {
+      totalScore += score;
+      totalMax += toFiniteNumber(catMaxes[index]) ?? 40;
+    }
+  });
+
+  if (exam !== null) {
+    totalScore += exam;
+    totalMax += examMax;
+  }
+
+  if (totalMax <= 0) {
+    return null;
+  }
+
+  return Math.round((totalScore / totalMax) * 100);
+};
+
+const gradeFromAverage = (average: number): string => {
+  if (average >= 80) return "A";
+  if (average >= 75) return "A-";
+  if (average >= 70) return "B+";
+  if (average >= 65) return "B";
+  if (average >= 60) return "B-";
+  if (average >= 55) return "C+";
+  if (average >= 50) return "C";
+  if (average >= 45) return "C-";
+  if (average >= 40) return "D+";
+  if (average >= 35) return "D";
+  if (average >= 30) return "D-";
+  return "E";
+};
+
 const hasAnyStoredValue = (marks: {
   cat1: number | string | null;
   cat2: number | string | null;
@@ -56,9 +129,15 @@ const hasAnyStoredValue = (marks: {
   exam: number | string | null;
   finalScore: number | string | null;
 }) =>
-  [marks.cat1, marks.cat2, marks.cat3, marks.cat4, marks.cat5, marks.exam, marks.finalScore].some(
-    (value) => value !== null && value !== "",
-  );
+  [
+    marks.cat1,
+    marks.cat2,
+    marks.cat3,
+    marks.cat4,
+    marks.cat5,
+    marks.exam,
+    marks.finalScore,
+  ].some((value) => value !== null && value !== "");
 
 export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   classes,
@@ -67,11 +146,21 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   onRefresh,
   avatar,
 }) => {
-  const [selectedClassId, setSelectedClassId] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState(() => {
+    const selectedClass = sessionStorage.getItem("selectedClass");
+    return selectedClass ? JSON.parse(selectedClass) : "";
+  });
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
-  const [subjectStudents, setSubjectStudents] = useState<Record<string, MarksStudent[]>>({});
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [subjectStudents, setSubjectStudents] = useState<
+    Record<string, MarksStudent[]>
+  >({});
+  const [isDownloadingGradeReport, setIsDownloadingGradeReport] =
+    useState(false);
+  const [message, setMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
 
   useEffect(() => {
     if (selectedClassId || classes.length === 0) {
@@ -79,14 +168,24 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     }
 
     const preferredClass =
-      classes.find((currentClass) => currentClass.students > 0 && currentClass.offeredSubjectIds.length > 0) ||
-      classes[0];
-    setSelectedClassId(preferredClass.id);
+      classes.find(
+        (currentClass) =>
+          currentClass.students > 0 &&
+          currentClass.offeredSubjectIds.length > 0,
+      ) || classes[0];
+    setSelectedClassId(() => {
+      let updated = preferredClass.id;
+      sessionStorage.setItem("selectedClass", JSON.stringify(updated));
+      return updated;
+    });
   }, [classes, selectedClassId]);
 
-  const currentClass = classes.find((current) => current.id === selectedClassId) || classes[0];
+  const currentClass =
+    classes.find((current) => current.id === selectedClassId) || classes[0];
   const availableSubjects = currentClass
-    ? subjects.filter((subject) => currentClass.offeredSubjectIds.includes(subject.id))
+    ? subjects.filter((subject) =>
+        currentClass.offeredSubjectIds.includes(subject.id),
+      )
     : [];
   const classStudents = currentClass
     ? students.filter((student) => student.classId === currentClass.id)
@@ -108,7 +207,12 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   useEffect(() => {
     setMarksData({});
     setSubjectStudents({});
-  }, [selectedClassId, currentClass?.term, currentClass?.year, currentClass?.examType]);
+  }, [
+    selectedClassId,
+    currentClass?.term,
+    currentClass?.year,
+    currentClass?.examType,
+  ]);
 
   useEffect(() => {
     if (!currentClass || !activeSubjectId) {
@@ -154,7 +258,8 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
       } catch (error: any) {
         if (!ignore) {
           setMessage({
-            text: error?.message || "Unable to load marks for the selected class.",
+            text:
+              error?.message || "Unable to load marks for the selected class.",
             type: "error",
           });
         }
@@ -168,7 +273,12 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     };
   }, [activeSubjectId, currentClass]);
 
-  const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
+  const handleMarkUpdate = (
+    subjectId: string,
+    studentId: string,
+    key: string,
+    value: string,
+  ) => {
     setMarksData((prev) => {
       const updatedSubjectMarks = { ...(prev[subjectId] || {}) };
       const updatedStudentMarks = {
@@ -199,7 +309,8 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
           const maxValue =
             key === "finalScore"
               ? 100
-              : (updatedStudentMarks as any)[maxKey] || (key === "exam" ? 100 : 40);
+              : (updatedStudentMarks as any)[maxKey] ||
+                (key === "exam" ? 100 : 40);
 
           if (numericValue > maxValue) {
             nextValue = maxValue;
@@ -221,7 +332,11 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     });
   };
 
-  const handleConfigUpdate = (subjectId: string, key: string, value: number | string | null) => {
+  const handleConfigUpdate = (
+    subjectId: string,
+    key: string,
+    value: number | string | null,
+  ) => {
     setMarksData((prev) => {
       const updated = { ...prev };
       if (!updated[subjectId]) {
@@ -272,10 +387,12 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     setMessage(null);
 
     try {
-      const detailedMarks = Object.entries(subjectMarks).map(([studentId, marks]) => ({
-        studentId,
-        ...marks,
-      }));
+      const detailedMarks = Object.entries(subjectMarks).map(
+        ([studentId, marks]) => ({
+          studentId,
+          ...marks,
+        }),
+      );
 
       const summaryMarks = detailedMarks
         .filter((marks) => hasAnyStoredValue(marks))
@@ -310,35 +427,224 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
       setMessage({ text: "Marks updated successfully.", type: "success" });
       await onRefresh();
     } catch (error: any) {
-      setMessage({ text: `Failed to save marks: ${error.message}`, type: "error" });
+      setMessage({
+        text: `Failed to save marks: ${error.message}`,
+        type: "error",
+      });
     }
   };
 
   const activeSubjectStudents = subjectStudents[activeSubjectId] || [];
 
-  const mappedStudents: MarksStudent[] = activeSubjectStudents.map((student) => {
-    const studentMarks = (marksData[activeSubjectId] && marksData[activeSubjectId][student.id]) || {
-      cat1: null,
-      cat2: null,
-      cat3: null,
-      cat4: null,
-      cat5: null,
-      cat1Max: 40,
-      cat2Max: 40,
-      cat3Max: 40,
-      cat4Max: 40,
-      cat5Max: 40,
-      exam: null,
-      examMax: 100,
-      finalScore: null,
-    };
+  const handleDownloadGradeReport = async () => {
+    if (!currentClass) {
+      return;
+    }
 
-    return {
-      ...student,
-      marks: studentMarks,
-      pushed: false,
-    };
-  });
+    const gradeClasses = classes.filter(
+      (classItem) => classItem.grade === currentClass.grade,
+    );
+    const gradeStudents = students.filter(
+      (student) => student.classGrade === currentClass.grade,
+    );
+    const gradeSubjectIds = Array.from(
+      new Set(gradeClasses.flatMap((classItem) => classItem.offeredSubjectIds)),
+    );
+    const gradeSubjects = gradeSubjectIds
+      .map((subjectId) => subjects.find((subject) => subject.id === subjectId))
+      .filter((subject): subject is Subject => Boolean(subject));
+
+    if (gradeStudents.length === 0 || gradeSubjects.length === 0) {
+      setMessage({
+        text: "There are no students or active subjects to download for this grade.",
+        type: "error",
+      });
+      return;
+    }
+
+    setIsDownloadingGradeReport(true);
+    setMessage(null);
+
+    try {
+      const rowsByStudent = new Map<
+        string,
+        {
+          id: string;
+          name: string;
+          admissionNo: string;
+          stream: string;
+          marks: Record<string, number | null>;
+          total: number;
+          scoredSubjects: number;
+          average: number;
+          rank: number;
+        }
+      >();
+
+      gradeStudents.forEach((student) => {
+        rowsByStudent.set(student.id, {
+          id: student.id,
+          name: student.name,
+          admissionNo: student.admissionNo,
+          stream: student.classStream || "",
+          marks: {},
+          total: 0,
+          scoredSubjects: 0,
+          average: 0,
+          rank: 0,
+        });
+      });
+
+      for (const classItem of gradeClasses) {
+        for (const subjectId of classItem.offeredSubjectIds) {
+          const data: any[] = await api.get("/marks", {
+            subjectId,
+            classGrade: classItem.grade,
+            classStream: classItem.stream || "",
+            term: currentClass.term,
+            year: currentClass.year,
+            examType: currentClass.examType,
+          });
+
+          data.forEach((item) => {
+            const studentId = item.studentId?.toString();
+            const row = rowsByStudent.get(studentId);
+            if (!row) {
+              return;
+            }
+
+            row.marks[subjectId] = computeMarkPercentage(item.marks);
+          });
+        }
+      }
+
+      const rankedRows = Array.from(rowsByStudent.values())
+        .map((row) => {
+          const scoredMarks = Object.values(row.marks).filter(
+            (mark): mark is number => typeof mark === "number",
+          );
+          const total = scoredMarks.reduce((sum, mark) => sum + mark, 0);
+          const average =
+            scoredMarks.length > 0 ? Math.round(total / scoredMarks.length) : 0;
+
+          return {
+            ...row,
+            total,
+            scoredSubjects: scoredMarks.length,
+            average,
+          };
+        })
+        .sort((first, second) => {
+          if (second.average !== first.average) {
+            return second.average - first.average;
+          }
+          if (second.total !== first.total) {
+            return second.total - first.total;
+          }
+          return first.name.localeCompare(second.name);
+        });
+
+      let currentRank = 0;
+      let previousAverage: number | null = null;
+      let previousTotal: number | null = null;
+
+      rankedRows.forEach((row) => {
+        if (row.average !== previousAverage || row.total !== previousTotal) {
+          currentRank += 1;
+          previousAverage = row.average;
+          previousTotal = row.total;
+        }
+
+        row.rank = currentRank;
+      });
+
+      const doc = new jsPDF("landscape");
+      const gradeLabel = `Grade ${currentClass.grade}`;
+      const cycleLabel = `Term ${currentClass.term || 1}, ${
+        currentClass.year || new Date().getFullYear()
+      } (${(currentClass.examType || "opener").toUpperCase()})`;
+
+      doc.setFontSize(16);
+      doc.text(`${gradeLabel} Merit List - All Streams`, 14, 15);
+      doc.setFontSize(10);
+      doc.text(cycleLabel, 14, 22);
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 28);
+
+      autoTable(doc, {
+        head: [
+          [
+            "Rank",
+            "Student",
+            "Admission No",
+            "Stream",
+            ...gradeSubjects.map((subject) => subject.name),
+            "Total",
+            "Avg",
+            "Grade",
+          ],
+        ],
+        body: rankedRows.map((row) => [
+          row.rank,
+          row.name,
+          row.admissionNo || "-",
+          row.stream || "-",
+          ...gradeSubjects.map((subject) => {
+            const mark = row.marks[subject.id];
+            return typeof mark === "number" ? mark : "-";
+          }),
+          row.total,
+          `${row.average}%`,
+          gradeFromAverage(row.average),
+        ]),
+        startY: 34,
+        theme: "grid",
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [201, 150, 61] },
+      });
+
+      doc.save(
+        `Grade_${currentClass.grade}_All_Streams_Merit_List_${Date.now()}.pdf`,
+      );
+      setMessage({
+        text: `Downloaded ${gradeLabel} marks for all streams.`,
+        type: "success",
+      });
+    } catch (error: any) {
+      setMessage({
+        text: error?.message || "Failed to download the grade marks report.",
+        type: "error",
+      });
+    } finally {
+      setIsDownloadingGradeReport(false);
+    }
+  };
+
+  const mappedStudents: MarksStudent[] = activeSubjectStudents.map(
+    (student) => {
+      const studentMarks = (marksData[activeSubjectId] &&
+        marksData[activeSubjectId][student.id]) || {
+        cat1: null,
+        cat2: null,
+        cat3: null,
+        cat4: null,
+        cat5: null,
+        cat1Max: 40,
+        cat2Max: 40,
+        cat3Max: 40,
+        cat4Max: 40,
+        cat5Max: 40,
+        exam: null,
+        examMax: 100,
+        finalScore: null,
+      };
+
+      return {
+        ...student,
+        marks: studentMarks,
+        pushed: false,
+      };
+    },
+  );
 
   const mappedSubjects: MarksSubject[] = availableSubjects.map((subject) => ({
     id: subject.id,
@@ -353,34 +659,100 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     term: currentClass?.term || 1,
     year: currentClass?.year || new Date().getFullYear(),
     lastAssess: "N/A",
-    enrollmentMode: currentClass?.subjectSettings?.[subject.id]?.enrollmentMode || "compulsory",
-    sharedSlotId: currentClass?.subjectSettings?.[subject.id]?.sharedSlotId || null,
+    enrollmentMode:
+      currentClass?.subjectSettings?.[subject.id]?.enrollmentMode ||
+      "compulsory",
+    sharedSlotId:
+      currentClass?.subjectSettings?.[subject.id]?.sharedSlotId || null,
   }));
 
   if (classes.length === 0) {
-    return <div style={{ ...panelStyle, textAlign: "center" }}>No classes are available yet.</div>;
+    return (
+      <div style={{ ...panelStyle, textAlign: "center" }}>
+        No classes are available yet.
+      </div>
+    );
   }
 
   return (
     <div className="anim" style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "grid", gap: 6 }}>
-        <p style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: ".09em", margin: 0 }}>
+        <p
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: "var(--gold)",
+            textTransform: "uppercase",
+            letterSpacing: ".09em",
+            margin: 0,
+          }}
+        >
           Marks desk
         </p>
-        <h2 style={{ margin: 0, fontFamily: "var(--serif)", fontSize: "1.8rem", color: "var(--text)" }}>
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "var(--serif)",
+            fontSize: "1.8rem",
+            color: "var(--text)",
+          }}
+        >
           Admin marks management
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: "var(--textMut)" }}>
-          Review one class at a time, edit detailed marks, and update final percentages without leaving the admin workspace.
+          Review one class at a time, edit detailed marks, and update final
+          percentages without leaving the admin workspace.
         </p>
+        {currentClass ? (
+          <button
+            type="button"
+            onClick={handleDownloadGradeReport}
+            disabled={isDownloadingGradeReport}
+            style={{
+              justifySelf: "start",
+              marginTop: 8,
+              padding: "9px 14px",
+              background: isDownloadingGradeReport
+                ? "var(--sand)"
+                : "var(--gold)",
+              color: isDownloadingGradeReport ? "var(--textMut)" : "#fff",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: isDownloadingGradeReport ? "wait" : "pointer",
+            }}
+          >
+            {isDownloadingGradeReport
+              ? "Preparing download..."
+              : `Download Grade ${currentClass.grade} marks`}
+          </button>
+        ) : null}
       </div>
 
-      <div style={{ ...panelStyle, display: "grid", gridTemplateColumns: "minmax(220px, 320px) repeat(3, minmax(120px, 1fr))", gap: 12 }}>
+      <div
+        style={{
+          ...panelStyle,
+          display: "grid",
+          gridTemplateColumns:
+            "minmax(220px, 320px) repeat(3, minmax(120px, 1fr))",
+          gap: 12,
+        }}
+      >
         <label style={{ display: "grid", gap: 6 }}>
           <span style={labelStyle}>Class</span>
           <select
             value={currentClass?.id || ""}
-            onChange={(event) => setSelectedClassId(event.target.value)}
+            onChange={(event) =>
+              setSelectedClassId(() => {
+                let updated = event.target.value;
+                sessionStorage.setItem(
+                  "selectedClass",
+                  JSON.stringify(updated),
+                );
+                return updated;
+              })
+            }
             style={inputStyle}
           >
             {classes.map((current) => (
@@ -393,20 +765,48 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
 
         <div style={statBoxStyle}>
           <p style={labelStyle}>Students</p>
-          <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{classStudents.length}</p>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 22,
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
+          >
+            {classStudents.length}
+          </p>
         </div>
 
         <div style={statBoxStyle}>
           <p style={labelStyle}>Active subjects</p>
-          <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{availableSubjects.length}</p>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 22,
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
+          >
+            {availableSubjects.length}
+          </p>
         </div>
 
         <div style={statBoxStyle}>
           <p style={labelStyle}>Current cycle</p>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-            T{currentClass?.term || 1} {currentClass?.year || new Date().getFullYear()}
+          <p
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
+          >
+            T{currentClass?.term || 1}{" "}
+            {currentClass?.year || new Date().getFullYear()}
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--textMut)" }}>
+          <p
+            style={{ margin: "4px 0 0", fontSize: 11, color: "var(--textMut)" }}
+          >
             {(currentClass?.examType || "opener").toUpperCase()}
           </p>
         </div>
@@ -428,12 +828,26 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
       ) : null}
 
       {availableSubjects.length === 0 ? (
-        <div style={{ ...panelStyle, textAlign: "center", color: "var(--textMut)" }}>
-          This class currently has no active subjects. Add one back from the assignments page to start entering marks.
+        <div
+          style={{
+            ...panelStyle,
+            textAlign: "center",
+            color: "var(--textMut)",
+          }}
+        >
+          This class currently has no active subjects. Add one back from the
+          assignments page to start entering marks.
         </div>
       ) : classStudents.length === 0 ? (
-        <div style={{ ...panelStyle, textAlign: "center", color: "var(--textMut)" }}>
-          This class has no enrolled students yet, so there are no marks to manage.
+        <div
+          style={{
+            ...panelStyle,
+            textAlign: "center",
+            color: "var(--textMut)",
+          }}
+        >
+          This class has no enrolled students yet, so there are no marks to
+          manage.
         </div>
       ) : (
         <MarksEntry
