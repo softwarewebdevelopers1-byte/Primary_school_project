@@ -54,6 +54,7 @@ export interface Class {
 export interface Student {
   id: string;
   admissionNo: string;
+  adm?: string;
   name: string;
   gender: string;
   guardianName: string;
@@ -90,6 +91,7 @@ export interface ApiTeacher {
 export interface ApiStudent {
   id: string;
   admissionNo: string;
+  adm?: string;
   name: string;
   gender: string;
   guardianName: string;

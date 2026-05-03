@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { api } from "../../lib/api";
 import { C } from "../classteacher/shared/constants";
 import { MarksEntry } from "../shared/MarksEntry";
@@ -17,17 +15,6 @@ interface AdminMarksTabProps {
   subjects: Subject[];
   onRefresh: () => Promise<void>;
   avatar: (name: string, size: number) => string;
-}
-
-interface ClassPerformanceRow {
-  id: string;
-  name: string;
-  admissionNo: string;
-  marks: Record<string, number | null>;
-  total: number;
-  scoredSubjects: number;
-  average: number;
-  rank: number;
 }
 
 const panelStyle: React.CSSProperties = {
@@ -64,72 +51,10 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-const toFiniteNumber = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
 
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : Number(typeof value === "string" ? value.trim() : value);
 
-  return Number.isFinite(numericValue) ? numericValue : null;
-};
 
-const computeMarkPercentage = (marks: any): number | null => {
-  const finalScore = toFiniteNumber(marks?.finalScore);
-  if (finalScore !== null) {
-    return Math.min(100, Math.max(0, Math.round(finalScore)));
-  }
 
-  const cats = [marks?.cat1, marks?.cat2, marks?.cat3, marks?.cat4, marks?.cat5];
-  const catMaxes = [
-    marks?.cat1Max,
-    marks?.cat2Max,
-    marks?.cat3Max,
-    marks?.cat4Max,
-    marks?.cat5Max,
-  ];
-  const exam = toFiniteNumber(marks?.exam);
-  const examMax = toFiniteNumber(marks?.examMax) ?? 100;
-  let totalScore = 0;
-  let totalMax = 0;
-
-  cats.forEach((cat, index) => {
-    const score = toFiniteNumber(cat);
-    if (score !== null) {
-      totalScore += score;
-      totalMax += toFiniteNumber(catMaxes[index]) ?? 40;
-    }
-  });
-
-  if (exam !== null) {
-    totalScore += exam;
-    totalMax += examMax;
-  }
-
-  if (totalMax <= 0) {
-    return null;
-  }
-
-  return Math.round((totalScore / totalMax) * 100);
-};
-
-const gradeFromAverage = (average: number): string => {
-  if (average >= 80) return "A";
-  if (average >= 75) return "A-";
-  if (average >= 70) return "B+";
-  if (average >= 65) return "B";
-  if (average >= 60) return "B-";
-  if (average >= 55) return "C+";
-  if (average >= 50) return "C";
-  if (average >= 45) return "C-";
-  if (average >= 40) return "D+";
-  if (average >= 35) return "D";
-  if (average >= 30) return "D-";
-  return "E";
-};
 
 const hasAnyStoredValue = (marks: {
   cat1: number | string | null;
@@ -199,9 +124,6 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   const classStudents = currentClass
     ? students.filter((student) => student.classId === currentClass.id)
     : [];
-  const availableSubjectIdsKey = availableSubjects
-    .map((subject) => subject.id)
-    .join("|");
 
   useEffect(() => {
     if (availableSubjects.length === 0) {

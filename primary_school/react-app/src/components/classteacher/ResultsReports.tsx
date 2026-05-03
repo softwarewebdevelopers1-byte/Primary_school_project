@@ -278,6 +278,149 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.text(`Total Marks: ${sum(slipMarks)}`, 20, finalY + 15);
         doc.text(`Average Score: ${avg(slipMarks, slipEligibleCount)}%`, 20, finalY + 23);
         doc.text(`Final Grade: ${grade(avg(slipMarks, slipEligibleCount))}`, 20, finalY + 31);
+
+        doc.save(`${slip.name.replace(/\s+/g, '_')}_Report.pdf`);
+      }
+      setMsg({ text: `Successfully downloaded ${type}${studentName ? ` for ${studentName}` : ""}`, type: "success" });
+    } catch (err) {
+      setMsg({ text: `Failed to download ${type}`, type: "error" });
+    }
+    setTimeout(() => setMsg(null), 3500);
+  };
+
+  return (
+    <div className="ct-anim" style={{ display: "grid", gap: 30 }}>
+      <div>
+        <SectionHeader
+          eyebrow="Reports"
+          title="Results & reports"
+          sub={`Download and review performance summaries for Term ${term}, ${year} (${examType}).`}
+        />
+        {msg && (
+          <div style={{ 
+            padding: "10px 20px", 
+            marginBottom: 15, 
+            borderRadius: 8, 
+            background: msg.type === "success" ? "#eaf3de" : "#fdeaea",
+            color: msg.type === "success" ? "#3b6d11" : "#a32d2d",
+            fontSize: 13,
+            fontWeight: 600
+          }}>
+            {msg.text}
+          </div>
+        )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {reports.map(({ title, desc, tag }) => (
+            <div
+              key={title}
+              className="ct-card ct-metric"
+              style={{
+                background: C.white,
+                border: `1px solid ${C.border}`,
+                borderRadius: 14,
+                padding: "1.4rem",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: 10,
+                }}
+              >
+                <h3
+                  style={{
+                    fontFamily: FONT.serif,
+                    fontSize: "1.15rem",
+                    fontWeight: 600,
+                    color: C.text,
+                  }}
+                >
+                  {title}
+                </h3>
+                <span
+                  style={{
+                    fontFamily: FONT.sans,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.06em",
+                    background: C.goldLight,
+                    color: C.gold,
+                    padding: "3px 9px",
+                    borderRadius: 12,
+                    flexShrink: 0,
+                  }}
+                >
+                  {tag}
+                </span>
+              </div>
+              <p
+                style={{
+                  fontFamily: FONT.sans,
+                  fontSize: 13,
+                  color: C.textMuted,
+                  lineHeight: 1.6,
+                  marginBottom: "1.2rem",
+                }}
+              >
+                {desc}
+              </p>
+              <button
+                className="ct-actionbtn"
+                onClick={() => handleDownload(title === "Full class report" ? "Excel Report" : title)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "9px 16px",
+                  background: C.sand,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 9,
+                  fontFamily: FONT.sans,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.textMid,
+                  cursor: "pointer",
+                  width: "100%",
+                  justifyContent: "center",
+                }}
+              >
+                <DlIcon /> Download
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {sortedStudents.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ background: C.greenLight, border: `1px solid ${C.green}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+            <Avatar name={topStudent.name} size={40} />
+            <div>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.green, textTransform: "uppercase" }}>Top Student</p>
+              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent.name}</h4>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(topStudent, subjects), getEligibleSubjectCount(topStudent, subjects))}%</strong></p>
+            </div>
+          </div>
+          <div style={{ background: "#fdeaea", border: `1px solid ${C.dangerBg}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+            <Avatar name={leastStudent.name} size={40} />
+            <div>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.dangerText, textTransform: "uppercase" }}>Least Student</p>
+              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent.name}</h4>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(leastStudent, subjects), getEligibleSubjectCount(leastStudent, subjects))}%</strong></p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div
         style={{
           background: C.white,
           border: `1px solid ${C.border}`,

@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { api } from "../../lib/api";
 import { Class, Student, Subject } from "./types";
-import { C } from "../classteacher/shared/constants";
 
 interface PerformanceTabProps {
   classes: Class[];
@@ -17,6 +16,7 @@ interface ClassPerformanceRow {
   id: string;
   name: string;
   admissionNo: string;
+  stream: string;
   marks: Record<string, number | null>;
   total: number;
   scoredSubjects: number;
@@ -108,34 +108,55 @@ const gradeFromAverage = (avg: number): string => {
 };
 
 export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, students, subjects }) => {
-  const [selectedClassId, setSelectedClassId] = useState(() => {
-    const saved = sessionStorage.getItem("selectedClass");
+  const [selectedId, setSelectedId] = useState(() => {
+    const saved = sessionStorage.getItem("selectedPerformanceTarget");
     return saved ? JSON.parse(saved) : "";
   });
-  const [classPerformanceRows, setClassPerformanceRows] = useState<ClassPerformanceRow[]>([]);
+  const [performanceRows, setPerformanceRows] = useState<ClassPerformanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  useEffect(() => {
-    if (!selectedClassId && classes.length > 0) {
-      setSelectedClassId(classes[0].id);
-    }
-  }, [classes, selectedClassId]);
+  const uniqueGrades = useMemo(() => {
+    const grades = Array.from(new Set(classes.map(c => c.grade)));
+    return grades.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [classes]);
 
-  const currentClass = classes.find(c => c.id === selectedClassId) || classes[0];
-  const availableSubjects = currentClass ? subjects.filter(s => currentClass.offeredSubjectIds.includes(s.id)) : [];
-  const classStudents = currentClass ? students.filter(s => s.classId === currentClass.id) : [];
+  useEffect(() => {
+    if (!selectedId && classes.length > 0) {
+      setSelectedId(classes[0].id);
+    }
+  }, [classes, selectedId]);
+
+  const isGradeSelected = selectedId.startsWith("grade:");
+  const currentGrade = isGradeSelected ? selectedId.replace("grade:", "") : "";
+  const currentClass = !isGradeSelected ? classes.find(c => c.id === selectedId) : null;
+
+  // For grade-wide, we combine all subjects offered in any stream of that grade
+  const targetClasses = isGradeSelected ? classes.filter(c => c.grade === currentGrade) : (currentClass ? [currentClass] : []);
+  const availableSubjects = useMemo(() => {
+    const ids = Array.from(new Set(targetClasses.flatMap(c => c.offeredSubjectIds)));
+    return subjects.filter(s => ids.includes(s.id));
+  }, [targetClasses, subjects]);
+
+  const targetStudents = useMemo(() => {
+    if (isGradeSelected) return students.filter(s => s.classGrade === currentGrade);
+    return currentClass ? students.filter(s => s.classId === currentClass.id) : [];
+  }, [isGradeSelected, currentGrade, currentClass, students]);
 
   const loadPerformance = async () => {
-    if (!currentClass || classStudents.length === 0) return;
+    if (targetStudents.length === 0 || targetClasses.length === 0) {
+      setPerformanceRows([]);
+      return;
+    }
     setIsLoading(true);
     try {
       const rowsByStudent = new Map<string, ClassPerformanceRow>();
-      classStudents.forEach(s => {
+      targetStudents.forEach(s => {
         rowsByStudent.set(s.id, {
           id: s.id,
           name: s.name,
           admissionNo: s.adm || s.admissionNo || "-",
+          stream: s.classStream || "",
           marks: {},
           total: 0,
           scoredSubjects: 0,
@@ -144,20 +165,24 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         });
       });
 
-      for (const sub of availableSubjects) {
-        const data: any[] = await api.get("/marks", {
-          subjectId: sub.id,
-          classGrade: currentClass.grade,
-          classStream: currentClass.stream || "",
-          term: currentClass.term,
-          year: currentClass.year,
-          examType: currentClass.examType
-        });
-        data.forEach(item => {
-          const sid = item.studentId?.toString();
-          const row = rowsByStudent.get(sid);
-          if (row) row.marks[sub.id] = computeMarkPercentage(item.marks);
-        });
+      // To speed up, we fetch marks for each class-subject combo
+      for (const cls of targetClasses) {
+        const clsSubjects = subjects.filter(s => cls.offeredSubjectIds.includes(s.id));
+        for (const sub of clsSubjects) {
+          const data: any[] = await api.get("/marks", {
+            subjectId: sub.id,
+            classGrade: cls.grade,
+            classStream: cls.stream || "",
+            term: cls.term,
+            year: cls.year,
+            examType: cls.examType
+          });
+          data.forEach(item => {
+            const sid = item.studentId?.toString();
+            const row = rowsByStudent.get(sid);
+            if (row) row.marks[sub.id] = computeMarkPercentage(item.marks);
+          });
+        }
       }
 
       const ranked = Array.from(rowsByStudent.values()).map(row => {
@@ -178,7 +203,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         }
         row.rank = rank;
       });
-      setClassPerformanceRows(ranked);
+      setPerformanceRows(ranked);
     } catch (err: any) {
       setMsg({ text: err.message || "Failed to load performance.", type: "error" });
     } finally {
@@ -188,15 +213,16 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
 
   useEffect(() => {
     loadPerformance();
-  }, [selectedClassId, currentClass?.term, currentClass?.year, currentClass?.examType]);
+  }, [selectedId, targetClasses[0]?.term, targetClasses[0]?.year, targetClasses[0]?.examType]);
 
   const handleDownloadExcel = () => {
-    if (classPerformanceRows.length === 0) return;
-    const worksheetData = classPerformanceRows.map(row => {
+    if (performanceRows.length === 0) return;
+    const worksheetData = performanceRows.map(row => {
       const data: any = {
         Rank: row.rank,
         Student: row.name,
         "Adm No": row.admissionNo,
+        Stream: row.stream
       };
       availableSubjects.forEach(sub => {
         data[sub.name] = row.marks[sub.id] ?? "-";
@@ -210,24 +236,30 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Performance");
-    XLSX.writeFile(workbook, `Performance_${currentClass?.name}_${Date.now()}.xlsx`);
+    const name = isGradeSelected ? `Grade_${currentGrade}_Combined` : (currentClass?.name || "Class");
+    XLSX.writeFile(workbook, `Performance_${name}_${Date.now()}.xlsx`);
     setMsg({ text: "Excel report downloaded successfully.", type: "success" });
   };
 
   const handleDownloadPDF = () => {
-    if (!currentClass || classPerformanceRows.length === 0) return;
+    if (performanceRows.length === 0) return;
     const doc = new jsPDF("landscape");
+    const title = isGradeSelected ? `Grade ${currentGrade} (All Streams) Performance Report` : `${currentClass?.name} Performance Report`;
     doc.setFontSize(16);
-    doc.text(`${currentClass.name} Performance Report`, 14, 15);
+    doc.text(title, 14, 15);
     doc.setFontSize(10);
-    doc.text(`Term ${currentClass.term}, ${currentClass.year} (${currentClass.examType?.toUpperCase()})`, 14, 22);
+    const firstCls = targetClasses[0];
+    if (firstCls) {
+       doc.text(`Term ${firstCls.term}, ${firstCls.year} (${firstCls.examType?.toUpperCase()})`, 14, 22);
+    }
     
     autoTable(doc, {
-      head: [["Rank", "Student", "Adm No", ...availableSubjects.map(s => s.name), "Total", "Avg", "Grade"]],
-      body: classPerformanceRows.map(row => [
+      head: [["Rank", "Student", "Adm No", "Stream", ...availableSubjects.map(s => s.name), "Total", "Avg", "Grade"]],
+      body: performanceRows.map(row => [
         row.rank,
         row.name,
         row.admissionNo,
+        row.stream,
         ...availableSubjects.map(s => row.marks[s.id] ?? "-"),
         row.total,
         `${row.average}%`,
@@ -235,15 +267,16 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
       ]),
       startY: 30,
       theme: "grid",
-      styles: { fontSize: 8 },
+      styles: { fontSize: 7 },
       headStyles: { fillColor: [201, 150, 61] }
     });
-    doc.save(`Performance_${currentClass.name}.pdf`);
+    const name = isGradeSelected ? `Grade_${currentGrade}_Combined` : (currentClass?.name || "Class");
+    doc.save(`Performance_${name}.pdf`);
   };
 
-  const scoredRows = classPerformanceRows.filter(r => r.scoredSubjects > 0);
+  const scoredRows = performanceRows.filter(r => r.scoredSubjects > 0);
   const classAvg = scoredRows.length > 0 ? Math.round(scoredRows.reduce((a, b) => a + b.average, 0) / scoredRows.length) : 0;
-  const topStudent = classPerformanceRows[0] || null;
+  const topStudent = performanceRows[0] || null;
 
   return (
     <div className="anim" style={{ display: "grid", gap: 16 }}>
@@ -255,19 +288,26 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
           Performance & Reports
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: "var(--textMut)" }}>
-          Review class performance trends, rankings, and download consolidated reports in Excel or PDF format.
+          Review performance trends, rankings, and download reports for specific streams or entire grades.
         </p>
       </div>
 
-      <div style={{ ...panelStyle, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+      <div style={{ ...panelStyle, display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1.2fr", gap: 12 }}>
         <label style={{ display: "grid", gap: 6 }}>
-          <span style={labelStyle}>Select Class</span>
-          <select value={selectedClassId} onChange={e => { setSelectedClassId(e.target.value); sessionStorage.setItem("selectedClass", JSON.stringify(e.target.value)); }} style={inputStyle}>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          <span style={labelStyle}>Select Scope</span>
+          <select value={selectedId} onChange={e => { setSelectedId(e.target.value); sessionStorage.setItem("selectedPerformanceTarget", JSON.stringify(e.target.value)); }} style={inputStyle}>
+            <optgroup label="Grade-wide (All Streams)">
+              {uniqueGrades.map(g => (
+                <option key={`grade:${g}`} value={`grade:${g}`}>Grade {g} - Combined</option>
+              ))}
+            </optgroup>
+            <optgroup label="Specific Streams">
+              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </optgroup>
           </select>
         </label>
         <div style={statBoxStyle}>
-          <p style={labelStyle}>Class Average</p>
+          <p style={labelStyle}>{isGradeSelected ? "Grade Average" : "Stream Average"}</p>
           <p style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{isLoading ? "..." : `${classAvg}%`}</p>
         </div>
         <div style={statBoxStyle}>
@@ -275,8 +315,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
           <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{isLoading ? "..." : topStudent ? `${topStudent.name} (${topStudent.average}%)` : "N/A"}</p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-           <button onClick={handleDownloadExcel} style={{ ...inputStyle, background: "var(--gold)", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Excel</button>
-           <button onClick={handleDownloadPDF} style={{ ...inputStyle, background: "var(--white)", cursor: "pointer", fontWeight: 700 }}>PDF</button>
+           <button onClick={handleDownloadExcel} style={{ ...inputStyle, background: "var(--gold)", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Download Excel</button>
+           <button onClick={handleDownloadPDF} style={{ ...inputStyle, background: "var(--white)", cursor: "pointer", fontWeight: 700 }}>Download PDF</button>
         </div>
       </div>
 
@@ -293,6 +333,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
               <th style={{ padding: "12px" }}>Rank</th>
               <th style={{ padding: "12px" }}>Student</th>
               <th style={{ padding: "12px" }}>Adm No</th>
+              <th style={{ padding: "12px" }}>Stream</th>
               <th style={{ padding: "12px" }}>Average</th>
               <th style={{ padding: "12px" }}>Grade</th>
               <th style={{ padding: "12px", textAlign: "right" }}>Total</th>
@@ -300,12 +341,15 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={6} style={{ padding: "40px", textAlign: "center" }}>Loading class performance...</td></tr>
-            ) : classPerformanceRows.map(row => (
+              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
+            ) : performanceRows.length === 0 ? (
+              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
+            ) : performanceRows.map(row => (
               <tr key={row.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td style={{ padding: "12px" }}>{row.rank}</td>
                 <td style={{ padding: "12px", fontWeight: 600 }}>{row.name}</td>
                 <td style={{ padding: "12px", color: "var(--textMut)" }}>{row.admissionNo}</td>
+                <td style={{ padding: "12px", fontSize: 12 }}>{row.stream}</td>
                 <td style={{ padding: "12px", fontWeight: 700, color: "var(--gold)" }}>{row.average}%</td>
                 <td style={{ padding: "12px" }}>{gradeFromAverage(row.average)}</td>
                 <td style={{ padding: "12px", textAlign: "right", fontWeight: 700 }}>{row.total}</td>
