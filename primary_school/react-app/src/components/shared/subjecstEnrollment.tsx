@@ -1,6 +1,4 @@
-import React from "react";
 function StudentSubjectEnrollment() {
-  let students = React.useState([]);
   return (
     <div>
       <select>

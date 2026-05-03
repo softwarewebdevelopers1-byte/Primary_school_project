@@ -107,6 +107,17 @@ const sanitizeEnrolledSubjects = (
     });
 };
 
+const enrollmentMatchesClass = (
+  entry: any,
+  classGrade: string,
+  classStream: string,
+) => {
+  const entryClassGrade = normalizeClassValue(entry?.classGrade) || classGrade;
+  const entryClassStream = normalizeClassValue(entry?.classStream) || classStream;
+
+  return entryClassGrade === classGrade && entryClassStream === classStream;
+};
+
 const validateStudentElectiveEnrollments = async (
   enrolledSubjects: Array<{
     subjectId: string;
@@ -139,7 +150,9 @@ const validateStudentElectiveEnrollments = async (
     classSubjectSettings as any[],
   );
   const activeElectiveSelections = enrolledSubjects.filter(
-    (entry) => entry.isActive !== false,
+    (entry) =>
+      entry.isActive !== false &&
+      enrollmentMatchesClass(entry, classGrade, classStream),
   );
 
   for (const enrollment of activeElectiveSelections) {
@@ -1342,16 +1355,22 @@ router.put(
             (entry) =>
               !(
                 linkedSubjectIds.includes(normalizeSubjectId(entry.subjectId)) &&
-                normalizeClassValue(entry.classGrade) === normalizedClassGrade &&
-                normalizeClassValue(entry.classStream) === normalizedClassStream &&
+                enrollmentMatchesClass(
+                  entry,
+                  normalizedClassGrade,
+                  normalizedClassStream,
+                ) &&
                 normalizeSubjectId(entry.subjectId) !== normalizedSubjectId
               ),
           );
           const exists = enrolled.find(
             (entry) =>
               normalizeSubjectId(entry.subjectId) === normalizedSubjectId &&
-              normalizeClassValue(entry.classGrade) === normalizedClassGrade &&
-              normalizeClassValue(entry.classStream) === normalizedClassStream,
+              enrollmentMatchesClass(
+                entry,
+                normalizedClassGrade,
+                normalizedClassStream,
+              ),
           );
           if (!exists) {
             enrolled.push({
@@ -1370,19 +1389,28 @@ router.put(
             (entry) =>
               !(
                 normalizeSubjectId(entry.subjectId) === normalizedSubjectId &&
-                normalizeClassValue(entry.classGrade) === normalizedClassGrade &&
-                normalizeClassValue(entry.classStream) === normalizedClassStream
+                enrollmentMatchesClass(
+                  entry,
+                  normalizedClassGrade,
+                  normalizedClassStream,
+                )
               ),
           );
         }
 
-        await validateStudentElectiveEnrollments(
+        const sanitizedEnrolled = sanitizeEnrolledSubjects(
           enrolled,
+          normalizedClassGrade,
+          normalizedClassStream,
+        );
+
+        await validateStudentElectiveEnrollments(
+          sanitizedEnrolled,
           normalizedClassGrade,
           normalizedClassStream,
           { requireCompleteLinkedGroups: false },
         );
-        (doc as any).enrolledSubjects = enrolled;
+        (doc as any).enrolledSubjects = sanitizedEnrolled;
         await doc.save();
         updatedCount++;
       }

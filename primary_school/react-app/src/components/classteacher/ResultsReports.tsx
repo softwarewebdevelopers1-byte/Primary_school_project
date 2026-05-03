@@ -15,6 +15,55 @@ interface ResultsReportsProps {
   examType?: string;
 }
 
+const normalizeValue = (value: unknown) =>
+  typeof value === "string" ? value.trim() : "";
+
+const isStudentSubject = (student: any, subject: any) => {
+  if (subject.isOffered === false) {
+    return false;
+  }
+
+  if ((subject.enrollmentMode || "compulsory") !== "elective") {
+    return true;
+  }
+
+  const classGrade = normalizeValue(student?.classGrade);
+  const classStream = normalizeValue(student?.classStream);
+  const enrollments = Array.isArray(student?.enrolledSubjects)
+    ? student.enrolledSubjects
+    : [];
+
+  return enrollments.some((entry: any) => {
+    const enrollmentClassGrade = normalizeValue(entry?.classGrade) || classGrade;
+    const enrollmentClassStream = normalizeValue(entry?.classStream) || classStream;
+
+    return (
+      entry?.isActive !== false &&
+      String(entry?.subjectId || "").trim() === subject.id &&
+      enrollmentClassGrade === classGrade &&
+      enrollmentClassStream === classStream
+    );
+  });
+};
+
+const subjectsForStudent = (student: any, subjects: any[]) =>
+  subjects.filter((subject) => isStudentSubject(student, subject));
+
+const marksForStudentSubjects = (student: any, subjects: any[]) => {
+  const eligibleSubjectIds = new Set(
+    subjectsForStudent(student, subjects).map((subject) => subject.id),
+  );
+  const filteredMarks: Record<string, number> = {};
+
+  Object.entries(student?.marks || {}).forEach(([subjectId, mark]) => {
+    if (eligibleSubjectIds.has(subjectId) && typeof mark === "number") {
+      filteredMarks[subjectId] = mark;
+    }
+  });
+
+  return filteredMarks;
+};
+
 const SectionHeader: React.FC<{
   eyebrow: string;
   title: string;
@@ -86,11 +135,15 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
     },
   ];
 
-  const sortedStudents = [...students].sort((a, b) => avg(b.marks || {}) - avg(a.marks || {}));
+  const sortedStudents = [...students].sort(
+    (a, b) =>
+      avg(marksForStudentSubjects(b, subjects)) -
+      avg(marksForStudentSubjects(a, subjects)),
+  );
   let rank = 0;
   let previousAverage: number | null = null;
   const rankedStudents = sortedStudents.map((student) => {
-    const studentAverage = avg(student.marks || {});
+    const studentAverage = avg(marksForStudentSubjects(student, subjects));
     if (studentAverage !== previousAverage) {
       rank += 1;
       previousAverage = studentAverage;
@@ -114,15 +167,21 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
         const tableColumn = ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg", "Grade"];
-        const tableRows = rankedStudents.map((s) => [
-          s.rank,
-          s.name,
-          s.adm || "-",
-          ...subjects.map(sub => (s.marks || {})[sub.id] ?? "-"),
-          sum(s.marks || {}),
-          avg(s.marks || {}) + "%",
-          grade(avg(s.marks || {}))
-        ]);
+        const tableRows = rankedStudents.map((s) => {
+          const studentMarks = marksForStudentSubjects(s, subjects);
+
+          return [
+            s.rank,
+            s.name,
+            s.adm || "-",
+            ...subjects.map((sub) =>
+              isStudentSubject(s, sub) ? studentMarks[sub.id] ?? "-" : "-",
+            ),
+            sum(studentMarks),
+            `${avg(studentMarks)}%`,
+            grade(avg(studentMarks)),
+          ];
+        });
 
         autoTable(doc, {
           head: [tableColumn],
@@ -160,8 +219,10 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.line(20, 62, 190, 62);
 
         const tableCol = ["Subject", "Score (%)", "Grade"];
-        const tableData = subjects.map(sub => {
-          const m = (slip.marks || {})[sub.id];
+        const slipSubjects = subjectsForStudent(slip, subjects);
+        const slipMarks = marksForStudentSubjects(slip, subjects);
+        const tableData = slipSubjects.map(sub => {
+          const m = slipMarks[sub.id];
           return [
             sub.name,
             m != null ? m.toString() : "-",
@@ -181,9 +242,9 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
-        doc.text(`Total Marks: ${sum(slip.marks || {})}`, 20, finalY + 15);
-        doc.text(`Average Score: ${avg(slip.marks || {})}%`, 20, finalY + 23);
-        doc.text(`Final Grade: ${grade(avg(slip.marks || {}))}`, 20, finalY + 31);
+        doc.text(`Total Marks: ${sum(slipMarks)}`, 20, finalY + 15);
+        doc.text(`Average Score: ${avg(slipMarks)}%`, 20, finalY + 23);
+        doc.text(`Final Grade: ${grade(avg(slipMarks))}`, 20, finalY + 31);
 
         doc.save(`${slip.name.replace(/\s+/g, '_')}_Report.pdf`);
       }
@@ -312,7 +373,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.green, textTransform: "uppercase" }}>Top Student</p>
               <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent.name}</h4>
-              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(topStudent.marks || {})}%</strong></p>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(topStudent, subjects))}%</strong></p>
             </div>
           </div>
           <div style={{ background: "#fdeaea", border: `1px solid ${C.dangerBg}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
@@ -320,7 +381,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.dangerText, textTransform: "uppercase" }}>Least Student</p>
               <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent.name}</h4>
-              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(leastStudent.marks || {})}%</strong></p>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(leastStudent, subjects))}%</strong></p>
             </div>
           </div>
         </div>
@@ -374,7 +435,8 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             </thead>
             <tbody>
               {rankedStudents.map((s) => {
-                const a = avg(s.marks || {});
+                const studentMarks = marksForStudentSubjects(s, subjects);
+                const a = avg(studentMarks);
                 return (
                   <tr key={s.id} style={{ borderTop: `1px solid ${C.borderLight}` }}>
                     <td style={tdStyle}>{s.rank}</td>
@@ -385,14 +447,16 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                       </div>
                     </td>
                     {subjects.slice(0, 5).map(sub => {
-                      const mark = (s.marks || {})[sub.id];
+                      const mark = isStudentSubject(s, sub)
+                        ? studentMarks[sub.id]
+                        : null;
                       return (
                         <td key={sub.id} style={{ ...tdStyle, textAlign: "center", color: gradeColor(mark || 0) }}>
                           {mark != null ? `${mark}%` : "-"}
                         </td>
                       );
                     })}
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: C.text }}>{sum(s.marks || {})}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: C.text }}>{sum(studentMarks)}</td>
                     <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: gradeColor(a) }}>{a}%</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
                       <button
