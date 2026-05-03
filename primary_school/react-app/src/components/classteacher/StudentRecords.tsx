@@ -1,6 +1,6 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { avg, sum, gradeColor, isStudentSubject, marksForStudentSubjects } from "./shared/helpers";
+import { gradeColor, isStudentSubject, marksForStudentSubjects, sumPoints, pointsToGrade, getAttemptedSubjectCount } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
@@ -179,7 +179,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
       >
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: C.sand }}>
+            <tr style={{ background: "#f8f9fa", borderBottom: `2px solid ${C.text}` }}>
               {[
                 "Student",
                 "Adm. No",
@@ -187,13 +187,14 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
               ].map((h) => (
                 <th
                   key={h}
+                  scope="col"
                   style={{
-                    padding: "11px 14px",
+                    padding: "12px 14px",
                     textAlign: "left",
                     fontFamily: FONT.sans,
                     fontSize: 11,
                     fontWeight: 700,
-                    color: C.textMuted,
+                    color: C.text,
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
@@ -205,13 +206,14 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
               {displaySubjects.map(s => (
                 <th
                   key={s.id}
+                  scope="col"
                   style={{
-                    padding: "11px 14px",
+                    padding: "12px 14px",
                     textAlign: "center",
                     fontFamily: FONT.sans,
                     fontSize: 11,
                     fontWeight: 700,
-                    color: C.textMuted,
+                    color: C.text,
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
@@ -222,22 +224,25 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                 </th>
               ))}
               {[
-                "Total",
-                "Avg",
+                "T.Pts",
+                "Avg.Pts",
+                "Grade",
                 "Action",
               ].map((h) => (
                 <th
                   key={h}
+                  scope="col"
                   style={{
-                    padding: "11px 14px",
+                    padding: "12px 14px",
                     textAlign: h === "Action" ? "left" : "center",
                     fontFamily: FONT.sans,
                     fontSize: 11,
-                    fontWeight: 700,
-                    color: C.textMuted,
+                    fontWeight: 800,
+                    color: h === "Action" ? C.text : "#fff",
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
+                    background: h !== "Action" ? "#333" : "transparent"
                   }}
                 >
                   {h}
@@ -246,9 +251,9 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
             </tr>
           </thead>
           <tbody>
+
             {filtered.map((s) => {
               const studentMarks = marksForStudentSubjects(s, subjects);
-              const a = avg(studentMarks);
               return (
                 <tr
                   key={s.id}
@@ -318,28 +323,40 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                       </td>
                     );
                   })}
-                  <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                  <td style={{ padding: "12px 14px", textAlign: "center", background: "#fff9eb", borderLeft: `1px solid ${C.border}` }}>
                     <span
                       style={{
                         fontFamily: FONT.serif,
                         fontSize: 16,
-                        fontWeight: 600,
+                        fontWeight: 900,
                         color: C.text,
                       }}
                     >
-                      {sum(studentMarks)}
+                      {sumPoints(studentMarks)}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                  <td style={{ padding: "12px 14px", textAlign: "center", background: "#fff9eb" }}>
                     <span
                       style={{
                         fontFamily: FONT.serif,
-                        fontSize: 16,
-                        fontWeight: 600,
-                        color: gradeColor(a),
+                        fontSize: 14,
+                        fontWeight: 900,
+                        color: gradeColor(pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1))),
                       }}
                     >
-                      {a}%
+                      {(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1)).toFixed(1)}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 14px", textAlign: "center", background: "#fff9eb" }}>
+                    <span
+                      style={{
+                        fontFamily: FONT.serif,
+                        fontSize: 14,
+                        fontWeight: 900,
+                        color: gradeColor(pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1))),
+                      }}
+                    >
+                      {pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1))}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px" }}>

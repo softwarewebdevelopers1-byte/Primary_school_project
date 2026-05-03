@@ -1,6 +1,6 @@
 // components/classteacher/Analytics.tsx
 import React from "react";
-import { avg, grade, gradeColor, marksForStudentSubjects, getSubId } from "./shared/helpers";
+import { avg, grade, gradeColor, marksForStudentSubjects, getSubId, sumPoints, pointsToGrade, getAttemptedSubjectCount } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
@@ -142,13 +142,22 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   const studentAvgs = students
     .map((s) => {
       const studentMarks = marksForStudentSubjects(s, subjects);
-      return { ...s, avg: avg(studentMarks) };
+      const attemptedCount = getAttemptedSubjectCount(s, subjects);
+      const totalPoints = sumPoints(studentMarks);
+      const avgPoints = totalPoints / (attemptedCount || 1);
+      return { 
+        ...s, 
+        avg: avg(studentMarks), 
+        points: totalPoints, 
+        avgPoints: avgPoints,
+        grade: pointsToGrade(avgPoints)
+      };
     })
-    .sort((a, b) => b.avg - a.avg);
+    .sort((a, b) => b.avgPoints - a.avgPoints);
 
   const classAvg = studentAvgs.length > 0
-    ? Math.round(studentAvgs.reduce((a, s) => a + s.avg, 0) / studentAvgs.length)
-    : 0;
+    ? (studentAvgs.reduce((a, s) => a + s.avgPoints, 0) / studentAvgs.length).toFixed(1)
+    : "0.0";
 
   const bestSubject = [...subjectAvgs].sort((a, b) => b.avg - a.avg)[0];
   const passRate = students.length > 0
@@ -173,15 +182,15 @@ export const Analytics: React.FC<AnalyticsProps> = ({
         }}
       >
         <MetricCard
-          label="Class average"
-          value={`${classAvg}%`}
-          note={`Across ${subjects.length} subjects`}
-          color={gradeColor(classAvg)}
+          label="Class avg points"
+          value={`${classAvg}`}
+          note={`Mean grade: ${pointsToGrade(Number(classAvg))}`}
+          color={gradeColor(pointsToGrade(Number(classAvg)))}
         />
         <MetricCard
           label="Top student"
-          value={studentAvgs[0]?.avg + "%"}
-          note={studentAvgs[0]?.name}
+          value={studentAvgs[0]?.grade || "N/A"}
+          note={`${studentAvgs[0]?.name} (${studentAvgs[0]?.avgPoints.toFixed(1)} pts)`}
           color={C.successText}
         />
         <MetricCard
@@ -325,40 +334,23 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                 >
                   {s.name}
                 </span>
-                <div
-                  style={{
-                    width: 100,
-                    height: 7,
-                    background: C.sand,
-                    borderRadius: 4,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${s.avg}%`,
-                      height: "100%",
-                      background: gradeColor(s.avg),
-                      borderRadius: 4,
-                    }}
-                  />
-                </div>
                 <span
                   style={{
                     fontFamily: FONT.serif,
                     fontSize: 14,
                     fontWeight: 600,
-                    color: gradeColor(s.avg),
-                    width: 42,
+                    color: gradeColor(s.grade),
+                    width: 60,
                     textAlign: "right",
                   }}
                 >
-                  {s.avg}%
+                  {s.avgPoints.toFixed(1)} pts
                 </span>
               </div>
             ))}
           </div>
         </div>
+
 
         {/* Grade distribution */}
         <div

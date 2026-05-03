@@ -2,7 +2,7 @@
 import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { avg, sum, gradeColor, grade, sumPoints, pointsToGrade, isStudentSubject, marksForStudentSubjects, getEligibleSubjectCount, subjectsForStudent, getSubId } from "./shared/helpers";
+import { gradePoints, gradeColor, gradeBg, pointsToGrade, getSubjectRemark, getEligibleSubjectCount, getAttemptedSubjectCount, subjectsForStudent, marksForStudentSubjects, getSubId, isStudentSubject, sumPoints, sum } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -123,23 +123,23 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setFontSize(10);
         doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
-        const tableColumn = ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Points", "Avg", "Grade"];
+        const tableColumn = ["Rank", "Student", "ADM", ...subjects.map(s => s.name.slice(0,3).toUpperCase()), "T.Pts", "Avg.Pts", "Grade"];
         const tableRows = rankedStudents.map((s) => {
           const studentMarks = marksForStudentSubjects(s, subjects);
-          const eligibleCount = getEligibleSubjectCount(s, subjects);
+          const attemptedCount = getAttemptedSubjectCount(s, subjects);
           const totalPoints = sumPoints(studentMarks);
-          const avgPoints = totalPoints / (eligibleCount || 1);
+          const avgPoints = totalPoints / (attemptedCount || 1);
 
           return [
             s.rank,
             s.name,
             s.adm || s.admissionNumber || s.admissionNo || "-",
-            ...subjects.map((sub) =>
-              isStudentSubject(s, sub) ? studentMarks[getSubId(sub.id)] ?? "-" : "-",
-            ),
-            sum(studentMarks),
+            ...subjects.map((sub) => {
+              const m = isStudentSubject(s, sub) ? studentMarks[getSubId(sub.id)] : null;
+              return m != null ? `${m}` : "-";
+            }),
             totalPoints,
-            `${avg(studentMarks, eligibleCount)}%`,
+            avgPoints.toFixed(1),
             pointsToGrade(avgPoints),
           ];
         });
@@ -149,39 +149,41 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
           body: tableRows,
           startY: 28,
           theme: 'grid',
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: [201, 150, 61] } // var(--gold)
+          styles: { fontSize: 8, cellPadding: 2 },
+          headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255], fontStyle: 'bold' },
+          columnStyles: {
+            0: { fontStyle: 'bold', halign: 'center' },
+            [tableColumn.length - 3]: { fontStyle: 'bold', fillColor: [230, 230, 230] },
+            [tableColumn.length - 2]: { fontStyle: 'bold', fillColor: [230, 230, 230] },
+            [tableColumn.length - 1]: { fontStyle: 'bold' }
+          }
         });
 
-        doc.save(`Term${term}_Report_${Date.now()}.pdf`);
+        doc.save(`CBC_MeritList_Term${term}_${Date.now()}.pdf`);
       } else if (type === "Excel Report") {
         const worksheetData = rankedStudents.map((s) => {
           const studentMarks = marksForStudentSubjects(s, subjects);
-          const eligibleCount = getEligibleSubjectCount(s, subjects);
           const totalPoints = sumPoints(studentMarks);
-          const avgPoints = totalPoints / (eligibleCount || 1);
+          const attemptedCount = getAttemptedSubjectCount(s, subjects);
+          const avgPoints = totalPoints / (attemptedCount || 1);
           
-          const row: any = {
-            Rank: s.rank,
-            Student: s.name,
-            "Admission No": s.adm || s.admissionNumber || s.admissionNo || "-",
-          };
-          
-          subjects.forEach(sub => {
-            row[sub.name] = isStudentSubject(s, sub) ? studentMarks[getSubId(sub.id)] ?? "-" : "N/A";
-          });
-          
-          row.Total = sum(studentMarks);
-          row.Points = totalPoints;
-          row.Average = `${avg(studentMarks, eligibleCount)}%`;
-          row.Grade = pointsToGrade(avgPoints);
-          
-          return row;
+          return [
+            s.rank,
+            s.name,
+            s.adm || s.admissionNumber || s.admissionNo || "-",
+            ...subjects.map(sub => isStudentSubject(s, sub) ? (studentMarks[getSubId(sub.id)] ?? "-") : "N/A"),
+            totalPoints,
+            avgPoints.toFixed(1),
+            pointsToGrade(avgPoints)
+          ];
         });
 
-        const ws = XLSX.utils.json_to_sheet(worksheetData);
+        const worksheet = XLSX.utils.aoa_to_sheet([
+          ["Rank", "Student Name", "ADM", ...subjects.map(s => s.name), "Total Pts", "Avg Pts", "Grade"],
+          ...worksheetData
+        ]);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Class Report");
+        XLSX.utils.book_append_sheet(wb, worksheet, "Class Report");
         XLSX.writeFile(wb, `Term${term}_Report_${Date.now()}.xlsx`);
       } else if (type === "Report Slip" || type === "Individual result slips") {
         if (!studentName) {
@@ -208,38 +210,58 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setLineWidth(0.5);
         doc.line(20, 62, 190, 62);
 
-        const tableCol = ["Subject", "Score (%)", "Grade"];
+        const tableCol = ["Subject", "Score (%)", "Pts", "Remark"];
         const slipSubjects = subjectsForStudent(slip, subjects);
         const slipMarks = marksForStudentSubjects(slip, subjects);
+        const slipTotalMarks = sum(slipMarks);
+        const slipTotalPoints = sumPoints(slipMarks);
+
         const tableData = slipSubjects.map(sub => {
           const m = slipMarks[getSubId(sub.id)];
+          const p = m != null ? gradePoints(m) : "-";
+          const remark = m != null ? getSubjectRemark(m) : "-";
           return [
             sub.name,
-            m != null ? m.toString() : "-",
-            m != null ? grade(m) : "-"
+            m != null ? `${m}%` : "-",
+            p,
+            remark
           ];
         });
+
+        // Add Summary Row
+        tableData.push([
+          { content: "TOTAL", styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: `${slipTotalMarks}%`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: `${slipTotalPoints}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: "", styles: { fillColor: [240, 240, 240] } }
+        ]);
 
         autoTable(doc, {
           head: [tableCol],
           body: tableData,
           startY: 68,
-          theme: 'striped',
-          headStyles: { fillColor: [201, 150, 61] }
+          theme: 'grid',
+          headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255] },
+          styles: { fontSize: 10, cellPadding: 4 },
+          columnStyles: {
+            3: { cellWidth: 60 }
+          }
         });
 
         const finalY = (doc as any).lastAutoTable.finalY || 150;
         
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
-        const slipEligibleCount = getEligibleSubjectCount(slip, subjects);
-        const slipTotalPoints = sumPoints(slipMarks);
-        const slipAvgPoints = slipTotalPoints / (slipEligibleCount || 1);
+        const slipAttemptedCount = getAttemptedSubjectCount(slip, subjects);
+        const slipAvgPoints = slipTotalPoints / (slipAttemptedCount || 1);
 
-        doc.text(`Total Marks: ${sum(slipMarks)}`, 20, finalY + 15);
+        doc.text(`Mean Grade: ${pointsToGrade(slipAvgPoints)}`, 20, finalY + 15);
         doc.text(`Total Points: ${slipTotalPoints}`, 20, finalY + 23);
-        doc.text(`Average Score: ${avg(slipMarks, slipEligibleCount)}%`, 20, finalY + 31);
-        doc.text(`Final Grade: ${pointsToGrade(slipAvgPoints)}`, 20, finalY + 39);
+        doc.text(`Average Points: ${slipAvgPoints.toFixed(1)}`, 20, finalY + 31);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "italic");
+        doc.text("Grading Scale: 12-Point System (A=12, E=1)", 105, 280, { align: "center" });
 
         doc.save(`${slip.name.replace(/\s+/g, '_')}_Report.pdf`);
       }
@@ -390,120 +412,147 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
       {sortedStudents.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ background: C.greenLight, border: `1px solid ${C.green}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
-            <Avatar name={topStudent.name} size={40} />
+            <Avatar name={topStudent!.name} size={40} />
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.green, textTransform: "uppercase" }}>Top Student</p>
-              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent.name}</h4>
+              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent!.name}</h4>
               <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
-                Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(topStudent, subjects)) / (getEligibleSubjectCount(topStudent, subjects) || 1))}</strong>
-                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(topStudent, subjects))}</strong>
+                Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(topStudent!, subjects)) / (getEligibleSubjectCount(topStudent!, subjects) || 1))}</strong>
+                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(topStudent!, subjects))}</strong>
               </p>
             </div>
           </div>
           <div style={{ background: "#fdeaea", border: `1px solid ${C.dangerBg}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
-            <Avatar name={leastStudent.name} size={40} />
+            <Avatar name={leastStudent!.name} size={40} />
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.dangerText, textTransform: "uppercase" }}>Least Student</p>
-              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent.name}</h4>
+              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent!.name}</h4>
               <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
-                Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(leastStudent, subjects)) / (getEligibleSubjectCount(leastStudent, subjects) || 1))}</strong>
-                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(leastStudent, subjects))}</strong>
+                Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(leastStudent!, subjects)) / (getEligibleSubjectCount(leastStudent!, subjects) || 1))}</strong>
+                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(leastStudent!, subjects))}</strong>
               </p>
             </div>
           </div>
         </div>
       )}
 
+      <style>
+        {`
+          @media print {
+            @page { size: A4 landscape; margin: 10mm; }
+            .ct-dashboardShell { background: #fff !important; }
+            .ct-sidebar, .ct-topbar, .ct-actionbtn, .ct-pill { display: none !important; }
+            .ct-contentArea { padding: 0 !important; overflow: visible !important; }
+            table { width: 100% !important; border: 1px solid #000 !important; }
+            th, td { border: 1px solid #000 !important; padding: 4px !important; font-size: 10px !important; }
+          }
+        `}
+      </style>
       <div
         style={{
           background: C.white,
-          border: `1px solid ${C.border}`,
+          border: `2px solid ${C.text}`,
           borderRadius: 14,
           overflow: "hidden",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.08)"
         }}
       >
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.border}`, background: C.goldPale, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontFamily: FONT.serif, fontSize: "1.3rem", fontWeight: 600, color: C.text, margin: 0 }}>
-            Class Merit List (Real-time Preview)
+        <div style={{ padding: "18px 24px", borderBottom: `2px solid ${C.text}`, background: "#f8f9fa", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3 style={{ fontFamily: FONT.serif, fontSize: "1.4rem", fontWeight: 700, color: C.text, margin: 0 }}>
+            Academic Performance Index (CBC Mode)
           </h3>
           <button
             onClick={() => handleDownload("Full Merit List")}
+            className="ct-actionbtn"
             style={{
-              padding: "7px 12px",
-              background: C.white,
-              border: `1px solid ${C.border}`,
-              borderRadius: 6,
+              padding: "8px 16px",
+              background: C.text,
+              border: "none",
+              borderRadius: 8,
               fontFamily: FONT.sans,
-              fontSize: 12,
-              fontWeight: 600,
-              color: C.textMid,
+              fontSize: 13,
+              fontWeight: 700,
+              color: C.white,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: 6
+              gap: 8
             }}
           >
-            <DlIcon /> Download List
+            <DlIcon /> Export CBC Report
           </button>
         </div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
             <thead>
-              <tr style={{ background: C.sand }}>
-                <th style={thStyle}>Rank</th>
-                <th style={thStyle}>Student</th>
+              <tr style={{ background: "#f1f3f5", borderBottom: `2px solid ${C.text}` }}>
+                <th scope="col" style={thStyle}>Rank</th>
+                <th scope="col" style={thStyle}>Student Name</th>
                 {subjects.map(s => (
-                  <th key={s.id} style={{ ...thStyle, textAlign: "center" }}>{s.name.slice(0, 3)}</th>
+                  <th scope="col" key={s.id} style={{ ...thStyle, textAlign: "center" }}>{s.name.slice(0, 3).toUpperCase()}</th>
                 ))}
-                <th style={{ ...thStyle, textAlign: "center" }}>Total</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Pts</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Avg</th>
-                <th style={{ ...thStyle, textAlign: "right" }}>Action</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>T.Pts</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>Avg.Pts</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>Grade</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {rankedStudents.map((s) => {
                 const studentMarks = marksForStudentSubjects(s, subjects);
-                const eligibleCount = getEligibleSubjectCount(s, subjects);
-                const a = avg(studentMarks, eligibleCount);
+                const attemptedCount = getAttemptedSubjectCount(s, subjects);
+                const totalPoints = sumPoints(studentMarks);
+                const avgPoints = totalPoints / (attemptedCount || 1);
+                const g = pointsToGrade(avgPoints);
+                
                 return (
-                  <tr key={s.id} style={{ borderTop: `1px solid ${C.borderLight}` }}>
-                    <td style={tdStyle}>{s.rank}</td>
+                  <tr key={s.id} style={{ borderBottom: `1px solid ${C.border}`, transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#fcfcfc"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                    <td style={{ ...tdStyle, fontWeight: 700, textAlign: "center" }}>{s.rank}</td>
                     <td style={tdStyle}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Avatar name={s.name} size={24} />
-                        <span style={{ fontWeight: 600 }}>{s.name}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <Avatar name={s.name} size={28} />
+                        <span style={{ fontWeight: 700, color: C.text }}>{s.name}</span>
                       </div>
                     </td>
                     {subjects.map(sub => {
-                      const mark = isStudentSubject(s, sub)
-                        ? studentMarks[getSubId(sub.id)]
-                        : null;
+                      const mark = isStudentSubject(s, sub) ? studentMarks[getSubId(sub.id)] : null;
                       return (
-                        <td key={sub.id} style={{ ...tdStyle, textAlign: "center", color: gradeColor(mark || 0) }}>
-                          {mark != null ? `${mark}%` : "-"}
+                        <td key={sub.id} style={{ ...tdStyle, textAlign: "center" }}>
+                          {mark != null ? (
+                            <span style={{ 
+                              color: gradeColor(mark), 
+                              fontWeight: 600,
+                              fontSize: 12
+                            }}>
+                              {mark}
+                            </span>
+                          ) : (
+                            <span style={{ color: C.textFaint }}>-</span>
+                          )}
                         </td>
                       );
                     })}
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: C.text }}>{sum(studentMarks)}</td>
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: C.gold }}>{sumPoints(studentMarks)}</td>
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: gradeColor(a) }}>{a}%</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: C.text }}>{totalPoints}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: gradeColor(g) }}>{avgPoints.toFixed(1)}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: gradeColor(g) }}>{g}</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
+
                       <button
                         onClick={() => handleDownload("Report Slip", s.name)}
+                        className="ct-pill"
                         style={{
-                          padding: "5px 10px",
-                          background: "transparent",
-                          border: `1px solid ${C.border}`,
-                          borderRadius: 6,
+                          padding: "6px 12px",
+                          background: gradeBg(g),
+                          border: `1px solid ${gradeColor(g)}`,
+                          borderRadius: 20,
                           fontFamily: FONT.sans,
                           fontSize: 11,
-                          fontWeight: 600,
-                          color: C.textMid,
+                          fontWeight: 700,
+                          color: gradeColor(g),
                           cursor: "pointer"
                         }}
                       >
-                        Download
+                        Print Slip
                       </button>
                     </td>
                   </tr>

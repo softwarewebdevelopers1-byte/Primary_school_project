@@ -1,6 +1,6 @@
 // components/classteacher/StudentDetails.tsx
 import React from "react";
-import { avg, grade, gradeColor, gradeBg, marksForStudentSubjects, subjectsForStudent } from "./shared/helpers";
+import { grade, gradeColor, gradeBg, marksForStudentSubjects, subjectsForStudent, sumPoints, pointsToGrade, getAttemptedSubjectCount } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { BackIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
@@ -17,7 +17,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
   onBack,
 }) => {
   const studentMarks = marksForStudentSubjects(student, subjects);
-  const a = avg(studentMarks);
+
 
   return (
     <div className="ct-anim">
@@ -93,11 +93,11 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                   fontFamily: FONT.serif,
                   fontSize: "2.4rem",
                   fontWeight: 600,
-                  color: gradeColor(a),
+                  color: gradeColor(pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(student, subjects) || 1))),
                   margin: 0,
                 }}
               >
-                {a}%
+                {pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(student, subjects) || 1))}
               </p>
               <p
                 style={{
@@ -107,7 +107,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                   margin: 0,
                 }}
               >
-                Class average · Grade {grade(a)}
+                {(sumPoints(studentMarks) / (getAttemptedSubjectCount(student, subjects) || 1)).toFixed(1)} points
               </p>
             </div>
           </div>

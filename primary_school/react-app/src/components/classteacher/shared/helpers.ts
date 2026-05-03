@@ -76,6 +76,12 @@ export const subjectsForStudent = (student: any, subjects: any[]) => {
   return subjects.filter(sub => isStudentSubject(student, sub));
 };
 
+export const getAttemptedSubjectCount = (student: any, subjects: any[]) => {
+  const marks = marksForStudentSubjects(student, subjects);
+  return Object.keys(marks).length;
+};
+
+
 
 
 
@@ -121,6 +127,7 @@ export const gradePoints = (v: number): number => {
   return 1;
 };
 
+
 export const sumPoints = (marks: Record<string, number>): number => {
   return Object.values(marks || {}).reduce((acc, m) => acc + gradePoints(m), 0);
 };
@@ -140,11 +147,32 @@ export const pointsToGrade = (avgPoints: number): string => {
   return "E";
 };
 
-export const gradeColor = (v: number): string =>
-  v >= 80 ? "#3b6d11" : v >= 60 ? "#854f0b" : "#a32d2d";
+export const getSubjectRemark = (score: number): string => {
+  const pts = gradePoints(score);
+  if (pts >= 11) return "Exceeding Expectations";
+  if (pts >= 6) return "Meeting Expectations";
+  if (pts >= 3) return "Approaching Expectations";
+  return "Below Expectations";
+};
 
-export const gradeBg = (v: number): string =>
-  v >= 80 ? "#eaf3de" : v >= 60 ? "#faeeda" : "#fcebeb";
+export const gradeColor = (v: number | string): string => {
+  const g = typeof v === "number" ? grade(v) : v;
+  if (["A", "A-", "B+"].includes(g)) return "#1D9E75";
+  if (["B", "B-", "C+"].includes(g)) return "#185FA5";
+  if (["C", "C-", "D+"].includes(g)) return "#BA7517";
+  return "#993C1D";
+};
+
+
+export const gradeBg = (v: number | string): string => {
+  const g = typeof v === "number" ? grade(v) : v;
+  if (g === "EE") return "#eafaf1";
+  if (g === "ME") return "#ebf5fb";
+  if (g === "AE") return "#fef9e7";
+  if (g === "BE") return "#fdedec";
+  return "#f4f4f4";
+};
+
 
 export const initials = (name: string): string =>
   name
