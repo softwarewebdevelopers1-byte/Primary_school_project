@@ -1,6 +1,6 @@
 // components/classteacher/Analytics.tsx
 import React from "react";
-import { avg, grade, gradeColor, marksForStudentSubjects } from "./shared/helpers";
+import { avg, grade, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
@@ -137,7 +137,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   });
 
   const studentAvgs = students
-    .map((s) => ({ ...s, avg: avg(marksForStudentSubjects(s, subjects)) }))
+    .map((s) => ({ ...s, avg: avg(s.marks || {}) }))
     .sort((a, b) => b.avg - a.avg);
 
   const classAvg = Math.round(
@@ -145,7 +145,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   );
 
   const bestSubject = [...subjectAvgs].sort((a, b) => b.avg - a.avg)[0];
-  const passRate = Math.round((students.filter(s => avg(marksForStudentSubjects(s, subjects)) >= 50).length / students.length) * 100);
+  const passRate = Math.round((students.filter(s => avg(s.marks || {}) >= 50).length / students.length) * 100);
 
   return (
     <div className="ct-anim">

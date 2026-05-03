@@ -1,6 +1,6 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { avg, sum, gradeColor, marksForStudentSubjects, isStudentSubject } from "./shared/helpers";
+import { avg, sum, gradeColor } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
@@ -247,8 +247,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
           </thead>
           <tbody>
             {filtered.map((s) => {
-              const studentMarks = marksForStudentSubjects(s, subjects);
-              const a = avg(studentMarks);
+              const a = s.marks ? avg(s.marks) : 0;
               return (
                 <tr
                   key={s.id}
@@ -289,36 +288,33 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   <td style={{ padding: "12px 14px" }}>
                     <StatusPill status={s.status} />
                   </td>
-                    {displaySubjects.map(sub => {
-                      let mark = null;
-                      if (sub.isGroup) {
-                        for (const mid of sub.memberIds) {
-                          // Check if student is actually enrolled in this specific subject of the group
-                          const subjectObj = subjects.find(s => s.id === mid);
-                          if (subjectObj && isStudentSubject(s, subjectObj)) {
-                            mark = s.marks?.[mid];
-                            if (mark != null) break;
-                          }
-                        }
-                      } else {
-                        if (isStudentSubject(s, sub)) {
-                          mark = s.marks?.[sub.id];
+                  {displaySubjects.map(sub => {
+                    let mark = null;
+                    if (sub.isGroup) {
+                      // Pick the mark from the first member that has one (since students usually take only one in a pair)
+                      for (const mid of sub.memberIds) {
+                        if (s.marks && s.marks[mid] != null) {
+                          mark = s.marks[mid];
+                          break;
                         }
                       }
-                      
-                      return (
-                        <td key={sub.id} style={{ 
-                          padding: "12px 14px",
-                          textAlign: "center",
-                          fontFamily: FONT.sans,
-                          fontSize: 13.5,
-                          fontWeight: 600,
-                          color: mark != null ? gradeColor(mark) : C.textMuted
-                        }}>
-                          {mark != null ? `${mark}%` : "-"}
-                        </td>
-                      );
-                    })}
+                    } else {
+                      mark = s.marks ? s.marks[sub.id] : null;
+                    }
+                    
+                    return (
+                      <td key={sub.id} style={{ 
+                        padding: "12px 14px",
+                        textAlign: "center",
+                        fontFamily: FONT.sans,
+                        fontSize: 13.5,
+                        fontWeight: 600,
+                        color: mark != null ? gradeColor(mark) : C.textMuted
+                      }}>
+                        {mark != null ? `${mark}%` : "-"}
+                      </td>
+                    );
+                  })}
                   <td style={{ padding: "12px 14px", textAlign: "center" }}>
                     <span
                       style={{
@@ -328,7 +324,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         color: C.text,
                       }}
                     >
-                      {sum(studentMarks)}
+                      {s.marks ? sum(s.marks) : 0}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px", textAlign: "center" }}>

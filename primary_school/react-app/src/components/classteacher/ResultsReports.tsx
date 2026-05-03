@@ -2,7 +2,7 @@
 import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { avg, sum, gradeColor, grade, sumPoints, pointsToGrade, isStudentSubject, marksForStudentSubjects } from "./shared/helpers";
+import { avg, sum, gradeColor, grade, sumPoints, pointsToGrade } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -16,11 +16,57 @@ interface ResultsReportsProps {
   examType?: string;
 }
 
+const normalizeValue = (value: unknown) =>
+  typeof value === "string" ? value.trim() : "";
+
+const isStudentSubject = (student: any, subject: any) => {
+  if (subject.isOffered === false) {
+    return false;
+  }
+
+  if ((subject.enrollmentMode || "compulsory") !== "elective") {
+    return true;
+  }
+
+  const classGrade = normalizeValue(student?.classGrade);
+  const classStream = normalizeValue(student?.classStream);
+  const enrollments = Array.isArray(student?.enrolledSubjects)
+    ? student.enrolledSubjects
+    : [];
+
+  return enrollments.some((entry: any) => {
+    const enrollmentClassGrade = normalizeValue(entry?.classGrade) || classGrade;
+    const enrollmentClassStream = normalizeValue(entry?.classStream) || classStream;
+
+    return (
+      entry?.isActive !== false &&
+      String(entry?.subjectId || "").trim() === subject.id &&
+      enrollmentClassGrade === classGrade &&
+      enrollmentClassStream === classStream
+    );
+  });
+};
+
 const subjectsForStudent = (student: any, subjects: any[]) =>
   subjects.filter((subject) => isStudentSubject(student, subject));
 
 const getEligibleSubjectCount = (student: any, subjects: any[]) => 
   subjectsForStudent(student, subjects).length;
+
+const marksForStudentSubjects = (student: any, subjects: any[]) => {
+  const eligibleSubjectIds = new Set(
+    subjectsForStudent(student, subjects).map((subject) => subject.id),
+  );
+  const filteredMarks: Record<string, number> = {};
+
+  Object.entries(student?.marks || {}).forEach(([subjectId, mark]) => {
+    if (eligibleSubjectIds.has(subjectId) && typeof mark === "number") {
+      filteredMarks[subjectId] = mark;
+    }
+  });
+
+  return filteredMarks;
+};
 
 const SectionHeader: React.FC<{
   eyebrow: string;
