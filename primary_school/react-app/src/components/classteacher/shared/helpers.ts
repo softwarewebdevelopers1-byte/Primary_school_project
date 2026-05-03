@@ -1,4 +1,56 @@
 // components/classteacher/shared/helpers.ts
+
+const normalizeValue = (value: unknown) =>
+  typeof value === "string" ? value.trim() : "";
+
+export const isStudentSubject = (student: any, subject: any) => {
+  if (subject.isOffered === false) {
+    return false;
+  }
+
+  if ((subject.enrollmentMode || "compulsory") !== "elective") {
+    return true;
+  }
+
+  const classGrade = normalizeValue(student?.classGrade || student?.grade);
+  const classStream = normalizeValue(student?.classStream || student?.stream);
+  const enrollments = Array.isArray(student?.enrolledSubjects)
+    ? student.enrolledSubjects
+    : [];
+
+  return enrollments.some((entry: any) => {
+    const entrySubId = String(entry?.subjectId || "").trim();
+    if (entrySubId !== subject.id) return false;
+
+    // If student has class info, we should ideally match it, 
+    // but if missing (common in some API responses), we trust the isActive flag for this subject
+    if (entry?.isActive === false) return false;
+
+    const enrollmentClassGrade = normalizeValue(entry?.classGrade);
+    const enrollmentClassStream = normalizeValue(entry?.classStream);
+
+    if (classGrade && enrollmentClassGrade && enrollmentClassGrade !== classGrade) return false;
+    if (classStream && enrollmentClassStream && enrollmentClassStream !== classStream) return false;
+
+    return true;
+  });
+};
+
+export const marksForStudentSubjects = (student: any, subjects: any[]) => {
+  const eligibleSubjectIds = new Set(
+    subjects.filter(sub => isStudentSubject(student, sub)).map(sub => sub.id)
+  );
+  const filteredMarks: Record<string, number> = {};
+
+  Object.entries(student?.marks || {}).forEach(([subjectId, mark]) => {
+    if (eligibleSubjectIds.has(subjectId) && typeof mark === "number") {
+      filteredMarks[subjectId] = mark;
+    }
+  });
+
+  return filteredMarks;
+};
+
 export const avg = (marks: Record<string, number>, subjectCount?: number): number => {
   const vals = Object.values(marks || {}).filter(v => typeof v === "number");
   if (vals.length === 0) return 0;

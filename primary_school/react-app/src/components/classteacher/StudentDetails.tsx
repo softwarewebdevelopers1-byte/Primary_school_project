@@ -1,6 +1,6 @@
 // components/classteacher/StudentDetails.tsx
 import React from "react";
-import { avg, grade, gradeColor, gradeBg } from "./shared/helpers";
+import { avg, grade, gradeColor, gradeBg, marksForStudentSubjects } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { BackIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
@@ -16,7 +16,8 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
   subjects,
   onBack,
 }) => {
-  const a = avg(student.marks);
+  const studentMarks = marksForStudentSubjects(student, subjects);
+  const a = avg(studentMarks);
 
   return (
     <div className="ct-anim">
@@ -183,9 +184,9 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {subjects
-              .filter(sub => student.marks && student.marks[sub.id] !== undefined)
+              .filter(sub => studentMarks[sub.id] !== undefined)
               .map((sub) => {
-              const m = student.marks[sub.id];
+              const m = studentMarks[sub.id];
               return (
                 <div
                   key={sub.id}
