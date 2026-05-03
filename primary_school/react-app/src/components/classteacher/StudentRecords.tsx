@@ -1,6 +1,6 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { avg, sum, gradeColor } from "./shared/helpers";
+import { avg, sum, gradeColor, isStudentSubject, marksForStudentSubjects } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
@@ -247,7 +247,8 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
           </thead>
           <tbody>
             {filtered.map((s) => {
-              const a = s.marks ? avg(s.marks) : 0;
+              const studentMarks = marksForStudentSubjects(s, subjects);
+              const a = avg(studentMarks);
               return (
                 <tr
                   key={s.id}
@@ -291,15 +292,17 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   {displaySubjects.map(sub => {
                     let mark = null;
                     if (sub.isGroup) {
-                      // Pick the mark from the first member that has one (since students usually take only one in a pair)
                       for (const mid of sub.memberIds) {
-                        if (s.marks && s.marks[mid] != null) {
-                          mark = s.marks[mid];
-                          break;
+                        const subjectObj = subjects.find(item => (item.id || item._id) === mid);
+                        if (subjectObj && isStudentSubject(s, subjectObj)) {
+                          mark = studentMarks[mid];
+                          if (mark != null) break;
                         }
                       }
                     } else {
-                      mark = s.marks ? s.marks[sub.id] : null;
+                      if (isStudentSubject(s, sub)) {
+                        mark = studentMarks[sub.id];
+                      }
                     }
                     
                     return (
@@ -324,7 +327,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         color: C.text,
                       }}
                     >
-                      {s.marks ? sum(s.marks) : 0}
+                      {sum(studentMarks)}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px", textAlign: "center" }}>

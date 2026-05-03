@@ -1,4 +1,84 @@
 // components/classteacher/shared/helpers.ts
+
+export const getSubId = (sid: any): string => {
+  if (!sid) return "";
+  if (typeof sid === "string") return sid.trim();
+  if (typeof sid === "object") {
+    const id = sid.id || sid._id || sid.$oid || (typeof sid.toString === "function" ? sid.toString() : "");
+    return String(id).trim();
+  }
+  return String(sid).trim();
+};
+
+
+export const isStudentSubject = (student: any, subject: any) => {
+  const subjectId = getSubId(subject?.id || subject?._id);
+  if (!subjectId) return false;
+
+  if (subject.isOffered === false) return false;
+
+  const mode = String(subject.enrollmentMode || "compulsory").toLowerCase();
+  const isElective = mode === "elective" || !!subject.sharedSlotId;
+  
+  if (!isElective) return true;
+
+  const enrollments = Array.isArray(student?.enrolledSubjects) ? student.enrolledSubjects : [];
+  
+  // If it's an elective or part of a shared slot, we MUST find an active enrollment entry for THIS specific subjectId
+  return enrollments.some((entry: any) => {
+    const entrySubId = getSubId(entry?.subjectId);
+    return entrySubId === subjectId && entry?.isActive !== false;
+  });
+};
+
+
+export const marksForStudentSubjects = (student: any, subjects: any[]) => {
+  const filteredMarks: Record<string, number> = {};
+  const slotTaken = new Set<string>();
+
+  // Sort subjects: compulsories first, then electives
+  // This helps if there are any weird slot collisions
+  const sortedSubjects = [...subjects].sort((a, b) => {
+    const aElective = String(a.enrollmentMode).toLowerCase() === "elective" || !!a.sharedSlotId;
+    const bElective = String(b.enrollmentMode).toLowerCase() === "elective" || !!b.sharedSlotId;
+    if (aElective === bElective) return 0;
+    return aElective ? 1 : -1;
+  });
+
+  sortedSubjects.forEach((sub) => {
+    if (isStudentSubject(student, sub)) {
+      const slotId = sub.sharedSlotId ? String(sub.sharedSlotId) : null;
+      
+      // If this subject is in a shared slot that we already filled for this student, skip
+      if (slotId && slotTaken.has(slotId)) {
+        return;
+      }
+
+      const sid = getSubId(sub.id || sub._id);
+      const mark = student?.marks ? student.marks[sid] : null;
+      
+      if (typeof mark === "number") {
+        filteredMarks[sid] = mark;
+        if (slotId) slotTaken.add(slotId);
+      }
+    }
+  });
+
+  return filteredMarks;
+};
+
+
+export const getEligibleSubjectCount = (student: any, subjects: any[]) => {
+  return subjects.filter(sub => isStudentSubject(student, sub)).length;
+};
+
+export const subjectsForStudent = (student: any, subjects: any[]) => {
+  return subjects.filter(sub => isStudentSubject(student, sub));
+};
+
+
+
+
 export const avg = (marks: Record<string, number>, subjectCount?: number): number => {
   const vals = Object.values(marks || {}).filter(v => typeof v === "number");
   if (vals.length === 0) return 0;

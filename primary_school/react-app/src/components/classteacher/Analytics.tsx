@@ -1,6 +1,6 @@
 // components/classteacher/Analytics.tsx
 import React from "react";
-import { avg, grade, gradeColor } from "./shared/helpers";
+import { avg, grade, gradeColor, marksForStudentSubjects, getSubId } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
 
@@ -128,24 +128,32 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   }
 
   const subjectAvgs = subjects.map((s) => {
-    const marks = students.map((st) => st.marks?.[s.id] || 0);
-    const sum = marks.reduce((a, b) => a + b, 0);
+    const sid = getSubId(s.id || s._id);
+    const marks = students
+      .filter((st) => marksForStudentSubjects(st, subjects)[sid] !== undefined)
+      .map((st) => marksForStudentSubjects(st, subjects)[sid]);
+    const total = marks.reduce((a, b) => a + (b || 0), 0);
     return {
       ...s,
-      avg: marks.length > 0 ? Math.round(sum / marks.length) : 0,
+      avg: marks.length > 0 ? Math.round(total / marks.length) : 0,
     };
   });
 
   const studentAvgs = students
-    .map((s) => ({ ...s, avg: avg(s.marks || {}) }))
+    .map((s) => {
+      const studentMarks = marksForStudentSubjects(s, subjects);
+      return { ...s, avg: avg(studentMarks) };
+    })
     .sort((a, b) => b.avg - a.avg);
 
-  const classAvg = Math.round(
-    studentAvgs.reduce((a, s) => a + s.avg, 0) / studentAvgs.length,
-  );
+  const classAvg = studentAvgs.length > 0
+    ? Math.round(studentAvgs.reduce((a, s) => a + s.avg, 0) / studentAvgs.length)
+    : 0;
 
   const bestSubject = [...subjectAvgs].sort((a, b) => b.avg - a.avg)[0];
-  const passRate = Math.round((students.filter(s => avg(s.marks || {}) >= 50).length / students.length) * 100);
+  const passRate = students.length > 0
+    ? Math.round((students.filter(s => avg(marksForStudentSubjects(s, subjects)) >= 50).length / students.length) * 100)
+    : 0;
 
   return (
     <div className="ct-anim">

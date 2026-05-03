@@ -2,7 +2,7 @@
 import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { avg, sum, gradeColor, grade, sumPoints, pointsToGrade } from "./shared/helpers";
+import { avg, sum, gradeColor, grade, sumPoints, pointsToGrade, isStudentSubject, marksForStudentSubjects, getEligibleSubjectCount, subjectsForStudent, getSubId } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -16,57 +16,7 @@ interface ResultsReportsProps {
   examType?: string;
 }
 
-const normalizeValue = (value: unknown) =>
-  typeof value === "string" ? value.trim() : "";
 
-const isStudentSubject = (student: any, subject: any) => {
-  if (subject.isOffered === false) {
-    return false;
-  }
-
-  if ((subject.enrollmentMode || "compulsory") !== "elective") {
-    return true;
-  }
-
-  const classGrade = normalizeValue(student?.classGrade);
-  const classStream = normalizeValue(student?.classStream);
-  const enrollments = Array.isArray(student?.enrolledSubjects)
-    ? student.enrolledSubjects
-    : [];
-
-  return enrollments.some((entry: any) => {
-    const enrollmentClassGrade = normalizeValue(entry?.classGrade) || classGrade;
-    const enrollmentClassStream = normalizeValue(entry?.classStream) || classStream;
-
-    return (
-      entry?.isActive !== false &&
-      String(entry?.subjectId || "").trim() === subject.id &&
-      enrollmentClassGrade === classGrade &&
-      enrollmentClassStream === classStream
-    );
-  });
-};
-
-const subjectsForStudent = (student: any, subjects: any[]) =>
-  subjects.filter((subject) => isStudentSubject(student, subject));
-
-const getEligibleSubjectCount = (student: any, subjects: any[]) => 
-  subjectsForStudent(student, subjects).length;
-
-const marksForStudentSubjects = (student: any, subjects: any[]) => {
-  const eligibleSubjectIds = new Set(
-    subjectsForStudent(student, subjects).map((subject) => subject.id),
-  );
-  const filteredMarks: Record<string, number> = {};
-
-  Object.entries(student?.marks || {}).forEach(([subjectId, mark]) => {
-    if (eligibleSubjectIds.has(subjectId) && typeof mark === "number") {
-      filteredMarks[subjectId] = mark;
-    }
-  });
-
-  return filteredMarks;
-};
 
 const SectionHeader: React.FC<{
   eyebrow: string;
@@ -185,7 +135,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             s.name,
             s.adm || s.admissionNumber || s.admissionNo || "-",
             ...subjects.map((sub) =>
-              isStudentSubject(s, sub) ? studentMarks[sub.id] ?? "-" : "-",
+              isStudentSubject(s, sub) ? studentMarks[getSubId(sub.id)] ?? "-" : "-",
             ),
             sum(studentMarks),
             totalPoints,
@@ -218,7 +168,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
           };
           
           subjects.forEach(sub => {
-            row[sub.name] = isStudentSubject(s, sub) ? studentMarks[sub.id] ?? "-" : "N/A";
+            row[sub.name] = isStudentSubject(s, sub) ? studentMarks[getSubId(sub.id)] ?? "-" : "N/A";
           });
           
           row.Total = sum(studentMarks);
@@ -262,7 +212,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         const slipSubjects = subjectsForStudent(slip, subjects);
         const slipMarks = marksForStudentSubjects(slip, subjects);
         const tableData = slipSubjects.map(sub => {
-          const m = slipMarks[sub.id];
+          const m = slipMarks[getSubId(sub.id)];
           return [
             sub.name,
             m != null ? m.toString() : "-",
@@ -527,7 +477,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                     </td>
                     {subjects.map(sub => {
                       const mark = isStudentSubject(s, sub)
-                        ? studentMarks[sub.id]
+                        ? studentMarks[getSubId(sub.id)]
                         : null;
                       return (
                         <td key={sub.id} style={{ ...tdStyle, textAlign: "center", color: gradeColor(mark || 0) }}>

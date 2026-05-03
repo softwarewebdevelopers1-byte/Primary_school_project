@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { C, FONT } from "./shared/constants";
 import { formatSubjectOfferingTag, type SubjectEnrollmentMode } from "../../lib/subjectEnrollment";
+import { isStudentSubject } from "./shared/helpers";
 
 const generateElectivePairId = () => `EL-${crypto.randomUUID()}`;
 
@@ -645,8 +646,12 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
                     </thead>
                     <tbody>
                       {students.map(s => {
-                        const isEnrolled = (s.enrolledSubjects || []).some((e: any) => e.isActive && e.subjectId === selectedElective);
-                        const enrolledInOther = isLinkedPair && (s.enrolledSubjects || []).some((e: any) => e.isActive && pairSubjectIds.includes(e.subjectId) && e.subjectId !== selectedElective);
+                        const currentSub = offeredSubjects.find(sub => sub.id === selectedElective);
+                        const isEnrolled = currentSub ? isStudentSubject(s, currentSub) : false;
+                        const enrolledInOther = isLinkedPair && (s.enrolledSubjects || []).some((e: any) => {
+                          const eSubId = e?.subjectId?._id || e?.subjectId?.id || e?.subjectId;
+                          return e.isActive && pairSubjectIds.includes(eSubId) && eSubId !== selectedElective;
+                        });
                         
                         return (
                           <tr key={s.id} style={{ borderTop: `1px solid ${C.borderLight}` }}>
