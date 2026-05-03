@@ -19,8 +19,10 @@ interface ClassPerformanceRow {
   stream: string;
   marks: Record<string, number | null>;
   total: number;
+  points: number;
   scoredSubjects: number;
   average: number;
+  avgPoints: number;
   rank: number;
 }
 
@@ -92,18 +94,33 @@ const computeMarkPercentage = (marks: any): number | null => {
   return totalMax <= 0 ? null : Math.round((totalScore / totalMax) * 100);
 };
 
-const gradeFromAverage = (avg: number): string => {
-  if (avg >= 80) return "A";
-  if (avg >= 75) return "A-";
-  if (avg >= 70) return "B+";
-  if (avg >= 65) return "B";
-  if (avg >= 60) return "B-";
-  if (avg >= 55) return "C+";
-  if (avg >= 50) return "C";
-  if (avg >= 45) return "C-";
-  if (avg >= 40) return "D+";
-  if (avg >= 35) return "D";
-  if (avg >= 30) return "D-";
+const markToPoints = (v: number): number => {
+  if (v >= 80) return 12;
+  if (v >= 75) return 11;
+  if (v >= 70) return 10;
+  if (v >= 65) return 9;
+  if (v >= 60) return 8;
+  if (v >= 55) return 7;
+  if (v >= 50) return 6;
+  if (v >= 45) return 5;
+  if (v >= 40) return 4;
+  if (v >= 35) return 3;
+  if (v >= 30) return 2;
+  return 1;
+};
+
+const pointsToGrade = (avgPoints: number): string => {
+  if (avgPoints >= 11.5) return "A";
+  if (avgPoints >= 10.5) return "A-";
+  if (avgPoints >= 9.5) return "B+";
+  if (avgPoints >= 8.5) return "B";
+  if (avgPoints >= 7.5) return "B-";
+  if (avgPoints >= 6.5) return "C+";
+  if (avgPoints >= 5.5) return "C";
+  if (avgPoints >= 4.5) return "C-";
+  if (avgPoints >= 3.5) return "D+";
+  if (avgPoints >= 2.5) return "D";
+  if (avgPoints >= 1.5) return "D-";
   return "E";
 };
 
@@ -159,8 +176,10 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
           stream: s.classStream || "",
           marks: {},
           total: 0,
+          points: 0,
           scoredSubjects: 0,
           average: 0,
+          avgPoints: 0,
           rank: 0
         });
       });
@@ -188,17 +207,19 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
       const ranked = Array.from(rowsByStudent.values()).map(row => {
         const scores = Object.values(row.marks).filter((m): m is number => typeof m === "number");
         const total = scores.reduce((a, b) => a + b, 0);
+        const points = scores.reduce((a, b) => a + markToPoints(b), 0);
         const avg = scores.length > 0 ? Math.round(total / scores.length) : 0;
-        return { ...row, total, scoredSubjects: scores.length, average: avg };
-      }).sort((a, b) => b.average - a.average || b.total - a.total || a.name.localeCompare(b.name));
+        const avgPoints = scores.length > 0 ? points / scores.length : 0;
+        return { ...row, total, points, scoredSubjects: scores.length, average: avg, avgPoints };
+      }).sort((a, b) => b.points - a.points || b.total - a.total || a.name.localeCompare(b.name));
 
       let rank = 0;
-      let prevAvg = -1;
+      let prevPoints = -1;
       let prevTotal = -1;
       ranked.forEach(row => {
-        if (row.average !== prevAvg || row.total !== prevTotal) {
+        if (row.points !== prevPoints || row.total !== prevTotal) {
           rank += 1;
-          prevAvg = row.average;
+          prevPoints = row.points;
           prevTotal = row.total;
         }
         row.rank = rank;
@@ -228,8 +249,9 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         data[sub.name] = row.marks[sub.id] ?? "-";
       });
       data.Total = row.total;
+      data.Points = row.points;
       data.Average = `${row.average}%`;
-      data.Grade = gradeFromAverage(row.average);
+      data.Grade = pointsToGrade(row.avgPoints);
       return data;
     });
 
@@ -254,7 +276,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
     }
     
     autoTable(doc, {
-      head: [["Rank", "Student", "Adm No", "Stream", ...availableSubjects.map(s => s.name), "Total", "Avg", "Grade"]],
+      head: [["Rank", "Student", "Adm No", "Stream", ...availableSubjects.map(s => s.name), "Total", "Pts", "Avg", "Grade"]],
       body: performanceRows.map(row => [
         row.rank,
         row.name,
@@ -262,8 +284,9 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         row.stream,
         ...availableSubjects.map(s => row.marks[s.id] ?? "-"),
         row.total,
+        row.points,
         `${row.average}%`,
-        gradeFromAverage(row.average)
+        pointsToGrade(row.avgPoints)
       ]),
       startY: 30,
       theme: "grid",
@@ -334,6 +357,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
               <th style={{ padding: "12px" }}>Student</th>
               <th style={{ padding: "12px" }}>Adm No</th>
               <th style={{ padding: "12px" }}>Stream</th>
+              <th style={{ padding: "12px" }}>Points</th>
               <th style={{ padding: "12px" }}>Average</th>
               <th style={{ padding: "12px" }}>Grade</th>
               <th style={{ padding: "12px", textAlign: "right" }}>Total</th>
@@ -341,17 +365,18 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
+              <tr><td colSpan={8} style={{ padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
             ) : performanceRows.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
+              <tr><td colSpan={8} style={{ padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
             ) : performanceRows.map(row => (
               <tr key={row.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td style={{ padding: "12px" }}>{row.rank}</td>
                 <td style={{ padding: "12px", fontWeight: 600 }}>{row.name}</td>
                 <td style={{ padding: "12px", color: "var(--textMut)" }}>{row.admissionNo}</td>
                 <td style={{ padding: "12px", fontSize: 12 }}>{row.stream}</td>
-                <td style={{ padding: "12px", fontWeight: 700, color: "var(--gold)" }}>{row.average}%</td>
-                <td style={{ padding: "12px" }}>{gradeFromAverage(row.average)}</td>
+                <td style={{ padding: "12px", fontWeight: 700, color: "var(--gold)" }}>{row.points}</td>
+                <td style={{ padding: "12px" }}>{row.average}%</td>
+                <td style={{ padding: "12px", fontWeight: 700 }}>{pointsToGrade(row.avgPoints)}</td>
                 <td style={{ padding: "12px", textAlign: "right", fontWeight: 700 }}>{row.total}</td>
               </tr>
             ))}

@@ -41,6 +41,25 @@ export const gradePoints = (v: number): number => {
   return 1;
 };
 
+export const sumPoints = (marks: Record<string, number>): number => {
+  return Object.values(marks || {}).reduce((acc, m) => acc + gradePoints(m), 0);
+};
+
+export const pointsToGrade = (avgPoints: number): string => {
+  if (avgPoints >= 11.5) return "A";
+  if (avgPoints >= 10.5) return "A-";
+  if (avgPoints >= 9.5) return "B+";
+  if (avgPoints >= 8.5) return "B";
+  if (avgPoints >= 7.5) return "B-";
+  if (avgPoints >= 6.5) return "C+";
+  if (avgPoints >= 5.5) return "C";
+  if (avgPoints >= 4.5) return "C-";
+  if (avgPoints >= 3.5) return "D+";
+  if (avgPoints >= 2.5) return "D";
+  if (avgPoints >= 1.5) return "D-";
+  return "E";
+};
+
 export const gradeColor = (v: number): string =>
   v >= 80 ? "#3b6d11" : v >= 60 ? "#854f0b" : "#a32d2d";
 

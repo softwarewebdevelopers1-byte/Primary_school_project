@@ -2,7 +2,7 @@
 import React from "react";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { avg, sum, gradeColor, grade } from "./shared/helpers";
+import { avg, sum, gradeColor, grade, sumPoints, pointsToGrade } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -140,18 +140,20 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
   ];
 
   const sortedStudents = [...students].sort(
-    (a, b) =>
-      avg(marksForStudentSubjects(b, subjects), getEligibleSubjectCount(b, subjects)) -
-      avg(marksForStudentSubjects(a, subjects), getEligibleSubjectCount(a, subjects)),
+    (a, b) => {
+      const aMarks = marksForStudentSubjects(a, subjects);
+      const bMarks = marksForStudentSubjects(b, subjects);
+      return sumPoints(bMarks) - sumPoints(aMarks);
+    }
   );
   let rank = 0;
-  let previousAverage: number | null = null;
+  let previousPoints: number | null = null;
   const rankedStudents = sortedStudents.map((student) => {
-    const eligibleCount = getEligibleSubjectCount(student, subjects);
-    const studentAverage = avg(marksForStudentSubjects(student, subjects), eligibleCount);
-    if (studentAverage !== previousAverage) {
+    const studentMarks = marksForStudentSubjects(student, subjects);
+    const totalPoints = sumPoints(studentMarks);
+    if (totalPoints !== previousPoints) {
       rank += 1;
-      previousAverage = studentAverage;
+      previousPoints = totalPoints;
     }
 
     return { ...student, rank };
@@ -171,9 +173,12 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setFontSize(10);
         doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
-        const tableColumn = ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Avg", "Grade"];
+        const tableColumn = ["Rank", "Student", "Admission No", ...subjects.map(s => s.name), "Total", "Points", "Avg", "Grade"];
         const tableRows = rankedStudents.map((s) => {
           const studentMarks = marksForStudentSubjects(s, subjects);
+          const eligibleCount = getEligibleSubjectCount(s, subjects);
+          const totalPoints = sumPoints(studentMarks);
+          const avgPoints = totalPoints / (eligibleCount || 1);
 
           return [
             s.rank,
@@ -183,8 +188,9 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               isStudentSubject(s, sub) ? studentMarks[sub.id] ?? "-" : "-",
             ),
             sum(studentMarks),
-            `${avg(studentMarks, getEligibleSubjectCount(s, subjects))}%`,
-            grade(avg(studentMarks, getEligibleSubjectCount(s, subjects))),
+            totalPoints,
+            `${avg(studentMarks, eligibleCount)}%`,
+            pointsToGrade(avgPoints),
           ];
         });
 
@@ -202,7 +208,8 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         const worksheetData = rankedStudents.map((s) => {
           const studentMarks = marksForStudentSubjects(s, subjects);
           const eligibleCount = getEligibleSubjectCount(s, subjects);
-          const average = avg(studentMarks, eligibleCount);
+          const totalPoints = sumPoints(studentMarks);
+          const avgPoints = totalPoints / (eligibleCount || 1);
           
           const row: any = {
             Rank: s.rank,
@@ -215,8 +222,9 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
           });
           
           row.Total = sum(studentMarks);
-          row.Average = `${average}%`;
-          row.Grade = grade(average);
+          row.Points = totalPoints;
+          row.Average = `${avg(studentMarks, eligibleCount)}%`;
+          row.Grade = pointsToGrade(avgPoints);
           
           return row;
         });
@@ -275,9 +283,13 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
         const slipEligibleCount = getEligibleSubjectCount(slip, subjects);
+        const slipTotalPoints = sumPoints(slipMarks);
+        const slipAvgPoints = slipTotalPoints / (slipEligibleCount || 1);
+
         doc.text(`Total Marks: ${sum(slipMarks)}`, 20, finalY + 15);
-        doc.text(`Average Score: ${avg(slipMarks, slipEligibleCount)}%`, 20, finalY + 23);
-        doc.text(`Final Grade: ${grade(avg(slipMarks, slipEligibleCount))}`, 20, finalY + 31);
+        doc.text(`Total Points: ${slipTotalPoints}`, 20, finalY + 23);
+        doc.text(`Average Score: ${avg(slipMarks, slipEligibleCount)}%`, 20, finalY + 31);
+        doc.text(`Final Grade: ${pointsToGrade(slipAvgPoints)}`, 20, finalY + 39);
 
         doc.save(`${slip.name.replace(/\s+/g, '_')}_Report.pdf`);
       }
@@ -372,28 +384,54 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               >
                 {desc}
               </p>
-              <button
-                className="ct-actionbtn"
-                onClick={() => handleDownload(title === "Full class report" ? "Excel Report" : title)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  padding: "9px 16px",
-                  background: C.sand,
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 9,
-                  fontFamily: FONT.sans,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: C.textMid,
-                  cursor: "pointer",
-                  width: "100%",
-                  justifyContent: "center",
-                }}
-              >
-                <DlIcon /> Download
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="ct-actionbtn"
+                  onClick={() => handleDownload(title === "Individual result slips" ? title : "Excel Report")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "9px 12px",
+                    background: C.sand,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 9,
+                    fontFamily: FONT.sans,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: C.textMid,
+                    cursor: "pointer",
+                    flex: 1,
+                    justifyContent: "center",
+                  }}
+                >
+                  <DlIcon /> {title === "Individual result slips" ? "Download PDF" : "Excel"}
+                </button>
+                {title !== "Individual result slips" && (
+                  <button
+                    className="ct-actionbtn"
+                    onClick={() => handleDownload(title)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 7,
+                      padding: "9px 12px",
+                      background: C.white,
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 9,
+                      fontFamily: FONT.sans,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: C.textMid,
+                      cursor: "pointer",
+                      flex: 1,
+                      justifyContent: "center",
+                    }}
+                  >
+                    <DlIcon /> PDF
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -406,7 +444,10 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.green, textTransform: "uppercase" }}>Top Student</p>
               <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent.name}</h4>
-              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(topStudent, subjects), getEligibleSubjectCount(topStudent, subjects))}%</strong></p>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
+                Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(topStudent, subjects)) / (getEligibleSubjectCount(topStudent, subjects) || 1))}</strong>
+                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(topStudent, subjects))}</strong>
+              </p>
             </div>
           </div>
           <div style={{ background: "#fdeaea", border: `1px solid ${C.dangerBg}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
@@ -414,7 +455,10 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.dangerText, textTransform: "uppercase" }}>Least Student</p>
               <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent.name}</h4>
-              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(leastStudent, subjects), getEligibleSubjectCount(leastStudent, subjects))}%</strong></p>
+              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
+                Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(leastStudent, subjects)) / (getEligibleSubjectCount(leastStudent, subjects) || 1))}</strong>
+                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(leastStudent, subjects))}</strong>
+              </p>
             </div>
           </div>
         </div>
@@ -458,10 +502,11 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               <tr style={{ background: C.sand }}>
                 <th style={thStyle}>Rank</th>
                 <th style={thStyle}>Student</th>
-                {subjects.slice(0, 5).map(s => (
+                {subjects.map(s => (
                   <th key={s.id} style={{ ...thStyle, textAlign: "center" }}>{s.name.slice(0, 3)}</th>
                 ))}
                 <th style={{ ...thStyle, textAlign: "center" }}>Total</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Pts</th>
                 <th style={{ ...thStyle, textAlign: "center" }}>Avg</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Action</th>
               </tr>
@@ -480,7 +525,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                         <span style={{ fontWeight: 600 }}>{s.name}</span>
                       </div>
                     </td>
-                    {subjects.slice(0, 5).map(sub => {
+                    {subjects.map(sub => {
                       const mark = isStudentSubject(s, sub)
                         ? studentMarks[sub.id]
                         : null;
@@ -491,6 +536,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                       );
                     })}
                     <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: C.text }}>{sum(studentMarks)}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: C.gold }}>{sumPoints(studentMarks)}</td>
                     <td style={{ ...tdStyle, textAlign: "center", fontWeight: 700, color: gradeColor(a) }}>{a}%</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
                       <button
