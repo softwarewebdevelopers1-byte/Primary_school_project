@@ -1,12 +1,14 @@
 // components/classteacher/shared/helpers.ts
-export const avg = (marks: Record<string, number>): number => {
-  const vals = Object.values(marks);
+export const avg = (marks: Record<string, number>, subjectCount?: number): number => {
+  const vals = Object.values(marks || {}).filter(v => typeof v === "number");
   if (vals.length === 0) return 0;
-  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  const total = vals.reduce((a, b) => a + b, 0);
+  const count = subjectCount || vals.length;
+  return Math.round(total / count);
 };
 
 export const sum = (marks: Record<string, number>): number => {
-  return Object.values(marks).reduce((a, b) => a + b, 0);
+  return Object.values(marks || {}).reduce((a, b) => a + (typeof b === "number" ? b : 0), 0);
 };
 
 export const grade = (v: number): string => {

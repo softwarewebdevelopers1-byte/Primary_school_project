@@ -828,6 +828,7 @@ router.get(
         return {
           id: s._id,
           name: s.studentsName,
+          adm: s.ADM,
           admissionNumber: s.ADM,
           gender: s.gender,
           parentName: s.guardianName,

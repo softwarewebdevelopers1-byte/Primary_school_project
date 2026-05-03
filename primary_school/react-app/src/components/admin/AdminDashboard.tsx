@@ -11,6 +11,7 @@ import { TopBar } from "./TopBar";
 import { CycleTab } from "./CycleTab";
 import { TimetableTab } from "./TimetableTab";
 import { AdminMarksTab } from "./AdminMarksTab";
+import { PerformanceTab } from "./PerformanceTab";
 import { ArchivesView } from "../shared/ArchivesView";
 import {
   ApiStudent,
@@ -53,6 +54,11 @@ const navItems: NavItem[] = [
     id: "marks",
     label: "Marks Entry",
     svg: "<path d='M3 3v18h18'/><path d='M7 14l3-3 3 2 5-6'/>",
+  },
+  {
+    id: "performance",
+    label: "Performance & Analytics",
+    svg: "<path d='M12 20v-6M6 20V10M18 20V4'/>",
   },
   {
     id: "subjects",
@@ -103,6 +109,7 @@ const mapStudentsFromApi = (students: ApiStudent[]): Student[] =>
   students.map((student) => ({
     id: student.id,
     admissionNo: student.admissionNo,
+    adm: student.admissionNo || (student as any).adm,
     name: student.name,
     gender: student.gender,
     guardianName: student.guardianName,
@@ -913,6 +920,17 @@ const AdminDashboard: React.FC = () => {
           students={students}
           subjects={subjects}
           onRefresh={loadDashboardUsers}
+          avatar={avatar}
+        />
+      );
+    }
+
+    if (activeTab === "performance") {
+      return (
+        <PerformanceTab
+          classes={classes}
+          students={students}
+          subjects={subjects}
           avatar={avatar}
         />
       );

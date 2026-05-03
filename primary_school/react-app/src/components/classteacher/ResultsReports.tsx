@@ -6,6 +6,7 @@ import { avg, sum, gradeColor, grade } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 interface ResultsReportsProps {
   students: any[];
@@ -48,6 +49,9 @@ const isStudentSubject = (student: any, subject: any) => {
 
 const subjectsForStudent = (student: any, subjects: any[]) =>
   subjects.filter((subject) => isStudentSubject(student, subject));
+
+const getEligibleSubjectCount = (student: any, subjects: any[]) => 
+  subjectsForStudent(student, subjects).length;
 
 const marksForStudentSubjects = (student: any, subjects: any[]) => {
   const eligibleSubjectIds = new Set(
@@ -137,13 +141,14 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
 
   const sortedStudents = [...students].sort(
     (a, b) =>
-      avg(marksForStudentSubjects(b, subjects)) -
-      avg(marksForStudentSubjects(a, subjects)),
+      avg(marksForStudentSubjects(b, subjects), getEligibleSubjectCount(b, subjects)) -
+      avg(marksForStudentSubjects(a, subjects), getEligibleSubjectCount(a, subjects)),
   );
   let rank = 0;
   let previousAverage: number | null = null;
   const rankedStudents = sortedStudents.map((student) => {
-    const studentAverage = avg(marksForStudentSubjects(student, subjects));
+    const eligibleCount = getEligibleSubjectCount(student, subjects);
+    const studentAverage = avg(marksForStudentSubjects(student, subjects), eligibleCount);
     if (studentAverage !== previousAverage) {
       rank += 1;
       previousAverage = studentAverage;
@@ -173,13 +178,13 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
           return [
             s.rank,
             s.name,
-            s.adm || "-",
+            s.adm || s.admissionNumber || s.admissionNo || "-",
             ...subjects.map((sub) =>
               isStudentSubject(s, sub) ? studentMarks[sub.id] ?? "-" : "-",
             ),
             sum(studentMarks),
-            `${avg(studentMarks)}%`,
-            grade(avg(studentMarks)),
+            `${avg(studentMarks, getEligibleSubjectCount(s, subjects))}%`,
+            grade(avg(studentMarks, getEligibleSubjectCount(s, subjects))),
           ];
         });
 
@@ -193,6 +198,33 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         });
 
         doc.save(`Term${term}_Report_${Date.now()}.pdf`);
+      } else if (type === "Excel Report") {
+        const worksheetData = rankedStudents.map((s) => {
+          const studentMarks = marksForStudentSubjects(s, subjects);
+          const eligibleCount = getEligibleSubjectCount(s, subjects);
+          const average = avg(studentMarks, eligibleCount);
+          
+          const row: any = {
+            Rank: s.rank,
+            Student: s.name,
+            "Admission No": s.adm || s.admissionNumber || s.admissionNo || "-",
+          };
+          
+          subjects.forEach(sub => {
+            row[sub.name] = isStudentSubject(s, sub) ? studentMarks[sub.id] ?? "-" : "N/A";
+          });
+          
+          row.Total = sum(studentMarks);
+          row.Average = `${average}%`;
+          row.Grade = grade(average);
+          
+          return row;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(worksheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Class Report");
+        XLSX.writeFile(wb, `Term${term}_Report_${Date.now()}.xlsx`);
       } else if (type === "Report Slip" || type === "Individual result slips") {
         if (!studentName) {
            setMsg({ text: "Individual slip download requires student selection from the Merit List table.", type: "error" });
@@ -212,7 +244,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setFontSize(12);
         doc.setTextColor(50, 50, 50);
         doc.text(`Name: ${slip.name}`, 20, 40);
-        doc.text(`Admission No: ${slip.adm || "-"}`, 20, 48);
+        doc.text(`Admission No: ${slip.adm || slip.admissionNumber || slip.admissionNo || "-"}`, 20, 48);
         doc.text(`Term: ${term} | Year: ${year} | Phase: ${examType.toUpperCase()}`, 20, 56);
         
         doc.setLineWidth(0.5);
@@ -242,152 +274,10 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
+        const slipEligibleCount = getEligibleSubjectCount(slip, subjects);
         doc.text(`Total Marks: ${sum(slipMarks)}`, 20, finalY + 15);
-        doc.text(`Average Score: ${avg(slipMarks)}%`, 20, finalY + 23);
-        doc.text(`Final Grade: ${grade(avg(slipMarks))}`, 20, finalY + 31);
-
-        doc.save(`${slip.name.replace(/\s+/g, '_')}_Report.pdf`);
-      }
-      setMsg({ text: `Successfully downloaded ${type}${studentName ? ` for ${studentName}` : ""}`, type: "success" });
-    } catch (err) {
-      setMsg({ text: `Failed to download ${type}`, type: "error" });
-    }
-    setTimeout(() => setMsg(null), 3500);
-  };
-
-  return (
-    <div className="ct-anim" style={{ display: "grid", gap: 30 }}>
-      <div>
-        <SectionHeader
-          eyebrow="Reports"
-          title="Results & reports"
-          sub={`Download and review performance summaries for Term ${term}, ${year} (${examType}).`}
-        />
-        {msg && (
-          <div style={{ 
-            padding: "10px 20px", 
-            marginBottom: 15, 
-            borderRadius: 8, 
-            background: msg.type === "success" ? "#eaf3de" : "#fdeaea",
-            color: msg.type === "success" ? "#3b6d11" : "#a32d2d",
-            fontSize: 13,
-            fontWeight: 600
-          }}>
-            {msg.text}
-          </div>
-        )}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {reports.map(({ title, desc, tag }) => (
-            <div
-              key={title}
-              className="ct-card ct-metric"
-              style={{
-                background: C.white,
-                border: `1px solid ${C.border}`,
-                borderRadius: 14,
-                padding: "1.4rem",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: 10,
-                }}
-              >
-                <h3
-                  style={{
-                    fontFamily: FONT.serif,
-                    fontSize: "1.15rem",
-                    fontWeight: 600,
-                    color: C.text,
-                  }}
-                >
-                  {title}
-                </h3>
-                <span
-                  style={{
-                    fontFamily: FONT.sans,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    background: C.goldLight,
-                    color: C.gold,
-                    padding: "3px 9px",
-                    borderRadius: 12,
-                    flexShrink: 0,
-                  }}
-                >
-                  {tag}
-                </span>
-              </div>
-              <p
-                style={{
-                  fontFamily: FONT.sans,
-                  fontSize: 13,
-                  color: C.textMuted,
-                  lineHeight: 1.6,
-                  marginBottom: "1.2rem",
-                }}
-              >
-                {desc}
-              </p>
-              <button
-                className="ct-actionbtn"
-                onClick={() => handleDownload(title)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  padding: "9px 16px",
-                  background: C.sand,
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 9,
-                  fontFamily: FONT.sans,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: C.textMid,
-                  cursor: "pointer",
-                  width: "100%",
-                  justifyContent: "center",
-                }}
-              >
-                <DlIcon /> Download
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {sortedStudents.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div style={{ background: C.greenLight, border: `1px solid ${C.green}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
-            <Avatar name={topStudent.name} size={40} />
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.green, textTransform: "uppercase" }}>Top Student</p>
-              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent.name}</h4>
-              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(topStudent, subjects))}%</strong></p>
-            </div>
-          </div>
-          <div style={{ background: "#fdeaea", border: `1px solid ${C.dangerBg}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
-            <Avatar name={leastStudent.name} size={40} />
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.dangerText, textTransform: "uppercase" }}>Least Student</p>
-              <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent.name}</h4>
-              <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>Avg: <strong>{avg(marksForStudentSubjects(leastStudent, subjects))}%</strong></p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div
+        doc.text(`Average Score: ${avg(slipMarks, slipEligibleCount)}%`, 20, finalY + 23);
+        doc.text(`Final Grade: ${grade(avg(slipMarks, slipEligibleCount))}`, 20, finalY + 31);
         style={{
           background: C.white,
           border: `1px solid ${C.border}`,
@@ -436,7 +326,8 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             <tbody>
               {rankedStudents.map((s) => {
                 const studentMarks = marksForStudentSubjects(s, subjects);
-                const a = avg(studentMarks);
+                const eligibleCount = getEligibleSubjectCount(s, subjects);
+                const a = avg(studentMarks, eligibleCount);
                 return (
                   <tr key={s.id} style={{ borderTop: `1px solid ${C.borderLight}` }}>
                     <td style={tdStyle}>{s.rank}</td>
