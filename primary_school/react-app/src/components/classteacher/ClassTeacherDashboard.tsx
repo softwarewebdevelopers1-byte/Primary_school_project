@@ -120,6 +120,7 @@ export default function ClassTeacherDashboard() {
           {
             term: currentUser.term,
             year: currentUser.year,
+            examType: currentUser.examType,
           },
         ),
         api.get("/school/class-subjects", {

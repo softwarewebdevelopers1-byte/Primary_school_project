@@ -35,6 +35,25 @@ const allowedExamTypes = new Set(["opener", "midterm", "closing"]);
 const formatCycleLabel = (term: number, year: number, examType: string) =>
   `Term ${term}, ${year} (${examType})`;
 
+const normalizeExamType = (examType: unknown) => {
+  const normalized =
+    typeof examType === "string" ? examType.trim().toLowerCase() : "";
+  return allowedExamTypes.has(normalized) ? normalized : "opener";
+};
+
+const resolveActiveCycle = async () => {
+  const sampleUser = await userModel
+    .findOne({ term: { $ne: null } } as any)
+    .select("term year examType")
+    .lean();
+
+  return {
+    term: Number((sampleUser as any)?.term ?? 1),
+    year: Number((sampleUser as any)?.year ?? 2024),
+    examType: normalizeExamType((sampleUser as any)?.examType),
+  };
+};
+
 const pluralize = (count: number, word: string) =>
   `${count} ${word}${count === 1 ? "" : "s"}`;
 
@@ -523,14 +542,18 @@ router.post("/login", async (req: Request, res: Response) => {
 // GET all users (staff and students) + subjects and assignments
 router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
-    const [allUsers, allSubjects, allAssignments, allMarks] = await Promise.all(
-      [
+    const [allUsers, allSubjects, allAssignments, activeCycle] =
+      await Promise.all([
         userModel.find(),
         SubjectModel.find(),
         AssignmentModel.find(),
-        MarkModel.find(),
-      ],
-    );
+        resolveActiveCycle(),
+      ]);
+    const allMarks = await MarkModel.find({
+      term: activeCycle.term,
+      year: activeCycle.year,
+      examType: activeCycle.examType,
+    } as any);
 
     const students = allUsers.filter((u: any) => u.__t === rolesMapped.ST);
     const staff = allUsers.filter((u: any) => u.__t !== rolesMapped.ST);
@@ -714,7 +737,20 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { grade, stream } = req.params;
-      const { term, year } = req.query;
+      const { term, year, examType } = req.query;
+      const activeCycle =
+        term && year && examType
+          ? null
+          : await resolveActiveCycle();
+      const requestedTerm = term
+        ? Number(term)
+        : activeCycle?.term ?? 1;
+      const requestedYear = year
+        ? Number(year)
+        : activeCycle?.year ?? 2024;
+      const requestedExamType = examType
+        ? normalizeExamType(examType)
+        : activeCycle?.examType ?? "opener";
 
       const students = await userModel.find({
         __t: rolesMapped.ST,
@@ -728,8 +764,9 @@ router.get(
         studentId: { $in: studentIds },
         classGrade: grade,
         classStream: stream,
-        term: term ? Number(term) : 1,
-        year: year ? Number(year) : 2024,
+        term: requestedTerm,
+        year: requestedYear,
+        examType: requestedExamType,
       } as any);
 
       // Calculate subject stats first to match frontend MarksEntry logic
