@@ -113,7 +113,8 @@ const enrollmentMatchesClass = (
   classStream: string,
 ) => {
   const entryClassGrade = normalizeClassValue(entry?.classGrade) || classGrade;
-  const entryClassStream = normalizeClassValue(entry?.classStream) || classStream;
+  const entryClassStream =
+    normalizeClassValue(entry?.classStream) || classStream;
 
   return entryClassGrade === classGrade && entryClassStream === classStream;
 };
@@ -180,11 +181,7 @@ const validateStudentElectiveEnrollments = async (
       group.subjectIds.includes(entry.subjectId),
     ).length;
 
-    if (
-      requireCompleteLinkedGroups
-        ? selectedCount !== 1
-        : selectedCount > 1
-    ) {
+    if (requireCompleteLinkedGroups ? selectedCount !== 1 : selectedCount > 1) {
       throw new Error(
         requireCompleteLinkedGroups
           ? `Each linked elective block requires exactly one subject choice. Block ${group.sharedSlotId} currently has ${selectedCount} selection(s).`
@@ -1003,8 +1000,7 @@ router.put(
 
       if (!hasRecordedCycleMarks) {
         return res.status(400).json({
-          message:
-            `Cannot update the academic cycle yet. No marks have been recorded for ${currentCycleLabel}. Enter and save all student marks first, then update the exam, term, or year.`,
+          message: `Cannot update the academic cycle yet. No marks have been recorded for ${currentCycleLabel}. Enter and save all student marks first, then update the exam, term, or year.`,
           summary: {
             previousCycle: {
               term: currentTerm,
@@ -1355,7 +1351,9 @@ router.put(
           enrolled = enrolled.filter(
             (entry) =>
               !(
-                linkedSubjectIds.includes(normalizeSubjectId(entry.subjectId)) &&
+                linkedSubjectIds.includes(
+                  normalizeSubjectId(entry.subjectId),
+                ) &&
                 enrollmentMatchesClass(
                   entry,
                   normalizedClassGrade,
@@ -1445,6 +1443,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
         { requireCompleteLinkedGroups: false },
       );
       updateData = {
+        __t: rolesMapped.ST,
         studentsName: req.body.name,
         ADM: req.body.admissionNo,
         gender: req.body.gender,
@@ -1455,6 +1454,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
         status: req.body.status,
         enrolledSubjects,
       };
+      console.log(updateData);
     } else {
       const rolesArray = Array.isArray(req.body.roles)
         ? req.body.roles
