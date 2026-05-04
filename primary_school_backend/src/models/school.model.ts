@@ -249,3 +249,87 @@ const TimetableSchema = new Schema<ITimetable>({
 }, { timestamps: true });
 
 export const TimetableModel = mongoose.model<ITimetable>("Timetable", TimetableSchema);
+
+export interface ISchoolSetting extends Document {
+  key: string;
+  value: any;
+}
+
+const SchoolSettingSchema = new Schema<ISchoolSetting>({
+  key: { type: String, required: true, unique: true, index: true },
+  value: { type: Schema.Types.Mixed, default: null },
+}, { timestamps: true });
+
+export const SchoolSettingModel = mongoose.model<ISchoolSetting>(
+  "SchoolSetting",
+  SchoolSettingSchema,
+);
+
+export interface IExitedStudentExamSummary {
+  term: number;
+  year: number;
+  examType: string;
+  classGrade: string;
+  classStream: string;
+  total: number;
+  points: number;
+  average: number;
+  avgPoints: number;
+  grade: string;
+  subjectCount: number;
+}
+
+export interface IExitedStudent extends Document {
+  studentId: mongoose.Types.ObjectId;
+  admissionNo: string;
+  name: string;
+  gender?: string | null;
+  guardianName?: string | null;
+  guardianPhone?: string | null;
+  finalClassGrade: string;
+  finalClassStream: string;
+  exitReason: string;
+  exitedAt: Date;
+  statusAtExit: string;
+  examSummaries: IExitedStudentExamSummary[];
+  averagePoints: number;
+  averagePercentage: number;
+  examCount: number;
+}
+
+const ExitedStudentExamSummarySchema = new Schema<IExitedStudentExamSummary>({
+  term: { type: Number, required: true },
+  year: { type: Number, required: true },
+  examType: { type: String, required: true },
+  classGrade: { type: String, default: "" },
+  classStream: { type: String, default: "" },
+  total: { type: Number, default: 0 },
+  points: { type: Number, default: 0 },
+  average: { type: Number, default: 0 },
+  avgPoints: { type: Number, default: 0 },
+  grade: { type: String, default: "E" },
+  subjectCount: { type: Number, default: 0 },
+}, { _id: false });
+
+const ExitedStudentSchema = new Schema<IExitedStudent>({
+  studentId: { type: Schema.Types.ObjectId, ref: "users", required: true, unique: true, index: true },
+  admissionNo: { type: String, required: true, index: true },
+  name: { type: String, required: true },
+  gender: { type: String, default: null },
+  guardianName: { type: String, default: null },
+  guardianPhone: { type: String, default: null },
+  finalClassGrade: { type: String, required: true, index: true },
+  finalClassStream: { type: String, default: "" },
+  exitReason: { type: String, default: "completed-final-grade" },
+  exitedAt: { type: Date, default: Date.now },
+  statusAtExit: { type: String, default: "inactive" },
+  examSummaries: { type: [ExitedStudentExamSummarySchema], default: [] },
+  averagePoints: { type: Number, default: 0 },
+  averagePercentage: { type: Number, default: 0 },
+  examCount: { type: Number, default: 0 },
+}, { timestamps: true });
+
+export const ExitedStudentModel = mongoose.model<IExitedStudent>(
+  "ExitedStudent",
+  ExitedStudentSchema,
+);

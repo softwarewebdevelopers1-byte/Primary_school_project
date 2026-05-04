@@ -253,6 +253,14 @@ export const NAV_ALL = [
     roles: ["deputy", "headteacher"],
   },
   {
+    id: "exited",
+    label: "Exited learners",
+    desc: "Review inactive learners who completed the final grade.",
+    icon: "M16 17l5-5-5-5",
+    icon2: "M21 12H9M12 19H5a2 2 0 01-2-2V7a2 2 0 012-2h7",
+    roles: ["deputy", "headteacher"],
+  },
+  {
     id: "analytics",
     label: "Analytics",
     desc: "Trends, attainment, and patterns.",

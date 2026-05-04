@@ -11,6 +11,7 @@ import { Analytics } from "./Analytics";
 import { TopStudents } from "./TopStudents";
 import { Reports } from "./Reports";
 import { ParentConcerns } from "./ParentConcerns";
+import { ExitedStudentsView } from "../shared/ExitedStudentsView";
 import { C, F } from "./shared/constants";
 import { avg } from "./shared/helpers";
 import { NAV_ALL } from "./shared/data";
@@ -37,6 +38,7 @@ export default function DeputyHeadDashboard({
   const [staff, setStaff] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
+  const [exitedStudents, setExitedStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [storedUser, setStoredUser] = useState(() => {
     const saved = localStorage.getItem("user");
@@ -76,6 +78,7 @@ export default function DeputyHeadDashboard({
       const data: any = await api.get("/users");
       console.log("data", data);
       setStudents(data.students || []);
+      setExitedStudents(data.exitedStudents || []);
       setSubjects(data.subjects || []);
 
       // Calculate teacher averages from their assignments
@@ -260,6 +263,14 @@ export default function DeputyHeadDashboard({
         );
       case "students":
         return <StudentManagement students={students} subjects={subjects} />;
+      case "exited":
+        return (
+          <ExitedStudentsView
+            exitedStudents={exitedStudents}
+            onRefresh={loadData}
+            allowDelete
+          />
+        );
       case "analytics":
         return (
           <Analytics

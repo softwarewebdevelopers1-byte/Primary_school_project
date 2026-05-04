@@ -13,6 +13,7 @@ import { TimetableTab } from "./TimetableTab";
 import { AdminMarksTab } from "./AdminMarksTab";
 import { PerformanceTab } from "./PerformanceTab";
 import { ArchivesView } from "../shared/ArchivesView";
+import { ExitedStudentsView } from "../shared/ExitedStudentsView";
 import {
   ApiStudent,
   ApiTeacher,
@@ -24,6 +25,7 @@ import {
   Class,
   Subject,
   Student,
+  ExitedStudent,
 } from "./types";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
 import { api } from "../../lib/api";
@@ -89,6 +91,11 @@ const navItems: NavItem[] = [
     id: "archives",
     label: "Archives",
     svg: "<path d='M21 8V21H3V8'/><path d='M1 3H23V8H1V3M10 12H14'/>",
+  },
+  {
+    id: "exited",
+    label: "Exited Learners",
+    svg: "<path d='M16 17l5-5-5-5'/><path d='M21 12H9'/><path d='M12 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h7'/>",
   },
 ];
 
@@ -325,6 +332,8 @@ const AdminDashboard: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assignments, setAssignments] = useState<ApiAssignment[]>([]);
+  const [exitedStudents, setExitedStudents] = useState<ExitedStudent[]>([]);
+  const [finalGrade, setFinalGrade] = useState("");
   const [classSubjectSettings, setClassSubjectSettings] = useState<
     ClassSubjectSetting[]
   >([]);
@@ -366,14 +375,17 @@ const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError("");
-      const [response, subjectSettings] = await Promise.all([
+      const [response, subjectSettings, graduationSettings] = await Promise.all([
         api.get<UsersDashboardResponse>("/users"),
         api.get<ClassSubjectSetting[]>("/school/class-subjects"),
+        api.get<{ finalGrade: string }>("/users/graduation-settings"),
       ]);
       setTeachers(mapStaffToTeachers(response.staff));
       setStudents(mapStudentsFromApi(response.students));
       setSubjects(response.subjects || []);
       setAssignments(response.assignments || []);
+      setExitedStudents(response.exitedStudents || []);
+      setFinalGrade(graduationSettings.finalGrade || "");
       setClassSubjectSettings(subjectSettings || []);
     } catch (err) {
       setError(
@@ -771,6 +783,19 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleFinalGradeUpdate = async (nextFinalGrade: string) => {
+    try {
+      const response = await api.put<{ message?: string; finalGrade: string }>(
+        "/users/graduation-settings",
+        { finalGrade: nextFinalGrade },
+      );
+      setFinalGrade(response.finalGrade);
+      showSuccess(response.message || "Final grade setting updated.");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Failed to update final grade.");
+    }
+  };
+
   const showSuccess = (msg: string) => {
     showModal(
       <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -834,6 +859,7 @@ const AdminDashboard: React.FC = () => {
       timetables: "Timetable generator",
       cycle: "Academic cycle",
       archives: "Archives",
+      exited: "Exited learners",
     };
     return titles[activeTab] || "Admin dashboard";
   }, [activeTab]);
@@ -982,7 +1008,10 @@ const AdminDashboard: React.FC = () => {
       return (
         <CycleTab
           onBulkTermUpdate={handleBulkTermUpdate}
+          onFinalGradeUpdate={handleFinalGradeUpdate}
           initialData={currentPeriod}
+          finalGrade={finalGrade}
+          gradeOptions={Array.from(new Set(classes.map((current) => current.grade)))}
         />
       );
     }
@@ -999,6 +1028,16 @@ const AdminDashboard: React.FC = () => {
     if (activeTab === "archives") {
       return (
         <ArchivesView title="Global Performance Archives" allowManagement />
+      );
+    }
+
+    if (activeTab === "exited") {
+      return (
+        <ExitedStudentsView
+          exitedStudents={exitedStudents}
+          onRefresh={loadDashboardUsers}
+          allowDelete
+        />
       );
     }
 

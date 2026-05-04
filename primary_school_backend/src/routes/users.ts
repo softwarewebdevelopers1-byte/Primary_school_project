@@ -16,6 +16,8 @@ import {
   AssignmentModel,
   ClassSubjectSettingModel,
   MarkModel,
+  SchoolSettingModel,
+  ExitedStudentModel,
 } from "../models/school.model.js";
 import {
   buildClassSubjectSettingMap,
@@ -449,6 +451,222 @@ const shiftClassName = (
   return className.replace(match[0], nextLevel.toString());
 };
 
+const extractClassLevel = (className: string | null | undefined) => {
+  const match = normalizeClassValue(className).match(/\d+/);
+  if (!match) return null;
+
+  const level = Number.parseInt(match[0], 10);
+  return Number.isFinite(level) ? level : null;
+};
+
+const marksToPercentage = (mark: any) => {
+  const finalScore = toFiniteNumber(mark?.finalScore);
+  if (finalScore !== null) {
+    return Math.min(100, Math.max(0, Math.round(finalScore)));
+  }
+
+  const cats = [mark?.cat1, mark?.cat2, mark?.cat3, mark?.cat4, mark?.cat5];
+  const catMaxes = [
+    mark?.cat1Max,
+    mark?.cat2Max,
+    mark?.cat3Max,
+    mark?.cat4Max,
+    mark?.cat5Max,
+  ];
+  const exam = toFiniteNumber(mark?.exam);
+  const examMax = toFiniteNumber(mark?.examMax) ?? 100;
+  let total = 0;
+  let maxTotal = 0;
+
+  cats.forEach((cat, index) => {
+    const score = toFiniteNumber(cat);
+    if (score !== null) {
+      total += score;
+      maxTotal += toFiniteNumber(catMaxes[index]) ?? 40;
+    }
+  });
+
+  if (exam !== null) {
+    total += exam;
+    maxTotal += examMax;
+  }
+
+  return maxTotal > 0 ? Math.round((total / maxTotal) * 100) : null;
+};
+
+const markToPoints = (score: number) => {
+  if (score >= 80) return 12;
+  if (score >= 75) return 11;
+  if (score >= 70) return 10;
+  if (score >= 65) return 9;
+  if (score >= 60) return 8;
+  if (score >= 55) return 7;
+  if (score >= 50) return 6;
+  if (score >= 45) return 5;
+  if (score >= 40) return 4;
+  if (score >= 35) return 3;
+  if (score >= 30) return 2;
+  return 1;
+};
+
+const pointsToGrade = (avgPoints: number) => {
+  if (avgPoints >= 11.5) return "A";
+  if (avgPoints >= 10.5) return "A-";
+  if (avgPoints >= 9.5) return "B+";
+  if (avgPoints >= 8.5) return "B";
+  if (avgPoints >= 7.5) return "B-";
+  if (avgPoints >= 6.5) return "C+";
+  if (avgPoints >= 5.5) return "C";
+  if (avgPoints >= 4.5) return "C-";
+  if (avgPoints >= 3.5) return "D+";
+  if (avgPoints >= 2.5) return "D";
+  if (avgPoints >= 1.5) return "D-";
+  return "E";
+};
+
+const buildStudentExamSummaries = async (studentId: any) => {
+  const marks = await MarkModel.find({ studentId } as any).lean();
+  const marksByCycle = new Map<string, any[]>();
+
+  for (const mark of marks as any[]) {
+    if (!hasRecordedScore(mark)) continue;
+
+    const key = [
+      mark.year,
+      mark.term,
+      mark.examType,
+      mark.classGrade || "",
+      mark.classStream || "",
+    ].join("::");
+    const cycleMarks = marksByCycle.get(key) || [];
+    cycleMarks.push(mark);
+    marksByCycle.set(key, cycleMarks);
+  }
+
+  return Array.from(marksByCycle.entries())
+    .map(([key, cycleMarks]) => {
+      const [yearValue = "0", termValue = "0", examType = "", classGrade = "", classStream = ""] =
+        key.split("::");
+      const scores = cycleMarks
+        .map((mark) => marksToPercentage(mark))
+        .filter((score): score is number => typeof score === "number");
+      const total = scores.reduce((sum, score) => sum + score, 0);
+      const points = scores.reduce((sum, score) => sum + markToPoints(score), 0);
+      const average = scores.length > 0 ? Math.round(total / scores.length) : 0;
+      const avgPoints = scores.length > 0 ? points / scores.length : 0;
+
+      return {
+        term: Number(termValue),
+        year: Number(yearValue),
+        examType,
+        classGrade,
+        classStream,
+        total,
+        points,
+        average,
+        avgPoints,
+        grade: pointsToGrade(avgPoints),
+        subjectCount: scores.length,
+      };
+    })
+    .filter((summary) => summary.subjectCount > 0)
+    .sort(
+      (first, second) =>
+        first.year - second.year ||
+        first.term - second.term ||
+        first.examType.localeCompare(second.examType),
+    );
+};
+
+const archiveAndIsolateFinalGradeStudents = async (
+  finalGrade: string,
+  currentTerm: number,
+  currentYear: number,
+  currentExamType: string,
+) => {
+  const finalLevel = extractClassLevel(finalGrade);
+  if (finalLevel === null) {
+    return [];
+  }
+
+  const candidates = await studentModel.find({
+    status: { $ne: "inactive" },
+    class: { $ne: null },
+  } as any);
+  const graduatingStudents = candidates.filter(
+    (student: any) => extractClassLevel(student.class) === finalLevel,
+  );
+
+  const archived = [];
+  for (const student of graduatingStudents as any[]) {
+    const examSummaries = await buildStudentExamSummaries(student._id);
+    const averagePoints =
+      examSummaries.length > 0
+        ? examSummaries.reduce((sum, summary) => sum + summary.avgPoints, 0) /
+          examSummaries.length
+        : 0;
+    const averagePercentage =
+      examSummaries.length > 0
+        ? Math.round(
+            examSummaries.reduce((sum, summary) => sum + summary.average, 0) /
+              examSummaries.length,
+          )
+        : 0;
+
+    await ExitedStudentModel.findOneAndUpdate(
+      { studentId: student._id },
+      {
+        $set: {
+          studentId: student._id,
+          admissionNo: student.ADM,
+          name: student.studentsName,
+          gender: student.gender || null,
+          guardianName: student.guardianName || null,
+          guardianPhone: student.guardianPhone || null,
+          finalClassGrade: normalizeClassValue(student.class),
+          finalClassStream: normalizeClassValue(student.classStream),
+          exitReason: "completed-final-grade",
+          exitedAt: new Date(),
+          statusAtExit: "inactive",
+          examSummaries,
+          averagePoints,
+          averagePercentage,
+          examCount: examSummaries.length,
+        },
+      },
+      { upsert: true, new: true },
+    );
+
+    await studentModel.updateOne(
+      { _id: student._id },
+      {
+        $set: {
+          status: "inactive",
+          class: null,
+          classStream: null,
+          term: currentTerm,
+          year: currentYear,
+          examType: currentExamType,
+          enrolledSubjects: [],
+        },
+      } as any,
+    );
+
+    archived.push({
+      id: student._id,
+      name: student.studentsName,
+      admissionNo: student.ADM,
+      finalClassGrade: student.class,
+      finalClassStream: student.classStream,
+      averagePoints,
+      averagePercentage,
+      examCount: examSummaries.length,
+    });
+  }
+
+  return archived;
+};
+
 const extractRoles = async (user: any) => {
   const rolesSet = new Set<string>();
   if (user.__t === rolesMapped.ST) {
@@ -555,8 +773,14 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
       examType: activeCycle.examType,
     } as any);
 
-    const students = allUsers.filter((u: any) => u.__t === rolesMapped.ST);
+    const students = allUsers.filter(
+      (u: any) => u.__t === rolesMapped.ST && u.status !== "inactive",
+    );
     const staff = allUsers.filter((u: any) => u.__t !== rolesMapped.ST);
+    const exitedStudents = await ExitedStudentModel.find().sort({
+      exitedAt: -1,
+      name: 1,
+    });
 
     // Calculate subject stats first to match frontend MarksEntry logic
     const subjectStats: Record<string, { catsCount: number; catConfigs: any }> =
@@ -701,7 +925,61 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         classGrade: a.classGrade,
         classStream: a.classStream,
       })),
+      exitedStudents,
     });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/graduation-settings", authenticate, async (_req: Request, res: Response) => {
+  try {
+    const setting = await SchoolSettingModel.findOne({ key: "finalGrade" });
+    res.json({ finalGrade: setting?.value || "" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put("/graduation-settings", authenticate, async (req: Request, res: Response) => {
+  try {
+    const finalGrade = normalizeClassValue(req.body.finalGrade);
+    if (!finalGrade) {
+      return res.status(400).json({ message: "Final grade is required." });
+    }
+
+    await SchoolSettingModel.findOneAndUpdate(
+      { key: "finalGrade" },
+      { $set: { value: finalGrade } },
+      { upsert: true, new: true },
+    );
+
+    res.json({ finalGrade, message: `Final grade set to ${finalGrade}.` });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/exited-students", authenticate, async (_req: Request, res: Response) => {
+  try {
+    const exitedStudents = await ExitedStudentModel.find().sort({
+      exitedAt: -1,
+      name: 1,
+    });
+    res.json(exitedStudents);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete("/exited-students/:id", authenticate, async (req: Request, res: Response) => {
+  try {
+    const deleted = await ExitedStudentModel.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "Exited student record not found." });
+    }
+
+    res.json({ message: "Exited student archive deleted." });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -754,6 +1032,7 @@ router.get(
 
       const students = await userModel.find({
         __t: rolesMapped.ST,
+        status: { $ne: "inactive" },
         class: grade,
         classStream: stream,
       } as any);
@@ -1026,6 +1305,9 @@ router.put(
         year: currentYear,
         examType: currentExamType,
       } as any);
+      const finalGradeSetting = await SchoolSettingModel.findOne({
+        key: "finalGrade",
+      });
 
       const cycleCompletionIssues = await collectCycleCompletionIssues(
         currentTerm,
@@ -1055,6 +1337,16 @@ router.put(
         });
       }
 
+      const assignmentClassOffset = newYear - currentYear;
+      const exitedStudents = finalGradeSetting?.value && assignmentClassOffset > 0
+        ? await archiveAndIsolateFinalGradeStudents(
+            String(finalGradeSetting.value),
+            currentTerm,
+            currentYear,
+            currentExamType,
+          )
+        : [];
+
       const usersToProcess = await userModel.find({
         $or: [
           { __t: rolesMapped.ST },
@@ -1063,6 +1355,7 @@ router.put(
           { "roles.role3": rolesMapped.CT },
         ],
         class: { $ne: null },
+        status: { $ne: "inactive" },
       } as any);
 
       const userClassUpdates = usersToProcess.flatMap((userDoc) => {
@@ -1106,7 +1399,6 @@ router.put(
         await userModel.bulkWrite(userClassUpdates);
       }
 
-      const assignmentClassOffset = newYear - currentYear;
       if (assignmentClassOffset !== 0) {
         const assignments = await AssignmentModel.find();
         const assignmentUpdates = assignments.flatMap((assignment) => {
@@ -1172,12 +1464,15 @@ router.put(
 
       const message =
         `Academic cycle updated to ${formatCycleLabel(newTerm, newYear, normalizedExamType)}. ` +
-        `${pluralize(preservedMarksCount, "mark record")} from ${currentCycleLabel} preserved in the database. New mark entry screens are ready for the selected cycle.`;
+        `${pluralize(preservedMarksCount, "mark record")} from ${currentCycleLabel} preserved in the database. ` +
+        `${exitedStudents.length > 0 ? `${pluralize(exitedStudents.length, "student")} moved to exited learners after completing ${finalGradeSetting?.value}. ` : ""}` +
+        `New mark entry screens are ready for the selected cycle.`;
 
       res.json({
         message,
         summary: {
           archivedClasses: 0,
+          exitedStudents,
           deletedMarks: 0,
           preservedMarks: preservedMarksCount,
           previousCycle: {
