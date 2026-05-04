@@ -18,11 +18,6 @@ import {
   MarkModel,
 } from "../models/school.model.js";
 import {
-  archiveClassMarks,
-  rollbackArchivedMarks,
-  type ArchiveClassMarksResult,
-} from "../utils/archiver.js";
-import {
   buildClassSubjectSettingMap,
   collectElectiveEnrollmentGroups,
   filterStudentsForSubject,
@@ -989,18 +984,25 @@ router.put(
         currentYear,
         currentExamType,
       );
-      const currentCycleMarks = await MarkModel.find({
+      const preservedMarksCount = await MarkModel.countDocuments({
         term: currentTerm,
         year: currentYear,
         examType: currentExamType,
-      } as any).lean();
-      const hasRecordedCycleMarks = (currentCycleMarks as any[]).some(
-        hasRecordedScore,
+      } as any);
+
+      const cycleCompletionIssues = await collectCycleCompletionIssues(
+        currentTerm,
+        currentYear,
+        currentExamType,
       );
 
-      if (!hasRecordedCycleMarks) {
+      if (cycleCompletionIssues.length > 0) {
         return res.status(400).json({
-          message: `Cannot update the academic cycle yet. No marks have been recorded for ${currentCycleLabel}. Enter and save all student marks first, then update the exam, term, or year.`,
+          message: buildCycleCompletionMessage(
+            cycleCompletionIssues,
+            currentCycleLabel,
+          ),
+          issues: cycleCompletionIssues,
           summary: {
             previousCycle: {
               term: currentTerm,
@@ -1013,98 +1015,6 @@ router.put(
               examType: normalizedExamType,
             },
           },
-        });
-      }
-
-      const cycleCompletionIssues = hasRecordedCycleMarks
-        ? await collectCycleCompletionIssues(
-            currentTerm,
-            currentYear,
-            currentExamType,
-          )
-        : [];
-
-      if (cycleCompletionIssues.length > 0) {
-        return res.status(400).json({
-          message: buildCycleCompletionMessage(
-            cycleCompletionIssues,
-            currentCycleLabel,
-          ),
-          issues: cycleCompletionIssues,
-        });
-      }
-
-      const classesWithMarks = hasRecordedCycleMarks
-        ? await MarkModel.aggregate([
-            {
-              $match: {
-                term: currentTerm,
-                year: currentYear,
-                examType: currentExamType,
-              },
-            },
-            {
-              $group: {
-                _id: {
-                  classGrade: "$classGrade",
-                  classStream: "$classStream",
-                },
-                markCount: { $sum: 1 },
-              },
-            },
-            {
-              $sort: {
-                "_id.classGrade": 1,
-                "_id.classStream": 1,
-              },
-            },
-          ])
-        : [];
-
-      const archivedClasses: ArchiveClassMarksResult[] = [];
-
-      try {
-        for (const cls of classesWithMarks) {
-          const classGrade = cls?._id?.classGrade;
-          const classStream = cls?._id?.classStream;
-
-          if (!classGrade || !classStream) {
-            throw new Error(
-              "Some marks are missing class grade or class stream information.",
-            );
-          }
-
-          const archiveResult = await archiveClassMarks(
-            classGrade,
-            classStream,
-            currentTerm,
-            currentYear,
-            currentExamType,
-          );
-
-          if (!archiveResult) {
-            throw new Error(
-              `No PDF archive was created for ${classGrade} ${classStream} even though marks exist for ${currentCycleLabel}.`,
-            );
-          }
-
-          archivedClasses.push(archiveResult);
-        }
-      } catch (archiveError: any) {
-        if (archivedClasses.length > 0) {
-          try {
-            await rollbackArchivedMarks(archivedClasses);
-          } catch (cleanupError: any) {
-            return res.status(500).json({
-              message:
-                `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated. ` +
-                `Cleanup of partial archives also failed: ${cleanupError.message}`,
-            });
-          }
-        }
-
-        return res.status(500).json({
-          message: `Archive upload failed: ${archiveError.message}. No marks were deleted and the academic cycle was not updated.`,
         });
       }
 
@@ -1223,25 +1133,16 @@ router.put(
         },
       );
 
-      const deletedMarks = await MarkModel.deleteMany({
-        term: currentTerm,
-        year: currentYear,
-        examType: currentExamType,
-      });
-
-      const deletedCount = deletedMarks.deletedCount ?? 0;
       const message =
-        archivedClasses.length > 0
-          ? `Academic cycle updated. Uploaded ${pluralize(archivedClasses.length, "PDF archive")} to Supabase for ${currentCycleLabel} and deleted ${pluralize(deletedCount, "mark record")}.`
-          : hasRecordedCycleMarks
-            ? `Academic cycle updated. No class mark archives were created for ${currentCycleLabel}, and ${pluralize(deletedCount, "mark record")} were deleted.`
-            : `Academic cycle updated. Admin validation: no marks were recorded for ${currentCycleLabel}, so no Supabase mark archive was uploaded. Classes, class teachers, subject assignments, and student elective enrollments were promoted.`;
+        `Academic cycle updated to ${formatCycleLabel(newTerm, newYear, normalizedExamType)}. ` +
+        `${pluralize(preservedMarksCount, "mark record")} from ${currentCycleLabel} preserved in the database. New mark entry screens are ready for the selected cycle.`;
 
       res.json({
         message,
         summary: {
-          archivedClasses: archivedClasses.length,
-          deletedMarks: deletedCount,
+          archivedClasses: 0,
+          deletedMarks: 0,
+          preservedMarks: preservedMarksCount,
           previousCycle: {
             term: currentTerm,
             year: currentYear,
@@ -1252,9 +1153,7 @@ router.put(
             year: newYear,
             examType: normalizedExamType,
           },
-          warning: hasRecordedCycleMarks
-            ? null
-            : `No marks were recorded for ${currentCycleLabel}; Supabase archive upload was skipped.`,
+          warning: null,
         },
       });
     } catch (error: any) {

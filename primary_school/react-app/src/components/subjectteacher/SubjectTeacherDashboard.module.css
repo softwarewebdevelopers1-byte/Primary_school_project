@@ -57,6 +57,18 @@
   --iText: #8ab5ff;
   color-scheme: dark;
 }
+
+.dashboard input,
+.dashboard select,
+.dashboard textarea {
+  color: var(--text);
+  background: var(--cream);
+  border-color: var(--border);
+}
+
+.dashboard button {
+  font-family: var(--sans);
+}
 * {
   padding: 0;
   margin: 0;

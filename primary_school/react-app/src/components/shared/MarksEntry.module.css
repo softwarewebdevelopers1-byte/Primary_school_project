@@ -184,3 +184,59 @@
 .btnAdd:hover {
   background: var(--goldP);
 }
+
+@media (max-width: 760px) {
+  .sectionHeader {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeader > div:last-child {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  .dhInput {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .pushBanner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .card {
+    padding: 0.9rem;
+  }
+
+  .card > div:first-child {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card > div:first-child > div {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px !important;
+  }
+
+  .btnAdd,
+  .btnGhost,
+  .btnPrimary {
+    min-height: 38px;
+    width: 100%;
+  }
+
+  .table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 420px) {
+  .card > div:first-child > div {
+    grid-template-columns: 1fr;
+  }
+}

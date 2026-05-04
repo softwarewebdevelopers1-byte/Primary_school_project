@@ -205,6 +205,9 @@ const StudentFormModal: React.FC<{
   onClose,
   onSave,
 }) => {
+  const [isCompact, setIsCompact] = React.useState(
+    () => typeof window !== "undefined" && window.innerWidth <= 640,
+  );
   const [name, setName] = useState(student?.name || "");
   const [admissionNo, setAdmissionNo] = useState(student?.admissionNo || "");
   const [grade, setGrade] = useState(currentClass?.grade || "");
@@ -260,6 +263,12 @@ const StudentFormModal: React.FC<{
   );
 
   React.useEffect(() => {
+    const handleResize = () => setIsCompact(window.innerWidth <= 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  React.useEffect(() => {
     setSelectedElectiveIds((current) =>
       current.filter((subjectId) => electiveSubjectIds.includes(subjectId)),
     );
@@ -296,7 +305,7 @@ const StudentFormModal: React.FC<{
         </button>
       </div>
 
-      <div style={{ padding: "18px 22px 22px" }}>
+      <div style={{ padding: isCompact ? "14px 14px 18px" : "18px 22px 22px" }}>
         {errorMsg && (
           <div style={{ padding: "10px", marginBottom: "15px", background: "#fdeaea", color: "#a32d2d", borderRadius: "8px", fontSize: "13px", fontWeight: 600 }}>
             {errorMsg}
@@ -313,7 +322,7 @@ const StudentFormModal: React.FC<{
           />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "1fr 1fr", gap: 12 }}>
           <div>
             <label style={labelStyle}>Admission no.</label>
             <input
@@ -333,7 +342,7 @@ const StudentFormModal: React.FC<{
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isCompact ? "1fr" : "1fr 1fr", gap: 12, marginTop: "1rem" }}>
           <div>
             <label style={labelStyle}>Grade</label>
             <input
@@ -553,7 +562,15 @@ const StudentFormModal: React.FC<{
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: "1.5rem" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            justifyContent: "flex-end",
+            marginTop: "1.5rem",
+            flexDirection: isCompact ? "column-reverse" : "row",
+          }}
+        >
           <button onClick={onClose} style={secondaryButtonStyle}>
             Cancel
           </button>

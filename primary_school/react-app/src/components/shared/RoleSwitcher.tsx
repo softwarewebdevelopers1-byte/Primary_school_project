@@ -155,23 +155,54 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
       </button>
 
       {isOpen && (
+        <>
+          {isCompact && (
+            <div
+              onClick={() => setIsOpen(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(8, 17, 13, 0.42)",
+                zIndex: 999,
+              }}
+            />
+          )}
         <div
           style={{
-            position: "absolute",
-            top: "120%",
-            right: 0,
+            position: isCompact ? "fixed" : "absolute",
+            top: isCompact ? "auto" : "120%",
+            right: isCompact ? 12 : 0,
+            left: isCompact ? 12 : "auto",
+            bottom: isCompact ? 12 : "auto",
             background: "var(--white)",
             border: "1px solid var(--border)",
-            borderRadius: 10,
+            borderRadius: isCompact ? 14 : 10,
             boxShadow: "0 16px 36px rgba(11, 32, 24, 0.16)",
-            padding: "6px",
-            minWidth: isCompact ? "150px" : "180px",
+            padding: isCompact ? "10px" : "6px",
+            minWidth: isCompact ? "auto" : "180px",
+            maxHeight: isCompact ? "min(70dvh, 360px)" : undefined,
+            overflowY: isCompact ? "auto" : undefined,
             display: "flex",
             flexDirection: "column",
             gap: 2,
+            zIndex: 1000,
             animation: "scaleIn 0.2s ease-out",
           }}
         >
+          {isCompact && (
+            <div
+              style={{
+                padding: "4px 6px 10px",
+                fontSize: 11,
+                fontWeight: 800,
+                color: "var(--textMut)",
+                textTransform: "uppercase",
+                letterSpacing: ".06em",
+              }}
+            >
+              Switch dashboard
+            </div>
+          )}
           {roles.map((r: string) => {
             const path = rolePaths[r];
             if (!path) return null;
@@ -215,6 +246,7 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({ user }) => {
             );
           })}
         </div>
+        </>
       )}
       <style>{`
         @keyframes scaleIn {

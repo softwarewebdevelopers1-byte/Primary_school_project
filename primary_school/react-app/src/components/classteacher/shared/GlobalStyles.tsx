@@ -54,6 +54,16 @@ export const GlobalStyles: React.FC = () => (
         --ct-danger-text: #f09b9b;
         color-scheme: dark;
     }
+    .ct-dashboardShell input,
+    .ct-dashboardShell select,
+    .ct-dashboardShell textarea {
+      color: var(--ct-text);
+      background: var(--ct-cream);
+      border-color: var(--ct-border);
+    }
+    .ct-dashboardShell button {
+      font-family: Nunito, sans-serif;
+    }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin { to { transform: rotate(360deg); } }
     .ct-anim { animation: fadeUp 0.4s cubic-bezier(.22,1,.36,1) both; }

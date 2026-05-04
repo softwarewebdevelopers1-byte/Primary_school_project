@@ -58,6 +58,14 @@ export const GlobalStyles: React.FC = () => (
         --dh-info-text:#8ab5ff;
         color-scheme:dark;
     }
+    .dh-dashboardShell input,
+    .dh-dashboardShell select,
+    .dh-dashboardShell textarea{
+      color:var(--dh-text);
+      background:var(--dh-cream);
+      border-color:var(--dh-border);
+    }
+    .dh-dashboardShell button{font-family:Nunito,sans-serif}
     @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     .dh-anim{animation:fadeUp .38s cubic-bezier(.22,1,.36,1) both}
     .dh-nav:hover:not(.dh-active){background:color-mix(in srgb, var(--dh-gold) 14%, transparent)!important}

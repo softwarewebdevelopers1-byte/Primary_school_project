@@ -83,6 +83,18 @@
   color-scheme: dark;
 }
 
+.dashboard input,
+.dashboard select,
+.dashboard textarea {
+  color: var(--text);
+  background: var(--cream);
+  border-color: var(--border);
+}
+
+.dashboard button {
+  font-family: var(--sans);
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -136,6 +148,19 @@
   padding: 16px;
   backdrop-filter: blur(3px);
   overflow-y: auto;
+}
+
+@media (max-width: 720px) {
+  .modalBg {
+    align-items: flex-start;
+    padding: 10px;
+  }
+
+  .modalBox {
+    max-width: none;
+    max-height: calc(100dvh - 20px);
+    border-radius: 12px;
+  }
 }
 
 .modalBox {

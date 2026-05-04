@@ -138,6 +138,52 @@ router.get("/averages/teacher/:teacherId", async (req: Request, res: Response) =
   }
 });
 
+// GET saved cycle/class combinations for historical mark review
+router.get("/cycles", async (_req: Request, res: Response) => {
+  try {
+    const cycles = await MarkModel.aggregate([
+      {
+        $group: {
+          _id: {
+            term: "$term",
+            year: "$year",
+            examType: "$examType",
+            classGrade: "$classGrade",
+            classStream: "$classStream",
+          },
+          markCount: { $sum: 1 },
+          subjectIds: { $addToSet: { $toString: "$subjectId" } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          term: "$_id.term",
+          year: "$_id.year",
+          examType: "$_id.examType",
+          classGrade: "$_id.classGrade",
+          classStream: "$_id.classStream",
+          markCount: 1,
+          subjectIds: 1,
+        },
+      },
+      {
+        $sort: {
+          year: -1,
+          term: -1,
+          examType: 1,
+          classGrade: 1,
+          classStream: 1,
+        },
+      },
+    ]);
+
+    res.json(cycles);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET marks for a specific subject and class
 router.get("/", async (req: Request, res: Response) => {
   try {
@@ -172,7 +218,7 @@ router.get("/", async (req: Request, res: Response) => {
       }).lean(),
     ]);
     const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
-    const enrolledStudents = filterStudentsForSubject(
+    const enrolledStudentsForCurrentClass = filterStudentsForSubject(
       students as any[],
       {
         subjectId: normalizedSubjectId,
@@ -181,8 +227,34 @@ router.get("/", async (req: Request, res: Response) => {
       },
       classSubjectSettingsMap,
     );
+    const enrolledStudentMap = new Map(
+      enrolledStudentsForCurrentClass.map((student: any) => [
+        student._id.toString(),
+        student,
+      ]),
+    );
     const markByStudentId = new Map(
       marks.map((mark: any) => [mark.studentId.toString(), mark]),
+    );
+    const missingMarkedStudentIds = Array.from(markByStudentId.keys()).filter(
+      (studentId) => !enrolledStudentMap.has(studentId),
+    );
+
+    if (missingMarkedStudentIds.length > 0) {
+      const historicalStudents = await studentModel
+        .find({ _id: { $in: missingMarkedStudentIds } } as any)
+        .lean();
+
+      for (const student of historicalStudents as any[]) {
+        enrolledStudentMap.set(student._id.toString(), student);
+      }
+    }
+
+    const enrolledStudents = Array.from(enrolledStudentMap.values()).sort(
+      (left: any, right: any) =>
+        String(left.studentsName || "").localeCompare(
+          String(right.studentsName || ""),
+        ),
     );
 
     const studentMarks = enrolledStudents.map((s: any) => {
@@ -191,6 +263,8 @@ router.get("/", async (req: Request, res: Response) => {
         studentId: s._id,
         name: s.studentsName,
         admissionNo: s.ADM,
+        gender: s.gender,
+        enrolledSubjects: s.enrolledSubjects || [],
         marks: studentMark ? {
           cat1: studentMark.cat1,
           cat2: studentMark.cat2,

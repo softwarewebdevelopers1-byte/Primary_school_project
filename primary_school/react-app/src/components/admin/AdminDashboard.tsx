@@ -765,7 +765,7 @@ const AdminDashboard: React.FC = () => {
       const message =
         err instanceof Error
           ? err.message
-          : "Failed to update academic cycle. Marks were not deleted.";
+          : "Failed to update academic cycle. Existing marks were kept in the database.";
 
       showError(message);
     }

@@ -4,6 +4,7 @@ import {
   ArchiveModel,
   AssignmentModel,
   ClassSubjectSettingModel,
+  MarkModel,
   SubjectModel,
   TimetableModel,
 } from "../models/school.model.js";
@@ -98,6 +99,72 @@ const getLatestByClass = (records: any[]) => {
 };
 
 const hasRole = (roles: string[], role: string) => roles.includes(role);
+
+const DATABASE_ARCHIVE_PREFIX = "marks:";
+
+const toFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : Number(typeof value === "string" ? value.trim() : value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const computeMarkPercentage = (mark: any): number | null => {
+  const finalScore = toFiniteNumber(mark?.finalScore);
+  if (finalScore !== null) return Math.max(0, Math.min(100, finalScore));
+
+  const components = [
+    { score: toFiniteNumber(mark?.cat1), max: toFiniteNumber(mark?.cat1Max) },
+    { score: toFiniteNumber(mark?.cat2), max: toFiniteNumber(mark?.cat2Max) },
+    { score: toFiniteNumber(mark?.cat3), max: toFiniteNumber(mark?.cat3Max) },
+    { score: toFiniteNumber(mark?.cat4), max: toFiniteNumber(mark?.cat4Max) },
+    { score: toFiniteNumber(mark?.cat5), max: toFiniteNumber(mark?.cat5Max) },
+    { score: toFiniteNumber(mark?.exam), max: toFiniteNumber(mark?.examMax) },
+  ];
+
+  let totalScore = 0;
+  let totalMax = 0;
+
+  for (const component of components) {
+    if (component.score === null) continue;
+    const max = component.max !== null && component.max > 0 ? component.max : 0;
+    if (max <= 0) continue;
+    totalScore += component.score;
+    totalMax += max;
+  }
+
+  return totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : null;
+};
+
+const parseDatabaseArchiveId = (archiveId: string) => {
+  if (!archiveId.startsWith(DATABASE_ARCHIVE_PREFIX)) return null;
+
+  const parts = archiveId.slice(DATABASE_ARCHIVE_PREFIX.length).split(":");
+  if (parts.length < 5) return null;
+
+  const [yearValue, termValue, examType, classGrade, ...classStreamParts] =
+    parts;
+  const year = Number(yearValue);
+  const term = Number(termValue);
+  const classStream = classStreamParts.join(":");
+
+  if (!Number.isInteger(year) || !Number.isInteger(term) || !examType || !classGrade) {
+    return null;
+  }
+
+  return { year, term, examType, classGrade, classStream };
+};
+
+const buildDatabaseArchiveId = (archive: {
+  year: number;
+  term: number;
+  examType: string;
+  classGrade: string;
+  classStream: string;
+}) =>
+  `${DATABASE_ARCHIVE_PREFIX}${archive.year}:${archive.term}:${archive.examType}:${archive.classGrade}:${archive.classStream}`;
 const normalizeClassValue = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
@@ -646,10 +713,17 @@ router.get("/archives", async (req: Request, res: Response) => {
   try {
     const { classGrade, classStream, search } = req.query;
     const query: any = {};
+    const markMatch: any = {};
 
-    if (classGrade) query.classGrade = String(classGrade).trim();
+    if (classGrade) {
+      const normalizedClassGrade = String(classGrade).trim();
+      query.classGrade = normalizedClassGrade;
+      markMatch.classGrade = normalizedClassGrade;
+    }
     if (classStream !== undefined && classStream !== null) {
-      query.classStream = String(classStream).trim();
+      const normalizedClassStream = String(classStream).trim();
+      query.classStream = normalizedClassStream;
+      markMatch.classStream = normalizedClassStream;
     }
 
     const searchQuery =
@@ -661,9 +735,217 @@ router.get("/archives", async (req: Request, res: Response) => {
     const archives = await ArchiveModel.find(query)
       .sort({ createdAt: -1 })
       .lean();
-    res.json(archives);
+    const databaseArchives = await MarkModel.aggregate([
+      { $match: markMatch },
+      {
+        $group: {
+          _id: {
+            term: "$term",
+            year: "$year",
+            examType: "$examType",
+            classGrade: "$classGrade",
+            classStream: "$classStream",
+          },
+          markCount: { $sum: 1 },
+          updatedAt: { $max: "$updatedAt" },
+          createdAt: { $min: "$createdAt" },
+        },
+      },
+      {
+        $project: {
+          _id: {
+            $concat: [
+              DATABASE_ARCHIVE_PREFIX,
+              { $toString: "$_id.year" },
+              ":",
+              { $toString: "$_id.term" },
+              ":",
+              "$_id.examType",
+              ":",
+              "$_id.classGrade",
+              ":",
+              "$_id.classStream",
+            ],
+          },
+          classGrade: "$_id.classGrade",
+          classStream: "$_id.classStream",
+          term: "$_id.term",
+          year: "$_id.year",
+          examType: "$_id.examType",
+          pdfUrl: null,
+          storagePath: null,
+          source: "database",
+          markCount: 1,
+          createdAt: { $ifNull: ["$updatedAt", "$createdAt"] },
+        },
+      },
+      {
+        $sort: {
+          year: -1,
+          term: -1,
+          examType: 1,
+          classGrade: 1,
+          classStream: 1,
+        },
+      },
+    ]);
+
+    const uploadedArchives = archives.map((archive: any) => ({
+      ...archive,
+      source: "pdf",
+    }));
+
+    res.json([...uploadedArchives, ...databaseArchives]);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/archives/:id/results", async (req: Request, res: Response) => {
+  try {
+    const archiveId =
+      typeof req.params.id === "string" ? req.params.id.trim() : "";
+    const databaseArchive = parseDatabaseArchiveId(archiveId);
+
+    if (!databaseArchive) {
+      return res.status(400).json({
+        message:
+          "Detailed results are available for database-backed mark archives only.",
+      });
+    }
+
+    const marks = await MarkModel.find(databaseArchive as any).lean();
+    if (marks.length === 0) {
+      return res.status(404).json({ message: "No results found for this archive." });
+    }
+
+    const [students, subjects] = await Promise.all([
+      studentModel
+        .find({ _id: { $in: marks.map((mark: any) => mark.studentId) } } as any)
+        .select("_id studentsName ADM")
+        .lean(),
+      SubjectModel.find({
+        _id: { $in: marks.map((mark: any) => mark.subjectId) },
+      } as any)
+        .select("_id name")
+        .lean(),
+    ]);
+
+    const studentMap = new Map(
+      (students as any[]).map((student) => [student._id.toString(), student]),
+    );
+    const subjectMap = new Map(
+      (subjects as any[]).map((subject) => [subject._id.toString(), subject.name]),
+    );
+    const subjectColumns = Array.from(
+      new Set((marks as any[]).map((mark) => mark.subjectId.toString())),
+    )
+      .map((subjectId) => ({
+        id: subjectId,
+        name: subjectMap.get(subjectId) || `Subject ${subjectId.slice(-6)}`,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    const rowsByStudent = new Map<string, any>();
+    for (const mark of marks as any[]) {
+      const studentId = mark.studentId.toString();
+      const subjectId = mark.subjectId.toString();
+      const student = studentMap.get(studentId);
+      const row =
+        rowsByStudent.get(studentId) ||
+        {
+          studentId,
+          name: student?.studentsName || "Unknown Student",
+          admissionNo: student?.ADM || "-",
+          subjects: {},
+          average: null,
+        };
+
+      row.subjects[subjectId] = {
+        subjectId,
+        subjectName: subjectMap.get(subjectId) || `Subject ${subjectId.slice(-6)}`,
+        percentage: computeMarkPercentage(mark),
+        cat1: mark.cat1,
+        cat2: mark.cat2,
+        cat3: mark.cat3,
+        cat4: mark.cat4,
+        cat5: mark.cat5,
+        exam: mark.exam,
+        finalScore: mark.finalScore,
+      };
+      rowsByStudent.set(studentId, row);
+    }
+
+    const rows = Array.from(rowsByStudent.values())
+      .map((row) => {
+        const scores = Object.values(row.subjects)
+          .map((subject: any) => subject.percentage)
+          .filter((score): score is number => typeof score === "number");
+        return {
+          ...row,
+          average:
+            scores.length > 0
+              ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+              : null,
+        };
+      })
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    res.json({
+      archive: {
+        _id: buildDatabaseArchiveId(databaseArchive),
+        ...databaseArchive,
+        source: "database",
+        markCount: marks.length,
+      },
+      subjects: subjectColumns,
+      students: rows,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post("/archives/delete", async (req: AuthRequest, res: Response) => {
+  try {
+    const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    if (!hasRole(roles, rolesMapped.ADM)) {
+      return res
+        .status(403)
+        .json({ message: "Only admins can delete archived results." });
+    }
+
+    const ids = Array.isArray(req.body?.ids)
+      ? req.body.ids.map((id: unknown) => String(id).trim()).filter(Boolean)
+      : [];
+
+    if (ids.length === 0) {
+      return res.status(400).json({ message: "Select at least one result to delete." });
+    }
+
+    let deletedArchives = 0;
+    let deletedMarkRecords = 0;
+
+    for (const archiveId of ids) {
+      const databaseArchive = parseDatabaseArchiveId(archiveId);
+      if (databaseArchive) {
+        const result = await MarkModel.deleteMany(databaseArchive as any);
+        deletedMarkRecords += result.deletedCount ?? 0;
+        deletedArchives += 1;
+      } else {
+        await deleteStoredArchiveById(archiveId);
+        deletedArchives += 1;
+      }
+    }
+
+    res.json({
+      message: `Deleted ${deletedArchives} archived result${deletedArchives === 1 ? "" : "s"} and ${deletedMarkRecords} database mark record${deletedMarkRecords === 1 ? "" : "s"}.`,
+      deletedArchives,
+      deletedMarkRecords,
+    });
+  } catch (error: any) {
+    const statusCode = error?.message === "Archive not found." ? 404 : 500;
+    res.status(statusCode).json({ message: error.message });
   }
 });
 
@@ -680,6 +962,14 @@ router.delete("/archives/:id", async (req: AuthRequest, res: Response) => {
       typeof req.params.id === "string" ? req.params.id.trim() : "";
     if (!archiveId) {
       return res.status(400).json({ message: "Archive id is required." });
+    }
+
+    const databaseArchive = parseDatabaseArchiveId(archiveId);
+    if (databaseArchive) {
+      const result = await MarkModel.deleteMany(databaseArchive as any);
+      return res.json({
+        message: `Deleted ${result.deletedCount ?? 0} database mark record${(result.deletedCount ?? 0) === 1 ? "" : "s"} for the selected archived result.`,
+      });
     }
 
     const result = await deleteStoredArchiveById(archiveId);

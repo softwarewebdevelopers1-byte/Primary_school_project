@@ -42,7 +42,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
       <div style={noticeStyle}>
         <h4 style={{ margin: "0 0 8px", color: "var(--gold)", fontSize: 14 }}>⚠️ Critical Action</h4>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-          Updating the academic cycle is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> All required marks must be recorded before the cycle changes. Current marks are archived to Supabase PDF storage first, and marks are only cleared after every archive upload succeeds.
+          Updating the academic cycle is a global action. <strong>If the Year is advanced, all students will be automatically promoted to the next Grade.</strong> Existing marks stay in the database under their original term, year, exam phase, and stream. No mark archive is uploaded to Supabase, and no marks are deleted. The new active cycle opens with fresh mark entry inputs.
         </p>
       </div>
 
@@ -96,7 +96,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
               cursor: loading ? "not-allowed" : "pointer"
             }}
           >
-            {loading ? "Validating & Updating Classes..." : "Validate and Update Classes"}
+            {loading ? "Updating Classes..." : "Update Classes"}
           </button>
         </form>
       </div>
@@ -105,7 +105,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({ onBulkTermUpdate, initialDat
         <h4 style={{ fontFamily: "var(--serif)", color: "var(--text)", fontSize: 18, marginBottom: 15 }}>Frequently Asked Questions</h4>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           {[
-            { q: "What happens to old marks?", a: "Current-cycle marks are uploaded to Supabase as PDF archives first. They are deleted from the database only after every archive upload succeeds." },
+            { q: "What happens to old marks?", a: "Old marks remain in the database and can be reviewed by cycle and stream from Admin Marks Entry." },
             { q: "Can teachers override this?", a: "Yes, Class Teachers can manually update their specific class term in their settings if needed." }
           ].map((faq, i) => (
             <div key={i} style={faqCardStyle}>
