@@ -357,16 +357,7 @@ const buildSlotSignature = (lesson: TimetableLessonPlan | undefined) => {
 
 const createTimetableSlot = (lessons: ClassSubjectContext[]): TimetableLessonPlan => {
   if (lessons.length === 0) {
-    return {
-      subjectId: null,
-      subjectName: "Independent Study",
-      teacherId: null,
-      teacherName: "Department Supervision",
-      enrollmentMode: null,
-      sharedSlotId: null,
-      studentIds: [],
-      parallelLessons: [],
-    };
+    throw new Error("Cannot create an empty timetable slot. Assign a real lesson instead.");
   }
 
   if (lessons.length === 1) {
@@ -399,6 +390,32 @@ const createTimetableSlot = (lessons: ClassSubjectContext[]): TimetableLessonPla
     ),
     parallelLessons: sortedLessons,
   };
+};
+
+const validateCompleteLessonPlan = (
+  plan: GeneratedSchoolTimetablePlan,
+  subjectsPerDay: number,
+) => {
+  for (const classPlan of plan.classes) {
+    const classLabel = `${classPlan.classGrade} ${classPlan.classStream}`.trim();
+
+    for (const day of SCHOOL_DAYS) {
+      const lessons = classPlan.lessonPlan[day] || [];
+      if (lessons.length !== subjectsPerDay) {
+        throw new Error(
+          `Incomplete timetable: ${classLabel} has ${lessons.length} lesson(s) on ${day}, but ${subjectsPerDay} are required.`,
+        );
+      }
+
+      lessons.forEach((lesson, index) => {
+        if (getScheduledLessonsForSlot(lesson).length === 0) {
+          throw new Error(
+            `Incomplete timetable: ${classLabel} has no assigned subject on ${day} period ${index + 1}.`,
+          );
+        }
+      });
+    }
+  }
 };
 
 const validateParallelSlotGroups = (classes: ClassTimetableContext[]) => {
@@ -502,7 +519,27 @@ const validatePlanQuality = (
     const classKey = buildClassKey(classPlan.classGrade, classPlan.classStream);
     const classContext = classContextByKey.get(classKey);
 
-    if (!classContext || classContext.subjects.length <= 1) {
+    if (!classContext) {
+      continue;
+    }
+
+    for (const day of SCHOOL_DAYS) {
+      const lessons = classPlan.lessonPlan[day] || [];
+      if (lessons.length !== subjectsPerDay) {
+        throw new Error(
+          `Groq returned ${lessons.length} lesson(s) for ${classPlan.classGrade} ${classPlan.classStream} on ${day}; ${subjectsPerDay} are required.`,
+        );
+      }
+      lessons.forEach((lesson, index) => {
+        if (getScheduledLessonsForSlot(lesson).length === 0) {
+          throw new Error(
+            `Groq left ${classPlan.classGrade} ${classPlan.classStream} blank on ${day} period ${index + 1}.`,
+          );
+        }
+      });
+    }
+
+    if (classContext.subjects.length <= 1) {
       continue;
     }
 
@@ -581,6 +618,22 @@ const validatePlanQuality = (
         }
       }
     }
+  }
+};
+
+const validateGeneratedPlan = (
+  plan: GeneratedSchoolTimetablePlan,
+  classes: ClassTimetableContext[],
+  subjectsPerDay: number,
+  options: { validateQuality?: boolean } = {},
+) => {
+  if (!allowedTimetableModes.has(plan.generationMode)) {
+    throw new Error("Invalid timetable generation mode.");
+  }
+  validateCompleteLessonPlan(plan, subjectsPerDay);
+  validateTeacherSlotConflicts(plan, subjectsPerDay);
+  if (options.validateQuality !== false) {
+    validatePlanQuality(plan, classes, subjectsPerDay);
   }
 };
 
@@ -731,7 +784,7 @@ const generateFallbackPlan = (
           }
         }
 
-        // 2. Fallback: Relax constraints if no viable candidate was found
+        // 2. Fallback: Relax spacing and daily balance if no viable candidate was found.
         if (!selectedSubject && candidatePool.length > 0) {
           const desperatePool = [...candidatePool].sort((a, b) => b.remaining - a.remaining);
           for (const candidate of desperatePool) {
@@ -740,6 +793,51 @@ const generateFallbackPlan = (
               finalSelectedLessons = [candidate];
               break;
             }
+            const siblings = currentClass.subjects.filter(
+              (s) => s.sharedSlotId === candidate.sharedSlotId && s.subjectId !== candidate.subjectId,
+            );
+            const unavailableSibling = siblings.find((s) => teacherBooked.has(s.teacherId));
+            if (!unavailableSibling) {
+              selectedSubject = candidate;
+              finalSelectedLessons = [candidate, ...siblings];
+              break;
+            }
+          }
+        }
+
+        // 3. Emergency fill: keep the slot real and conflict-free even when all
+        // weekly targets are exhausted. This is preferable to publishing blanks.
+        if (!selectedSubject) {
+          const emergencyPool: FallbackCandidate[] = currentClass.subjects
+            .filter((subject) => !teacherBooked.has(subject.teacherId))
+            .map((subject) => {
+              const remaining = remainingByClass.get(classKey)?.get(subject.subjectId) || 0;
+              const dayCount = subjectCountsForDay.get(subject.subjectId) || 0;
+              const weeklyTarget = weeklyTargetByClass.get(classKey)?.get(subject.subjectId) || 0;
+              const dailyCap = Math.max(1, Math.ceil(weeklyTarget / 5));
+              return {
+                ...subject,
+                remaining,
+                dayCount,
+                dailyCap,
+              };
+            })
+            .sort((left, right) => {
+              if (left.remaining !== right.remaining) return right.remaining - left.remaining;
+              if (left.dayCount !== right.dayCount) return left.dayCount - right.dayCount;
+              const leftWasPrevious = previousSubjectIds.has(left.subjectId) ? 1 : 0;
+              const rightWasPrevious = previousSubjectIds.has(right.subjectId) ? 1 : 0;
+              if (leftWasPrevious !== rightWasPrevious) return leftWasPrevious - rightWasPrevious;
+              return left.subjectName.localeCompare(right.subjectName);
+            });
+
+          for (const candidate of emergencyPool) {
+            if (!candidate.sharedSlotId) {
+              selectedSubject = candidate;
+              finalSelectedLessons = [candidate];
+              break;
+            }
+
             const siblings = currentClass.subjects.filter(
               (s) => s.sharedSlotId === candidate.sharedSlotId && s.subjectId !== candidate.subjectId,
             );
@@ -771,43 +869,13 @@ const generateFallbackPlan = (
             new Set(finalSelectedLessons.map((lesson) => lesson.subjectId)),
           );
         } else {
-          const plan = classPlans.get(classKey);
-          if (plan) {
-            plan.lessonPlan[day]!.push(createTimetableSlot([]));
-          }
-          previousSubjectIdsByClass.set(classKey, new Set<string>());
+          throw new Error(
+            `Unable to fill ${currentClass.classGrade} ${currentClass.classStream} on ${day} period ${slotIndex + 1} without a teacher conflict. Assign more teachers or reduce lessons per day.`,
+          );
         }
       }
     }
   }
-
-  classPlans.forEach((plan, classKey) => {
-     for (const day of SCHOOL_DAYS) {
-        const slots = plan.lessonPlan[day]!;
-        const counts = new Map<string, number>();
-        slots.forEach(slot => {
-           if (slot.subjectId) counts.set(slot.subjectId, (counts.get(slot.subjectId) || 0) + 1);
-        });
-        
-        counts.forEach((count, subjectId) => {
-           if (count > 1) {
-              const candidateDay = SCHOOL_DAYS.find(d => {
-                 const dSlots = plan.lessonPlan[d]!;
-                 return dSlots.every(s => s.subjectId !== subjectId);
-              });
-              if (candidateDay) {
-                 const duplicateIdx = slots.findIndex(s => s.subjectId === subjectId);
-                 const swapIdx = plan.lessonPlan[candidateDay]!.findIndex(s => s.subjectId !== subjectId);
-                 if (duplicateIdx !== -1 && swapIdx !== -1) {
-                    const temp = slots[duplicateIdx]!;
-                    slots[duplicateIdx] = plan.lessonPlan[candidateDay]![swapIdx]!;
-                    plan.lessonPlan[candidateDay]![swapIdx] = temp;
-                 }
-              }
-           }
-        });
-     }
-  });
 
   return {
     generationMode: "balanced-fallback",
@@ -964,6 +1032,7 @@ const generatePlanWithGroq = async (
         content: [
           "Create a school timetable plan for Monday to Friday.",
           `Each class must have exactly ${subjectsPerDay} lesson slots per day.`,
+          `Every day array in the JSON must contain exactly ${subjectsPerDay} subjectId strings. Do not shorten the day arrays.`,
           "Return JSON in this exact shape:",
           JSON.stringify({
             summary: "short explanation of the scheduling strategy used",
@@ -972,11 +1041,11 @@ const generatePlanWithGroq = async (
                 classGrade: "Grade Level",
                 classStream: "Stream Name",
                 days: {
-                  Monday: ["subject-id-1", "subject-id-2"],
-                  Tuesday: ["subject-id-3", "subject-id-4"],
-                  Wednesday: ["subject-id-5", "subject-id-1"],
-                  Thursday: ["subject-id-2", "subject-id-3"],
-                  Friday: ["subject-id-4", "subject-id-5"],
+                  Monday: Array.from({ length: subjectsPerDay }, (_, index) => `subject-id-${index + 1}`),
+                  Tuesday: Array.from({ length: subjectsPerDay }, (_, index) => `subject-id-${index + 1}`),
+                  Wednesday: Array.from({ length: subjectsPerDay }, (_, index) => `subject-id-${index + 1}`),
+                  Thursday: Array.from({ length: subjectsPerDay }, (_, index) => `subject-id-${index + 1}`),
+                  Friday: Array.from({ length: subjectsPerDay }, (_, index) => `subject-id-${index + 1}`),
                 },
               },
             ],
@@ -1041,16 +1110,11 @@ const buildRenderedDays = (
         };
       }
 
-      const lesson = lessonQueue.shift() || {
-        subjectId: null,
-        subjectName: "Independent Study",
-        teacherId: null,
-        teacherName: "Department Supervision",
-        enrollmentMode: null,
-        sharedSlotId: null,
-        studentIds: [],
-        parallelLessons: [],
-      };
+      const lesson = lessonQueue.shift();
+
+      if (!lesson || getScheduledLessonsForSlot(lesson).length === 0) {
+        throw new Error(`Cannot render ${day}: a lesson slot has no assigned subject.`);
+      }
 
       return {
         type: "lesson",
@@ -1106,9 +1170,9 @@ const createTimetablePdfBuffer = (
     const row = [
       day.day.toUpperCase(),
       ...day.entries.map((entry) => {
-        if (!entry) return "Independent Study";
+        if (!entry) return "";
         if (entry.type === "break") return "BREAK";
-        return [entry.subjectName || "Independent Study", entry.teacherName || "Department Supervision"].join("\n");
+        return [entry.subjectName || "", entry.teacherName || ""].filter(Boolean).join("\n");
       }),
     ];
     return row;
@@ -1455,17 +1519,18 @@ export async function generateAndStoreSchoolTimetables(input: CreateSchoolTimeta
       ? null
       : await generatePlanWithGroq(context.classes, validatedInput.subjectsPerDay);
     if (plan) {
-      validatePlanQuality(plan, context.classes, validatedInput.subjectsPerDay);
+      validateGeneratedPlan(plan, context.classes, validatedInput.subjectsPerDay, {
+        validateQuality: true,
+      });
     }
   } catch (_error) {
     plan = null;
   }
 
   const finalPlan = plan || generateFallbackPlan(context.classes, validatedInput.subjectsPerDay);
-  if (!allowedTimetableModes.has(finalPlan.generationMode)) {
-    throw new Error("Invalid timetable generation mode.");
-  }
-  validateTeacherSlotConflicts(finalPlan, validatedInput.subjectsPerDay);
+  validateGeneratedPlan(finalPlan, context.classes, validatedInput.subjectsPerDay, {
+    validateQuality: finalPlan.generationMode === "ai",
+  });
 
   const batchId = randomUUID();
   const dailyTemplate = buildDailyTemplate(
