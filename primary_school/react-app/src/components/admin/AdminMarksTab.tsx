@@ -9,16 +9,6 @@ import {
 } from "../subjectteacher/types";
 import { Class, Student, Subject } from "./types";
 
-interface MarkCycleOption {
-  term: number;
-  year: number;
-  examType: string;
-  classGrade: string;
-  classStream: string;
-  markCount: number;
-  subjectIds: string[];
-}
-
 interface AdminMarksTabProps {
   classes: Class[];
   students: Student[];
@@ -85,15 +75,6 @@ const hasAnyStoredValue = (marks: {
     marks.finalScore,
   ].some((value) => value !== null && value !== "");
 
-const buildHistoryKey = (cycle: MarkCycleOption) =>
-  [
-    cycle.year,
-    cycle.term,
-    cycle.examType,
-    cycle.classGrade,
-    cycle.classStream || "",
-  ].join("::");
-
 export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   classes,
   students,
@@ -107,8 +88,6 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   });
   const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
-  const [historyCycles, setHistoryCycles] = useState<MarkCycleOption[]>([]);
-  const [selectedHistoryKey, setSelectedHistoryKey] = useState("current");
   const [isCompact, setIsCompact] = useState(() => window.innerWidth <= 820);
   const [subjectStudents, setSubjectStudents] = useState<
     Record<string, MarksStudent[]>
@@ -117,29 +96,6 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     text: string;
     type: "success" | "error";
   } | null>(null);
-
-  useEffect(() => {
-    let ignore = false;
-
-    const loadHistoryCycles = async () => {
-      try {
-        const data = await api.get<MarkCycleOption[]>("/marks/cycles");
-        if (!ignore) {
-          setHistoryCycles(data || []);
-        }
-      } catch (_error) {
-        if (!ignore) {
-          setHistoryCycles([]);
-        }
-      }
-    };
-
-    void loadHistoryCycles();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   useEffect(() => {
     const handleResize = () => setIsCompact(window.innerWidth <= 820);
@@ -166,35 +122,8 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   }, [classes, selectedClassId]);
 
   const currentClass = useMemo(() => {
-    const activeClass =
-      classes.find((current) => current.id === selectedClassId) || classes[0];
-    const selectedHistoricalCycle =
-      selectedHistoryKey === "current"
-        ? null
-        : historyCycles.find((cycle) => buildHistoryKey(cycle) === selectedHistoryKey) || null;
-
-    if (!selectedHistoricalCycle) {
-      return activeClass;
-    }
-
-    return {
-      id: `${selectedHistoricalCycle.classGrade}::${selectedHistoricalCycle.classStream || ""}`,
-      name: `Grade ${selectedHistoricalCycle.classGrade}${selectedHistoricalCycle.classStream ? ` ${selectedHistoricalCycle.classStream}` : ""}`,
-      grade: selectedHistoricalCycle.classGrade,
-      stream: selectedHistoricalCycle.classStream || "",
-      students: 0,
-      classTeacherId: "",
-      subjectAssignments: {},
-      subjectSettings: {},
-      offeredSubjectIds: selectedHistoricalCycle.subjectIds || [],
-      droppedSubjectIds: [],
-      compulsorySubjectIds: selectedHistoricalCycle.subjectIds || [],
-      electiveSubjectIds: [],
-      term: selectedHistoricalCycle.term,
-      year: selectedHistoricalCycle.year,
-      examType: selectedHistoricalCycle.examType,
-    } as Class;
-  }, [classes, historyCycles, selectedClassId, selectedHistoryKey]);
+    return classes.find((current) => current.id === selectedClassId) || classes[0];
+  }, [classes, selectedClassId]);
   const availableSubjects = currentClass
     ? subjects.filter((subject) =>
         currentClass.offeredSubjectIds.includes(subject.id),
@@ -220,13 +149,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   useEffect(() => {
     setMarksData({});
     setSubjectStudents({});
-  }, [
-    selectedClassId,
-    currentClass?.term,
-    currentClass?.year,
-    currentClass?.examType,
-    selectedHistoryKey,
-  ]);
+  }, [selectedClassId, currentClass?.term, currentClass?.year, currentClass?.examType]);
 
   useEffect(() => {
     if (!currentClass || !activeSubjectId) {
@@ -440,8 +363,6 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
 
       setMessage({ text: "Marks updated successfully.", type: "success" });
       await onRefresh();
-      const data = await api.get<MarkCycleOption[]>("/marks/cycles");
-      setHistoryCycles(data || []);
     } catch (error: any) {
       setMessage({
         text: `Failed to save marks: ${error.message}`,
@@ -560,7 +481,6 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
             value={currentClass?.id || ""}
             onChange={(event) =>
               setSelectedClassId(() => {
-                setSelectedHistoryKey("current");
                 let updated = event.target.value;
                 sessionStorage.setItem(
                   "selectedClass",
@@ -574,23 +494,6 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
             {classes.map((current) => (
               <option key={current.id} value={current.id}>
                 {current.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={labelStyle}>Saved cycle / stream</span>
-          <select
-            value={selectedHistoryKey}
-            onChange={(event) => setSelectedHistoryKey(event.target.value)}
-            style={inputStyle}
-          >
-            <option value="current">Current active entry cycle</option>
-            {historyCycles.map((cycle) => (
-              <option key={buildHistoryKey(cycle)} value={buildHistoryKey(cycle)}>
-                Grade {cycle.classGrade}
-                {cycle.classStream ? ` ${cycle.classStream}` : ""} - T{cycle.term} {cycle.year} {cycle.examType.toUpperCase()} ({cycle.markCount})
               </option>
             ))}
           </select>
