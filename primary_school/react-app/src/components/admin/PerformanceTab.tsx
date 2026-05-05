@@ -60,6 +60,21 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
+const tableCellStyle: React.CSSProperties = {
+  padding: "12px",
+  color: "var(--text)",
+  verticalAlign: "middle",
+};
+
+const tableHeadStyle: React.CSSProperties = {
+  ...tableCellStyle,
+  color: "var(--textM)",
+  fontSize: 11,
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: ".04em",
+};
+
 const toFiniteNumber = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") return null;
   const num = typeof value === "number" ? value : Number(value);
@@ -333,7 +348,15 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         </p>
       </div>
 
-      <div style={{ ...panelStyle, display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1.2fr", gap: 12 }}>
+      <div
+        style={{
+          ...panelStyle,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+          gap: 12,
+          alignItems: "stretch",
+        }}
+      >
         <label style={{ display: "grid", gap: 6 }}>
           <span style={labelStyle}>Select Scope</span>
           <select value={selectedId} onChange={e => { setSelectedId(e.target.value); sessionStorage.setItem("selectedPerformanceTarget", JSON.stringify(e.target.value)); }} style={inputStyle}>
@@ -349,15 +372,15 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         </label>
         <div style={statBoxStyle}>
           <p style={labelStyle}>{isGradeSelected ? "Grade Average" : "Stream Average"}</p>
-          <p style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{isLoading ? "..." : `${classAvg}%`}</p>
+          <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{isLoading ? "..." : `${classAvg}%`}</p>
         </div>
         <div style={statBoxStyle}>
           <p style={labelStyle}>Top Learner</p>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{isLoading ? "..." : topStudent ? `${topStudent.name} (${topStudent.average}%)` : "N/A"}</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", overflowWrap: "anywhere" }}>{isLoading ? "..." : topStudent ? `${topStudent.name} (${topStudent.average}%)` : "N/A"}</p>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
            <button onClick={handleDownloadExcel} style={{ ...inputStyle, background: "var(--gold)", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Download Excel</button>
-           <button onClick={handleDownloadPDF} style={{ ...inputStyle, background: "var(--white)", cursor: "pointer", fontWeight: 700 }}>Download PDF</button>
+           <button onClick={handleDownloadPDF} style={{ ...inputStyle, background: "var(--white)", color: "var(--text)", cursor: "pointer", fontWeight: 700 }}>Download PDF</button>
         </div>
       </div>
 
@@ -367,37 +390,37 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         </div>
       )}
 
-      <div style={{ ...panelStyle, overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div style={{ ...panelStyle, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <table style={{ width: "100%", minWidth: 760, borderCollapse: "collapse", color: "var(--text)" }}>
           <thead>
             <tr style={{ textAlign: "left", background: "var(--sand)" }}>
-              <th style={{ padding: "12px" }}>Rank</th>
-              <th style={{ padding: "12px" }}>Student</th>
-              <th style={{ padding: "12px" }}>Adm No</th>
-              <th style={{ padding: "12px" }}>Stream</th>
-              <th style={{ padding: "12px" }}>Points</th>
-              <th style={{ padding: "12px" }}>Avg Pts</th>
-              <th style={{ padding: "12px" }}>Average</th>
-              <th style={{ padding: "12px" }}>Grade</th>
-              <th style={{ padding: "12px", textAlign: "right" }}>Total</th>
+              <th style={tableHeadStyle}>Rank</th>
+              <th style={tableHeadStyle}>Student</th>
+              <th style={tableHeadStyle}>Adm No</th>
+              <th style={tableHeadStyle}>Stream</th>
+              <th style={tableHeadStyle}>Points</th>
+              <th style={tableHeadStyle}>Avg Pts</th>
+              <th style={tableHeadStyle}>Average</th>
+              <th style={tableHeadStyle}>Grade</th>
+              <th style={{ ...tableHeadStyle, textAlign: "right" }}>Total</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={9} style={{ padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
+              <tr><td colSpan={9} style={{ ...tableCellStyle, padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
             ) : performanceRows.length === 0 ? (
-              <tr><td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
+              <tr><td colSpan={9} style={{ ...tableCellStyle, padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
             ) : performanceRows.map(row => (
               <tr key={row.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td style={{ padding: "12px" }}>{row.rank}</td>
-                <td style={{ padding: "12px", fontWeight: 600 }}>{row.name}</td>
-                <td style={{ padding: "12px", color: "var(--textMut)" }}>{row.admissionNo}</td>
-                <td style={{ padding: "12px", fontSize: 12 }}>{row.stream}</td>
-                <td style={{ padding: "12px", fontWeight: 700, color: "var(--gold)" }}>{row.points}</td>
-                <td style={{ padding: "12px", fontWeight: 700 }}>{row.avgPoints.toFixed(2)}</td>
-                <td style={{ padding: "12px" }}>{row.average}%</td>
-                <td style={{ padding: "12px", fontWeight: 700 }}>{pointsToGrade(row.avgPoints)}</td>
-                <td style={{ padding: "12px", textAlign: "right", fontWeight: 700 }}>{row.total}</td>
+                <td style={tableCellStyle}>{row.rank}</td>
+                <td style={{ ...tableCellStyle, fontWeight: 600 }}>{row.name}</td>
+                <td style={{ ...tableCellStyle, color: "var(--textMut)" }}>{row.admissionNo}</td>
+                <td style={{ ...tableCellStyle, fontSize: 12 }}>{row.stream}</td>
+                <td style={{ ...tableCellStyle, fontWeight: 700, color: "var(--gold)" }}>{row.points}</td>
+                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{row.avgPoints.toFixed(2)}</td>
+                <td style={tableCellStyle}>{row.average}%</td>
+                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{pointsToGrade(row.avgPoints)}</td>
+                <td style={{ ...tableCellStyle, textAlign: "right", fontWeight: 700 }}>{row.total}</td>
               </tr>
             ))}
           </tbody>

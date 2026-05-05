@@ -444,6 +444,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
             textTransform: "uppercase",
             letterSpacing: ".09em",
             margin: 0,
+            
           }}
         >
           Marks desk

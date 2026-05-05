@@ -53,6 +53,10 @@ const createEmptyMarks = (): MarkRow => ({
 const getCatKey = (index: number) => `cat${index}` as CatKey;
 const getCatMaxKey = (index: number) => `cat${index}Max` as ConfigKey;
 
+const preventNumberWheelChange = (event: React.WheelEvent<HTMLInputElement>) => {
+  event.currentTarget.blur();
+};
+
 export const MarksEntry: React.FC<MarksEntryProps> = ({
   mode,
   subjects,
@@ -286,8 +290,10 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                       <div style={{ marginTop: 4 }}>
                         <input
                           type="number"
+                          inputMode="numeric"
                           className={styles.maxInput}
                           value={catConfigs[key] ?? ""}
+                          onWheel={preventNumberWheelChange}
                           onChange={(event) => updateConfig(key, event.target.value)}
                         />
                       </div>
@@ -299,8 +305,10 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                   <div style={{ marginTop: 4 }}>
                     <input
                       type="number"
+                      inputMode="numeric"
                       className={styles.maxInput}
                       value={catConfigs.examMax ?? ""}
+                      onWheel={preventNumberWheelChange}
                       onChange={(event) => updateConfig("examMax", event.target.value)}
                     />
                   </div>
@@ -364,8 +372,10 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                             type="number"
                             min="0"
                             max={Number(catConfigs[getCatMaxKey(index + 1)] || 0)}
+                            inputMode="decimal"
                             value={marks[key] ?? ""}
                             placeholder="-"
+                            onWheel={preventNumberWheelChange}
                             onChange={(event) => onMarkUpdate(activeSubjectId, student.id, key, event.target.value)}
                           />
                         </td>
@@ -377,8 +387,10 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                         type="number"
                         min="0"
                         max={Number(catConfigs.examMax || 0)}
+                        inputMode="decimal"
                         value={marks.exam ?? ""}
                         placeholder="-"
+                        onWheel={preventNumberWheelChange}
                         onChange={(event) => onMarkUpdate(activeSubjectId, student.id, "exam", event.target.value)}
                       />
                     </td>
@@ -396,8 +408,10 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                           type="number"
                           min="0"
                           max="100"
+                          inputMode="decimal"
                           value={marks.finalScore ?? ""}
                           placeholder={calculatedPercentage !== null ? calculatedPercentage.toString() : "-"}
+                          onWheel={preventNumberWheelChange}
                           onChange={(event) => onMarkUpdate(activeSubjectId, student.id, "finalScore", event.target.value)}
                           style={{ borderColor: "var(--gold)", fontWeight: 700 }}
                         />

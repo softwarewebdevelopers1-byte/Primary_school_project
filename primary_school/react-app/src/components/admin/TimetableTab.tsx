@@ -71,6 +71,17 @@ const validateBreakConfiguration = (
   });
 };
 
+const preventNumberWheelChange = (event: React.WheelEvent<HTMLInputElement>) => {
+  event.currentTarget.blur();
+};
+
+const clampNumberInput = (value: string, min: number, max: number, fallback: number) => {
+  if (value === "") return fallback;
+  const nextValue = Number(value);
+  if (!Number.isFinite(nextValue)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(nextValue)));
+};
+
 export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeriod }) => {
   const [schoolStartTime, setSchoolStartTime] = useState("08:00");
   const [subjectsPerDay, setSubjectsPerDay] = useState(7);
@@ -232,8 +243,13 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
                     type="number"
                     min={1}
                     max={12}
+                    step={1}
+                    inputMode="numeric"
                     value={subjectsPerDay}
-                    onChange={(event) => setSubjectsPerDay(Number(event.target.value))}
+                    onWheel={preventNumberWheelChange}
+                    onChange={(event) =>
+                      setSubjectsPerDay(clampNumberInput(event.target.value, 1, 12, subjectsPerDay))
+                    }
                     style={inputStyle}
                     required
                   />
@@ -244,8 +260,15 @@ export const TimetableTab: React.FC<TimetableTabProps> = ({ classes, currentPeri
                     type="number"
                     min={20}
                     max={180}
+                    step={5}
+                    inputMode="numeric"
                     value={subjectDurationMinutes}
-                    onChange={(event) => setSubjectDurationMinutes(Number(event.target.value))}
+                    onWheel={preventNumberWheelChange}
+                    onChange={(event) =>
+                      setSubjectDurationMinutes(
+                        clampNumberInput(event.target.value, 20, 180, subjectDurationMinutes),
+                      )
+                    }
                     style={inputStyle}
                     required
                   />
