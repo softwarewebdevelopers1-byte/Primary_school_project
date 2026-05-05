@@ -61,6 +61,8 @@ export const GlobalStyles: React.FC = () => (
       background: var(--ct-cream);
       border-color: var(--ct-border);
     }
+    .ct-dashboardShell :is(input, select, textarea)::placeholder { color: var(--ct-text-faint); }
+    .ct-dashboardShell div:has(> table) { overflow-x: auto; }
     .ct-dashboardShell button {
       font-family: Nunito, sans-serif;
     }
@@ -127,6 +129,9 @@ export const GlobalStyles: React.FC = () => (
     @media (max-width: 640px) {
       .ct-topBarMeta { justify-content: flex-start; }
       .ct-metricStrip { grid-template-columns: 1fr !important; }
+      .ct-dashboardShell table { min-width: 680px; }
+      .ct-dashboardShell th,
+      .ct-dashboardShell td { white-space: nowrap; }
     }
   `}</style>
 );

@@ -28,6 +28,7 @@ export interface SubjectEnrollmentStudentRecord {
   _id?: unknown;
   class?: string | null;
   classStream?: string | null;
+  status?: string | null;
   enrolledSubjects?: Array<Partial<StudentSubjectEnrollment>> | null;
 }
 
@@ -118,6 +119,10 @@ export const isStudentEnrolledInSubject = (
   query: SubjectEnrollmentQuery,
   settingsMap?: Map<string, ClassSubjectEnrollmentSetting>,
 ) => {
+  if (normalizeClassValue(student.status).toLowerCase() === "inactive") {
+    return false;
+  }
+
   const normalizedClassGrade = normalizeClassValue(query.classGrade);
   const normalizedClassStream = normalizeClassValue(query.classStream);
 

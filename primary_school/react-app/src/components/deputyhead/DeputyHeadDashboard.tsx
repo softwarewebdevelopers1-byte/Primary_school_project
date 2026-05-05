@@ -76,8 +76,11 @@ export default function DeputyHeadDashboard({
     try {
       setLoading(true);
       const data: any = await api.get("/users");
-      console.log("data", data);
-      setStudents(data.students || []);
+      const allStudents = data.students || [];
+      const activeStudents = allStudents.filter(
+        (student: any) => String(student.status || "active").toLowerCase() !== "inactive",
+      );
+      setStudents(activeStudents);
       setExitedStudents(data.exitedStudents || []);
       setSubjects(data.subjects || []);
 
@@ -92,7 +95,7 @@ export default function DeputyHeadDashboard({
 
         tAssignments.forEach((a: any) => {
           // Find students in this class
-          const classStudents = (data.students || []).filter(
+          const classStudents = activeStudents.filter(
             (s: any) =>
               String(s.classGrade) === String(a.classGrade) &&
               s.classStream === a.classStream,
@@ -116,9 +119,8 @@ export default function DeputyHeadDashboard({
 
       // Derive classes from students and assignments
       const classMap = new Map();
-      (data.students || []).forEach((s: any) => {
+      activeStudents.forEach((s: any) => {
         if (!s.classGrade) return;
-        console.log("---->",s)
         const key = `${s.classGrade}${s.classStream || ""}`;
         if (!classMap.has(key)) {
           classMap.set(key, {

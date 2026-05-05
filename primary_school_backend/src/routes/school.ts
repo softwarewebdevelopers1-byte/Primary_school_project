@@ -443,8 +443,8 @@ router.get("/assignments/teacher/:id", async (req: Request, res: Response) => {
       AssignmentModel.find({ teacherId: id } as any).populate("subjectId"),
       ClassSubjectSettingModel.find().lean(),
       studentModel
-        .find({ class: { $ne: null }, classStream: { $ne: null } } as any)
-        .select("_id class classStream enrolledSubjects")
+        .find({ status: { $ne: "inactive" }, class: { $ne: null }, classStream: { $ne: null } } as any)
+        .select("_id class classStream status enrolledSubjects")
         .lean(),
     ]);
     const settingsMap = buildClassSubjectSettingMap(settings as any[]);

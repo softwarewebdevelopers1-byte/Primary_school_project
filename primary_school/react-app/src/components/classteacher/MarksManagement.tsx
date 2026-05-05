@@ -43,6 +43,9 @@ const getRawSubjectId = (subject: any) => String(subject?.id || subject?._id || 
 const getStudentAdmissionNumber = (student: any) =>
   student?.admissionNumber || student?.admissionNo || student?.ADM || student?.adm || "";
 
+const isActiveStudent = (student: any) =>
+  String(student?.status || "Active").toLowerCase() !== "inactive";
+
 interface DisplaySubjectOption extends Subject {
   actualSubjects: Array<{ id: string; name: string }>;
 }
@@ -194,6 +197,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
 
   const countEligibleStudents = useCallback((subject: DisplaySubjectOption) => {
     return rosterStudents.filter((student) =>
+      isActiveStudent(student) &&
       Boolean(resolveStudentSubjectSelection(student, subject, user.classGrade, user.classStream)),
     ).length;
   }, [rosterStudents, user.classGrade, user.classStream]);
@@ -243,7 +247,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
 
       const relevantStudents: Student[] = [];
 
-      rosterStudents.forEach((student) => {
+      rosterStudents.filter(isActiveStudent).forEach((student) => {
         const actualSubjectId = resolveStudentSubjectSelection(
           student,
           currentSubject,

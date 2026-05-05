@@ -635,13 +635,6 @@ interface StudentsTabProps {
     },
     studentId?: string,
   ) => Promise<void>;
-  onBulkEnrollElective: (
-    studentIds: string[],
-    subjectId: string,
-    classGrade: string,
-    classStream: string,
-    action: "enroll" | "unenroll",
-  ) => Promise<void>;
   onDeleteStudent: (studentId: string) => Promise<void>;
   pill: (text: string, color: string) => string;
   showModal: (content: React.ReactNode) => void;
@@ -655,7 +648,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
   subjects,
   classSubjectSettings,
   onSaveStudent,
-  onBulkEnrollElective,
   onDeleteStudent,
   pill,
   showModal,
@@ -664,9 +656,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 }) => {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
-  const [bulkClassId, setBulkClassId] = useState("");
-  const [bulkSubjectId, setBulkSubjectId] = useState("");
-  const [bulkSelectedStudentIds, setBulkSelectedStudentIds] = useState<Set<string>>(new Set());
 
   const classLookup = useMemo(
     () =>
@@ -730,80 +719,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
   const totalActive = students.filter((student) => student.status === "Active")
     .length;
-  const classesWithElectives = classes.filter((currentClass) => currentClass.electiveSubjectIds.length > 0);
-  const selectedBulkClass =
-    classLookup[bulkClassId] ||
-    (classFilter !== "all" ? classLookup[classFilter] : null) ||
-    classesWithElectives[0] ||
-    null;
-  const selectedBulkClassId = selectedBulkClass?.id || "";
-  const bulkElectiveSubjects = selectedBulkClass
-    ? subjects.filter((subject) => selectedBulkClass.electiveSubjectIds.includes(subject.id))
-    : [];
-  const selectedBulkSubject =
-    bulkElectiveSubjects.find((subject) => subject.id === bulkSubjectId) ||
-    bulkElectiveSubjects[0] ||
-    null;
-  const selectedBulkSubjectId = selectedBulkSubject?.id || "";
-  const selectedBulkSetting =
-    selectedBulkClass && selectedBulkSubjectId
-      ? selectedBulkClass.subjectSettings[selectedBulkSubjectId]
-      : undefined;
-  const linkedSubjectIds =
-    selectedBulkClass && selectedBulkSetting?.sharedSlotId
-      ? bulkElectiveSubjects
-          .filter(
-            (subject) =>
-              selectedBulkClass.subjectSettings[subject.id]?.sharedSlotId ===
-              selectedBulkSetting.sharedSlotId,
-          )
-          .map((subject) => subject.id)
-      : selectedBulkSubjectId
-        ? [selectedBulkSubjectId]
-        : [];
-  const bulkClassStudents = selectedBulkClass
-    ? students.filter((student) => student.classId === selectedBulkClass.id)
-    : [];
-
-  const setBulkClass = (classId: string) => {
-    const nextClass = classLookup[classId] || null;
-    const firstElective = nextClass
-      ? subjects.find((subject) => nextClass.electiveSubjectIds.includes(subject.id))
-      : null;
-    setBulkClassId(classId);
-    setBulkSubjectId(firstElective?.id || "");
-    setBulkSelectedStudentIds(new Set());
-  };
-
-  const setBulkSubject = (subjectId: string) => {
-    setBulkSubjectId(subjectId);
-    setBulkSelectedStudentIds(new Set());
-  };
-
-  const toggleBulkStudent = (studentId: string) => {
-    const next = new Set(bulkSelectedStudentIds);
-    if (next.has(studentId)) {
-      next.delete(studentId);
-    } else {
-      next.add(studentId);
-    }
-    setBulkSelectedStudentIds(next);
-  };
-
-  const handleBulkElectiveAction = async (action: "enroll" | "unenroll") => {
-    if (!selectedBulkClass || !selectedBulkSubjectId || bulkSelectedStudentIds.size === 0) {
-      return;
-    }
-
-    await onBulkEnrollElective(
-      Array.from(bulkSelectedStudentIds),
-      selectedBulkSubjectId,
-      selectedBulkClass.grade,
-      selectedBulkClass.stream || "",
-      action,
-    );
-    setBulkSelectedStudentIds(new Set());
-  };
 
   return (
     <div className="anim">
@@ -863,152 +778,6 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           accent="#1a4a99"
         />
       </div>
-
-      {classesWithElectives.length > 0 && (
-        <div
-          style={{
-            background: "var(--white)",
-            border: "1px solid var(--border)",
-            borderRadius: 13,
-            padding: "14px 16px",
-            marginBottom: 14,
-            display: "grid",
-            gap: 12,
-          }}
-        >
-          <div>
-            <p style={smallLabelStyle}>Bulk elective enrollment</p>
-            <p style={rowMetaTextStyle}>
-              Enroll or unassign many learners from one elective subject at once.
-            </p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(180px, 1fr) auto auto", gap: 10, alignItems: "end" }}>
-            <div>
-              <label style={labelStyle}>Class</label>
-              <select
-                value={selectedBulkClassId}
-                onChange={(event) => setBulkClass(event.target.value)}
-                style={inputStyle}
-              >
-                {classesWithElectives.map((currentClass) => (
-                  <option key={currentClass.id} value={currentClass.id}>
-                    {currentClass.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Elective subject</label>
-              <select
-                value={selectedBulkSubjectId}
-                onChange={(event) => setBulkSubject(event.target.value)}
-                style={inputStyle}
-              >
-                {bulkElectiveSubjects.map((subject) => {
-                  const setting = selectedBulkClass?.subjectSettings[subject.id];
-                  return (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                      {setting?.sharedSlotId ? ` (Pair ${setting.sharedSlotId})` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setBulkSelectedStudentIds(new Set(bulkClassStudents.map((student) => student.id)))}
-              style={secondaryButtonStyle}
-            >
-              Select all
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setBulkSelectedStudentIds(new Set())}
-              style={secondaryButtonStyle}
-            >
-              Clear
-            </button>
-          </div>
-
-          {selectedBulkSubjectId && (
-            <div
-              style={{
-                border: "1px solid var(--borderL)",
-                borderRadius: 10,
-                overflow: "hidden",
-              }}
-            >
-              <div style={{ maxHeight: 240, overflowY: "auto" }}>
-                {bulkClassStudents.map((student) => {
-                  const isEnrolled = (student.enrolledSubjects || []).some(
-                    (entry) =>
-                      entry.isActive !== false &&
-                      entry.subjectId === selectedBulkSubjectId &&
-                      entry.classGrade === selectedBulkClass?.grade &&
-                      (entry.classStream || "") === (selectedBulkClass?.stream || ""),
-                  );
-                  const enrolledInPair = (student.enrolledSubjects || []).some(
-                    (entry) =>
-                      entry.isActive !== false &&
-                      linkedSubjectIds.includes(entry.subjectId) &&
-                      entry.subjectId !== selectedBulkSubjectId,
-                  );
-
-                  return (
-                    <label
-                      key={`${selectedBulkClassId}-${selectedBulkSubjectId}-${student.id}`}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "auto minmax(0, 1fr) auto",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "9px 12px",
-                        borderTop: "1px solid var(--borderL)",
-                        fontSize: 12.5,
-                        color: "var(--textM)",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={bulkSelectedStudentIds.has(student.id)}
-                        onChange={() => toggleBulkStudent(student.id)}
-                      />
-                      <span style={{ minWidth: 0 }}>{student.name}</span>
-                      <span style={{ fontSize: 11, color: isEnrolled ? "var(--sText)" : "var(--textMut)", fontWeight: 700 }}>
-                        {isEnrolled ? "Enrolled" : enrolledInPair ? "Will switch" : "Available"}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 12px", background: "var(--sand)" }}>
-                <button
-                  type="button"
-                  onClick={() => void handleBulkElectiveAction("enroll")}
-                  disabled={bulkSelectedStudentIds.size === 0}
-                  style={{ ...primaryButtonStyle, opacity: bulkSelectedStudentIds.size === 0 ? 0.55 : 1 }}
-                >
-                  Enroll selected
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleBulkElectiveAction("unenroll")}
-                  disabled={bulkSelectedStudentIds.size === 0}
-                  style={{ ...primaryButtonStyle, background: "var(--dText)", opacity: bulkSelectedStudentIds.size === 0 ? 0.55 : 1 }}
-                >
-                  Unassign selected
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       <div
         style={{

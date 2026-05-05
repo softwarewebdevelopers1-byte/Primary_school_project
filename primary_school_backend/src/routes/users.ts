@@ -773,9 +773,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
       examType: activeCycle.examType,
     } as any);
 
-    const students = allUsers.filter(
-      (u: any) => u.__t === rolesMapped.ST && u.status !== "inactive",
-    );
+    const students = allUsers.filter((u: any) => u.__t === rolesMapped.ST);
     const staff = allUsers.filter((u: any) => u.__t !== rolesMapped.ST);
     const exitedStudents = await ExitedStudentModel.find().sort({
       exitedAt: -1,
@@ -1032,7 +1030,6 @@ router.get(
 
       const students = await userModel.find({
         __t: rolesMapped.ST,
-        status: { $ne: "inactive" },
         class: grade,
         classStream: stream,
       } as any);

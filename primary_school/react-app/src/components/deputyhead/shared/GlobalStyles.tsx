@@ -65,6 +65,8 @@ export const GlobalStyles: React.FC = () => (
       background:var(--dh-cream);
       border-color:var(--dh-border);
     }
+    .dh-dashboardShell :is(input,select,textarea)::placeholder{color:var(--dh-text-faint)}
+    .dh-dashboardShell div:has(> table){overflow-x:auto}
     .dh-dashboardShell button{font-family:Nunito,sans-serif}
     @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     .dh-anim{animation:fadeUp .38s cubic-bezier(.22,1,.36,1) both}
@@ -106,6 +108,9 @@ export const GlobalStyles: React.FC = () => (
     }
     @media (max-width:640px){
       .dh-topBarMeta{justify-content:flex-start}
+      .dh-dashboardShell table{min-width:680px}
+      .dh-dashboardShell th,
+      .dh-dashboardShell td{white-space:nowrap}
     }
   `}</style>
 );

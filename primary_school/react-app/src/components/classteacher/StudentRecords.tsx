@@ -179,7 +179,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
       >
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "#f8f9fa", borderBottom: `2px solid ${C.text}` }}>
+            <tr style={{ background: C.cream, borderBottom: `2px solid ${C.text}` }}>
               {[
                 "Student",
                 "Adm. No",
@@ -323,7 +323,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                       </td>
                     );
                   })}
-                  <td style={{ padding: "12px 14px", textAlign: "center", background: "#fff9eb", borderLeft: `1px solid ${C.border}` }}>
+                  <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale, borderLeft: `1px solid ${C.border}` }}>
                     <span
                       style={{
                         fontFamily: FONT.serif,
@@ -335,7 +335,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                       {sumPoints(studentMarks)}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 14px", textAlign: "center", background: "#fff9eb" }}>
+                  <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
                     <span
                       style={{
                         fontFamily: FONT.serif,
@@ -347,7 +347,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                       {(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1)).toFixed(1)}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 14px", textAlign: "center", background: "#fff9eb" }}>
+                  <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
                     <span
                       style={{
                         fontFamily: FONT.serif,

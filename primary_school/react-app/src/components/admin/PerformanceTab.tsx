@@ -156,8 +156,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
   }, [targetClasses, subjects]);
 
   const targetStudents = useMemo(() => {
-    if (isGradeSelected) return students.filter(s => s.classGrade === currentGrade);
-    return currentClass ? students.filter(s => s.classId === currentClass.id) : [];
+    if (isGradeSelected) return students.filter(s => s.classGrade === currentGrade && s.status !== "Inactive");
+    return currentClass ? students.filter(s => s.classId === currentClass.id && s.status !== "Inactive") : [];
   }, [isGradeSelected, currentGrade, currentClass, students]);
 
   const loadPerformance = async () => {

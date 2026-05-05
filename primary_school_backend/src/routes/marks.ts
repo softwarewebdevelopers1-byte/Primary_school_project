@@ -61,8 +61,8 @@ router.get("/averages/teacher/:teacherId", async (req: Request, res: Response) =
       AssignmentModel.find({ teacherId } as any).lean(),
       ClassSubjectSettingModel.find().lean(),
       studentModel
-        .find({ class: { $ne: null }, classStream: { $ne: null } } as any)
-        .select("_id class classStream enrolledSubjects")
+        .find({ status: { $ne: "inactive" }, class: { $ne: null }, classStream: { $ne: null } } as any)
+        .select("_id class classStream status enrolledSubjects")
         .lean(),
     ]);
 
@@ -209,6 +209,7 @@ router.get("/", async (req: Request, res: Response) => {
     const [marks, students, classSubjectSettings] = await Promise.all([
       MarkModel.find(query).lean(),
       studentModel.find({ 
+        status: { $ne: "inactive" },
         class: normalizedClassGrade,
         classStream: normalizedClassStream || { $in: ["", null] }
       }).lean(),
@@ -236,20 +237,6 @@ router.get("/", async (req: Request, res: Response) => {
     const markByStudentId = new Map(
       marks.map((mark: any) => [mark.studentId.toString(), mark]),
     );
-    const missingMarkedStudentIds = Array.from(markByStudentId.keys()).filter(
-      (studentId) => !enrolledStudentMap.has(studentId),
-    );
-
-    if (missingMarkedStudentIds.length > 0) {
-      const historicalStudents = await studentModel
-        .find({ _id: { $in: missingMarkedStudentIds } } as any)
-        .lean();
-
-      for (const student of historicalStudents as any[]) {
-        enrolledStudentMap.set(student._id.toString(), student);
-      }
-    }
-
     const enrolledStudents = Array.from(enrolledStudentMap.values()).sort(
       (left: any, right: any) =>
         String(left.studentsName || "").localeCompare(
@@ -316,10 +303,11 @@ router.post("/save", async (req: Request, res: Response) => {
     const normalizedSubjectId = String(subjectId).trim();
     const [students, classSubjectSettings] = await Promise.all([
       studentModel.find({
+        status: { $ne: "inactive" },
         class: normalizedClassGrade,
         classStream: normalizedClassStream || { $in: ["", null] },
       } as any)
-        .select("_id class classStream enrolledSubjects")
+        .select("_id class classStream status enrolledSubjects")
         .lean(),
       ClassSubjectSettingModel.find({
         classGrade: normalizedClassGrade,
@@ -406,10 +394,11 @@ router.post("/summary-save", async (req: Request, res: Response) => {
     const normalizedClassStream = String(classStream || "").trim();
     const [students, classSubjectSettings] = await Promise.all([
       studentModel.find({
+        status: { $ne: "inactive" },
         class: normalizedClassGrade,
         classStream: normalizedClassStream || { $in: ["", null] },
       } as any)
-        .select("_id class classStream enrolledSubjects")
+        .select("_id class classStream status enrolledSubjects")
         .lean(),
       ClassSubjectSettingModel.find({
         classGrade: normalizedClassGrade,

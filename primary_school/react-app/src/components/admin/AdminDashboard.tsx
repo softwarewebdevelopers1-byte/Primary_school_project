@@ -11,6 +11,7 @@ import { TopBar } from "./TopBar";
 import { CycleTab } from "./CycleTab";
 import { TimetableTab } from "./TimetableTab";
 import { AdminMarksTab } from "./AdminMarksTab";
+import { BulkElectiveEnrollmentTab } from "./BulkElectiveEnrollmentTab";
 import { PerformanceTab } from "./PerformanceTab";
 import { ArchivesView } from "../shared/ArchivesView";
 import { ExitedStudentsView } from "../shared/ExitedStudentsView";
@@ -68,6 +69,11 @@ const navItems: NavItem[] = [
     svg: "<path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/>",
   },
   {
+    id: "elective-enrollment",
+    label: "Elective Enrollment",
+    svg: "<path d='M9 12l2 2 4-4'/><path d='M4 6h16'/><path d='M4 12h3'/><path d='M4 18h16'/>",
+  },
+  {
     id: "teachers",
     label: "Staff",
     svg: "<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>",
@@ -104,6 +110,8 @@ const teacherAvatarColor = "#c9963d";
 
 const normalizeStatus = (value?: string) =>
   value?.toLowerCase() === "inactive" ? "Inactive" : "Active";
+
+const isActiveStudent = (student: Student) => student.status !== "Inactive";
 
 const mapStaffToTeachers = (staff: ApiTeacher[]): Teacher[] =>
   staff.map((member) => ({
@@ -215,7 +223,7 @@ const deriveClasses = (
       grade,
       stream,
       students: students.filter(
-        (current) => current.classId === student.classId,
+        (current) => current.classId === student.classId && isActiveStudent(current),
       ).length,
       classTeacherId: classTeacher?.id || "",
       subjectAssignments: getAssignmentsForClass(
@@ -854,6 +862,7 @@ const AdminDashboard: React.FC = () => {
       students: "Student management",
       marks: "Marks management",
       subjects: "Subject management",
+      "elective-enrollment": "Elective enrollment",
       teachers: "Staff directory",
       assignments: "Subject assignments",
       timetables: "Timetable generator",
@@ -915,7 +924,6 @@ const AdminDashboard: React.FC = () => {
           subjects={subjects}
           classSubjectSettings={classSubjectSettings}
           onSaveStudent={saveStudent}
-          onBulkEnrollElective={bulkEnrollElective}
           onDeleteStudent={deleteStudent}
           pill={pill}
           showModal={showModal}
@@ -935,6 +943,17 @@ const AdminDashboard: React.FC = () => {
           showModal={showModal}
           closeModal={closeModal}
           showConfirm={showConfirm}
+        />
+      );
+    }
+
+    if (activeTab === "elective-enrollment") {
+      return (
+        <BulkElectiveEnrollmentTab
+          classes={classes}
+          students={students}
+          subjects={subjects}
+          onBulkEnrollElective={bulkEnrollElective}
         />
       );
     }
@@ -988,7 +1007,6 @@ const AdminDashboard: React.FC = () => {
           onSaveAssignment={saveAssignment}
           onUnassignTeacher={unassignSubjectTeacher}
           onToggleSubjectOffering={toggleSubjectOffering}
-          onBulkEnrollElective={bulkEnrollElective}
           avatar={avatar}
           pill={pill}
           showModal={showModal}

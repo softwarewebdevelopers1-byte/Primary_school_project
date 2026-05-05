@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { C, FONT } from "./shared/constants";
 import { formatSubjectOfferingTag, type SubjectEnrollmentMode } from "../../lib/subjectEnrollment";
-import { isStudentSubject } from "./shared/helpers";
 
 const generateElectivePairId = () => `EL-${crypto.randomUUID()}`;
 
@@ -13,9 +12,7 @@ interface SubjectAssignmentsProps {
   classStream: string;
   classTeacherName: string;
   onSwitchToSubjectDashboard: () => void;
-  students?: any[];
   canSwitchToSubjectDashboard: boolean;
-  onBulkEnrollElective?: (studentIds: string[], subjectId: string, action: "enroll" | "unenroll") => Promise<void>;
   onToggleSubjectOffering: (
     subjectId: string,
     isOffered: boolean,
@@ -30,11 +27,9 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
   classGrade,
   classStream,
   classTeacherName,
-  students = [],
   onSwitchToSubjectDashboard,
   canSwitchToSubjectDashboard,
   onToggleSubjectOffering,
-  onBulkEnrollElective,
 }) => {
   const [busySubjectId, setBusySubjectId] = useState("");
   const [feedback, setFeedback] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -64,36 +59,6 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
     }
   };
 
-  const [selectedElective, setSelectedElective] = useState<string>("");
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
-
-  const handleToggleStudent = (studentId: string) => {
-    const next = new Set(selectedStudents);
-    if (next.has(studentId)) next.delete(studentId);
-    else next.add(studentId);
-    setSelectedStudents(next);
-  };
-
-  const handleSelectAll = () => {
-    if (!selectedElective) return;
-    const next = new Set<string>();
-
-    students.forEach(s => {
-      next.add(s.id);
-    });
-    setSelectedStudents(next);
-  };
-
-  const handleBulkEnroll = async (action: "enroll" | "unenroll") => {
-    if (!onBulkEnrollElective || !selectedElective || selectedStudents.size === 0) return;
-    try {
-      await onBulkEnrollElective(Array.from(selectedStudents), selectedElective, action);
-      setFeedback({ text: `Successfully ${action}ed ${selectedStudents.size} students.`, type: "success" });
-      setSelectedStudents(new Set());
-    } catch (err: any) {
-      setFeedback({ text: err.message || `Failed to ${action} students.`, type: "error" });
-    }
-  };
 
   const offeredSubjects = subjects.filter((subject) => subject.isOffered !== false);
   const droppedSubjects = subjects.filter((subject) => subject.isOffered === false);
@@ -602,86 +567,6 @@ export const SubjectAssignments: React.FC<SubjectAssignmentsProps> = ({
             </div>
           </div>
         </div>
-      )}
-
-      {offeredSubjects.filter(s => s.enrollmentMode === "elective").length > 0 && (
-        <section style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 20px" }}>
-          <h3 style={{ fontFamily: FONT.serif, fontSize: 20, margin: "0 0 16px" }}>Bulk Elective Enrollment</h3>
-          <p style={{ fontFamily: FONT.sans, fontSize: 13, color: C.textMuted, marginBottom: 16 }}>Select an elective subject to assign multiple students at once.</p>
-          
-          <select 
-            value={selectedElective} 
-            onChange={e => { setSelectedElective(e.target.value); setSelectedStudents(new Set()); }}
-            style={{ width: "100%", maxWidth: 300, padding: "8px 12px", borderRadius: 8, border: `1px solid ${C.border}`, marginBottom: 16 }}
-          >
-            <option value="">-- Choose an elective subject --</option>
-            {offeredSubjects.filter(s => s.enrollmentMode === "elective").map(s => (
-              <option key={s.id} value={s.id}>{s.name} {s.sharedSlotId ? `(Paired: ${s.sharedSlotId})` : ''}</option>
-            ))}
-          </select>
-
-          {selectedElective && (() => {
-            const currentSub = offeredSubjects.find(s => s.id === selectedElective);
-            const isLinkedPair = Boolean(currentSub?.sharedSlotId);
-            const pairSubjectIds = isLinkedPair ? offeredSubjects.filter(s => s.sharedSlotId === currentSub?.sharedSlotId).map(s => s.id) : [];
-
-            return (
-              <div>
-                <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-                  <button onClick={handleSelectAll} style={{ padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Select All</button>
-                  <button onClick={() => setSelectedStudents(new Set())} style={{ padding: "6px 12px", borderRadius: 6, cursor: "pointer" }}>Deselect All</button>
-                  <span style={{ flex: 1 }} />
-                  <button onClick={() => void handleBulkEnroll("enroll")} disabled={selectedStudents.size === 0} style={{ padding: "6px 16px", borderRadius: 8, background: C.green, color: "white", border: "none", cursor: "pointer", opacity: selectedStudents.size === 0 ? 0.5 : 1 }}>Enroll Selected</button>
-                  <button onClick={() => void handleBulkEnroll("unenroll")} disabled={selectedStudents.size === 0} style={{ padding: "6px 16px", borderRadius: 8, background: C.dangerBg, color: C.dangerText, border: "none", cursor: "pointer", opacity: selectedStudents.size === 0 ? 0.5 : 1 }}>Unenroll Selected</button>
-                </div>
-
-                <div style={{ maxHeight: 400, overflowY: "auto", border: `1px solid ${C.borderLight}`, borderRadius: 8 }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: C.sand, textAlign: "left" }}>
-                        <th style={{ padding: "8px 12px", width: 40 }}></th>
-                        <th style={{ padding: "8px 12px" }}>Student</th>
-                        <th style={{ padding: "8px 12px" }}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {students.map(s => {
-                        const currentSub = offeredSubjects.find(sub => sub.id === selectedElective);
-                        const isEnrolled = currentSub ? isStudentSubject(s, currentSub) : false;
-                        const enrolledInOther = isLinkedPair && (s.enrolledSubjects || []).some((e: any) => {
-                          const eSubId = e?.subjectId?._id || e?.subjectId?.id || e?.subjectId;
-                          return e.isActive && pairSubjectIds.includes(eSubId) && eSubId !== selectedElective;
-                        });
-                        
-                        return (
-                          <tr key={s.id} style={{ borderTop: `1px solid ${C.borderLight}` }}>
-                            <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                              <input 
-                                type="checkbox" 
-                                checked={selectedStudents.has(s.id)}
-                                onChange={() => handleToggleStudent(s.id)}
-                              />
-                            </td>
-                            <td style={{ padding: "8px 12px", fontFamily: FONT.sans, fontSize: 13 }}>{s.name}</td>
-                            <td style={{ padding: "8px 12px", fontFamily: FONT.sans, fontSize: 12 }}>
-                              {isEnrolled ? (
-                                <span style={{ color: C.green, fontWeight: 600 }}>Enrolled</span>
-                              ) : enrolledInOther ? (
-                                <span style={{ color: C.textMuted }}>Will switch</span>
-                              ) : (
-                                <span style={{ color: C.textMuted }}>Not enrolled</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })()}
-        </section>
       )}
     </div>
   );

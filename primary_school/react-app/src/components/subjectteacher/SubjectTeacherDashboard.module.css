@@ -69,6 +69,14 @@
 .dashboard button {
   font-family: var(--sans);
 }
+
+.dashboard :is(input, select, textarea)::placeholder {
+  color: var(--textF);
+}
+
+.dashboard div:has(> table) {
+  overflow-x: auto;
+}
 * {
   padding: 0;
   margin: 0;
@@ -99,6 +107,17 @@
   background: var(--sand);
   overflow: hidden;
   position: relative;
+}
+
+@media (max-width: 760px) {
+  .dashboard table {
+    min-width: 680px;
+  }
+
+  .dashboard th,
+  .dashboard td {
+    white-space: nowrap;
+  }
 }
 
 /* ========== Sidebar Styles ========== */

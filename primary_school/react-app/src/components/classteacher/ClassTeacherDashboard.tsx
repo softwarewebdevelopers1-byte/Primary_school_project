@@ -190,22 +190,6 @@ export default function ClassTeacherDashboard() {
     [currentUser, loadData],
   );
 
-  const handleBulkEnrollElective = async (
-    studentIds: string[],
-    subjectId: string,
-    action: "enroll" | "unenroll",
-  ) => {
-    if (!currentUser?.classGrade) return;
-    await api.put(`/users/bulk-enroll-elective`, {
-      studentIds,
-      subjectId,
-      classGrade: currentUser.classGrade,
-      classStream: currentUser.classStream,
-      action,
-    });
-    await loadData();
-  };
-
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -340,11 +324,9 @@ export default function ClassTeacherDashboard() {
             classGrade={currentUser.classGrade}
             classStream={currentUser.classStream}
             classTeacherName={currentUser.name}
-            students={students}
             canSwitchToSubjectDashboard={canSwitchToSubjectDashboard}
             onSwitchToSubjectDashboard={() => navigate("/subjectTeacher")}
             onToggleSubjectOffering={toggleSubjectOffering}
-            onBulkEnrollElective={handleBulkEnrollElective}
           />
         );
       case "timetable":

@@ -95,6 +95,14 @@
   font-family: var(--sans);
 }
 
+.dashboard :is(input, select, textarea)::placeholder {
+  color: var(--textF);
+}
+
+.dashboard div:has(> table) {
+  overflow-x: auto;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -171,6 +179,17 @@
   box-shadow: 0 24px 60px rgba(11, 32, 24, 0.3);
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
+}
+
+@media (max-width: 760px) {
+  .dashboard table {
+    min-width: 680px;
+  }
+
+  .dashboard th,
+  .dashboard td {
+    white-space: nowrap;
+  }
 }
 
 /* Scrollbar */
