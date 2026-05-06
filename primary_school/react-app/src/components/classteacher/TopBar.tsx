@@ -13,6 +13,7 @@ interface TopBarProps {
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
+  onChangePassword: () => void;
   user: any;
   onRefresh?: () => void;
 }
@@ -24,6 +25,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   theme,
   onToggleTheme,
   onLogout,
+  onChangePassword,
   user,
   onRefresh,
 }) => {
@@ -180,22 +182,40 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               {user?.name}
             </p>
-            <button
-              onClick={onLogout}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                fontFamily: FONT.sans,
-                fontSize: 11,
-                color: C.dangerText,
-                fontWeight: 600,
-                cursor: "pointer",
-                textDecoration: "underline"
-              }}
-            >
-              Log out
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={onChangePassword}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: FONT.sans,
+                  fontSize: 11,
+                  color: C.gold,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Password
+              </button>
+              <button
+                onClick={onLogout}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: FONT.sans,
+                  fontSize: 11,
+                  color: C.dangerText,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </div>

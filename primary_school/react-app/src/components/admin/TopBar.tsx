@@ -14,6 +14,7 @@ interface TopBarProps {
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
+  onChangePassword: () => void;
   user: any;
 }
 
@@ -28,6 +29,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   theme,
   onToggleTheme,
   onLogout,
+  onChangePassword,
   user,
 }) => {
   const date = new Date().toLocaleDateString("en-GB", {
@@ -75,30 +77,30 @@ export const TopBar: React.FC<TopBarProps> = ({
           </button>
         )}
         <div style={{ minWidth: 0 }}>
-        <p
-          style={{
-            fontSize: 9.5,
-            fontWeight: 700,
-            color: "var(--gold)",
-            textTransform: "uppercase",
-            letterSpacing: ".09em",
-            margin: 0,
-          }}
-        >
-          Admin Dashboard
-        </p>
-        <h2
-          style={{
-            fontFamily: "var(--serif)",
-            fontSize: "1.1rem",
-            fontWeight: 600,
-            color: "var(--text)",
-            margin: 0,
-            lineHeight: 1.2,
-          }}
-        >
-          {title}
-        </h2>
+          <p
+            style={{
+              fontSize: 9.5,
+              fontWeight: 700,
+              color: "var(--gold)",
+              textTransform: "uppercase",
+              letterSpacing: ".09em",
+              margin: 0,
+            }}
+          >
+            Admin Dashboard
+          </p>
+          <h2
+            style={{
+              fontFamily: "var(--serif)",
+              fontSize: "1.1rem",
+              fontWeight: 600,
+              color: "var(--text)",
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            {title}
+          </h2>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
@@ -190,21 +192,38 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               Admin User
             </p>
-            <button
-              onClick={onLogout}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                fontSize: 10,
-                color: "var(--dText)",
-                fontWeight: 700,
-                cursor: "pointer",
-                textDecoration: "underline"
-              }}
-            >
-              Log out
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={onChangePassword}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontSize: 10,
+                  color: "var(--gold)",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Change Password
+              </button>
+              <button
+                onClick={onLogout}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontSize: 10,
+                  color: "var(--dText)",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </div>

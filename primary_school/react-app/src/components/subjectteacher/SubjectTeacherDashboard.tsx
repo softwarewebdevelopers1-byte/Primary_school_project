@@ -10,6 +10,7 @@ import { AssessmentsTab } from "./AssessmentsTab";
 import { ProgressTab } from "./ProgressTab";
 import { ResourcesTab } from "./ResourcesTab";
 import { TimetableLibrary } from "../shared/TimetableLibrary";
+import { ChangePassword } from "../shared/ChangePassword";
 import { Subject, Student, MarksData } from "./types";
 import { useDashboardTheme } from "../../lib/useDashboardTheme";
 import { api } from "../../lib/api";
@@ -70,6 +71,7 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [term, setTerm] = useState<number>(currentUser?.term || 1);
   const [year, setYear] = useState<number>(currentUser?.year || 2024);
   const [examType, setExamType] = useState<string>(currentUser?.examType || "opener");
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const { theme, toggleTheme } = useDashboardTheme();
 
   const handleLogout = () => {
@@ -483,6 +485,7 @@ const SubjectTeacherDashboard: React.FC = () => {
           theme={theme}
           onToggleTheme={toggleTheme}
           onLogout={handleLogout}
+          onChangePassword={() => setPasswordModalOpen(true)}
           user={currentUser}
           onRefresh={handleManualRefresh}
         />
@@ -503,6 +506,37 @@ const SubjectTeacherDashboard: React.FC = () => {
           {renderContent()}
         </div>
       </div>
+
+      {passwordModalOpen && (
+        <div 
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(11, 32, 24, 0.45)",
+            backdropFilter: "blur(4px)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20
+          }}
+          onClick={() => setPasswordModalOpen(false)}
+        >
+          <div 
+            style={{ 
+              width: "100%", 
+              maxWidth: 500, 
+              background: "var(--cream)", 
+              borderRadius: 16, 
+              overflow: "hidden", 
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <ChangePassword onClose={() => setPasswordModalOpen(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

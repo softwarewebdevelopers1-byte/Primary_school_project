@@ -15,6 +15,7 @@ import { BulkElectiveEnrollmentTab } from "./BulkElectiveEnrollmentTab";
 import { PerformanceTab } from "./PerformanceTab";
 import { ArchivesView } from "../shared/ArchivesView";
 import { ExitedStudentsView } from "../shared/ExitedStudentsView";
+import { ChangePassword } from "../shared/ChangePassword";
 import {
   ApiStudent,
   ApiTeacher,
@@ -804,6 +805,10 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleOpenPasswordModal = () => {
+    showModal(<ChangePassword onClose={closeModal} />);
+  };
+
   const showSuccess = (msg: string) => {
     showModal(
       <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -1125,6 +1130,7 @@ const AdminDashboard: React.FC = () => {
           user={user}
           isMobile={isMobile}
           onOpenMenu={() => setMobileMenuOpen(true)}
+          onChangePassword={handleOpenPasswordModal}
         />
 
         <div

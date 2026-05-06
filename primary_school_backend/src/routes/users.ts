@@ -1249,6 +1249,34 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
   }
 });
 
+// PUT change password
+router.put("/password", authenticate, async (req: Request, res: Response) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: "Old and new passwords are required." });
+    }
+
+    const userId = (req as any).user?.id;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, (user as any).password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid old password." });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await userModel.findByIdAndUpdate(userId, { $set: { password: hashedPassword } });
+
+    res.json({ message: "Password updated successfully." });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Bulk update term and year for all users
 router.put(
   "/bulk-update-term",
@@ -1360,8 +1388,47 @@ router.put(
         const userYear = Number(userDoc.year ?? currentYear);
         const shiftedClass = shiftClassName(currentClass, newYear - userYear);
 
+        // Unassign teachers who were in the final grade
+        const isFinalGrade = finalGradeSetting?.value && extractClassLevel(currentClass) === extractClassLevel(String(finalGradeSetting.value));
+        const isTeacher = (userDoc as any).__t !== rolesMapped.ST;
+        
+        if (isFinalGrade && isTeacher && assignmentClassOffset > 0) {
+          const roles = (userDoc as any).roles || {};
+          return [
+            {
+              updateOne: {
+                filter: { _id: userDoc._id },
+                update: {
+                  $set: {
+                    class: null,
+                    classStream: null,
+                    "roles.role1": roles.role1 === rolesMapped.CT ? rolesMapped.SJ : roles.role1,
+                    "roles.role2": roles.role2 === rolesMapped.CT ? null : roles.role2,
+                    "roles.role3": roles.role3 === rolesMapped.CT ? null : roles.role3,
+                  },
+                },
+              },
+            },
+          ];
+        }
+
         if (!currentClass || !shiftedClass || shiftedClass === currentClass) {
           return [];
+        }
+
+        // Student elective preservation and carry-forward
+        let enrolledSubjects = (userDoc as any).enrolledSubjects;
+        if ((userDoc as any).__t === rolesMapped.ST && Array.isArray(enrolledSubjects)) {
+          const newEnrollments = enrolledSubjects
+            .filter((e: any) => e.isActive !== false)
+            .map((e: any) => ({
+              ...e,
+              classGrade: shiftClassName(e.classGrade, newYear - userYear) || e.classGrade,
+              enrolledAt: new Date(),
+            }));
+          
+          // History remains (old classGrade entries), and new ones added for the shifted class
+          enrolledSubjects = [...enrolledSubjects, ...newEnrollments];
         }
 
         return [
@@ -1371,20 +1438,7 @@ router.put(
               update: {
                 $set: {
                   class: shiftedClass,
-                  enrolledSubjects:
-                    (userDoc as any).__t === rolesMapped.ST &&
-                    Array.isArray((userDoc as any).enrolledSubjects)
-                      ? (userDoc as any).enrolledSubjects.map(
-                          (enrollment: any) => ({
-                            ...enrollment,
-                            classGrade:
-                              shiftClassName(
-                                enrollment.classGrade,
-                                newYear - userYear,
-                              ) || enrollment.classGrade,
-                          }),
-                        )
-                      : (userDoc as any).enrolledSubjects,
+                  enrolledSubjects,
                 },
               },
             },
@@ -1397,6 +1451,13 @@ router.put(
       }
 
       if (assignmentClassOffset !== 0) {
+        // Delete assignments and settings for classes that reached graduation
+        if (finalGradeSetting?.value && assignmentClassOffset > 0) {
+          const finalLevel = extractClassLevel(String(finalGradeSetting.value));
+          await AssignmentModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
+          await ClassSubjectSettingModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
+        }
+
         const assignments = await AssignmentModel.find();
         const assignmentUpdates = assignments.flatMap((assignment) => {
           const shiftedClass = shiftClassName(

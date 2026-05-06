@@ -6,6 +6,7 @@ import StudentPortfolio from "./StudentPortfolio";
 import LearningMaterials from "./LearningMaterials";
 import Assessments from "./Assessments";
 import Questions from "./Questions";
+import { ChangePassword } from "../shared/ChangePassword";
 import {
   Assessment,
   LearningMaterial,
@@ -416,6 +417,7 @@ function StudentDashboard() {
   const [materials] = useState(initialMaterials);
   const [assessments] = useState(initialAssessments);
   const [questions] = useState(initialQuestions);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   const portfolio = useMemo(() => {
     const scores = [
@@ -444,102 +446,152 @@ function StudentDashboard() {
   const navItems: Tab[] = ["dashboard", "materials", "assessments", "questions", "portfolio"];
 
   return (
-    <div className={styles.dashboardShell}>
-      <header className={styles.topbar}>
-        <div className={styles.brandBlock}>
-          <span className={styles.brandBadge}>{student.school}</span>
-          <h1>Student Dashboard</h1>
-          <p>Organized learning, clear progress, and faster follow-through.</p>
-        </div>
+    <>
+      <div className={styles.dashboardShell}>
+        <header className={styles.topbar}>
+          <div className={styles.brandBlock}>
+            <span className={styles.brandBadge}>{student.school}</span>
+            <h1>Student Dashboard</h1>
+            <p>Organized learning, clear progress, and faster follow-through.</p>
+          </div>
 
-        <div className={styles.studentCard}>
-          <img src={student.avatar} alt={student.name} className={styles.avatar} />
-          <div>
-            <strong>{student.name}</strong>
-            <p>
-              {student.class} • {student.grade}
-            </p>
+          <div className={styles.studentCard}>
+            <img src={student.avatar} alt={student.name} className={styles.avatar} />
+            <div>
+              <strong>{student.name}</strong>
+              <p>
+                {student.class} • {student.grade}
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setPasswordModalOpen(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    fontSize: 11,
+                    color: "#6b7280",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textDecoration: "underline"
+                  }}
+                >
+                  Password
+                </button>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    fontSize: 11,
+                    color: "#f97316",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textDecoration: "underline"
+                  }}
+                >
+                  Log out
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <nav className={styles.tabBar} aria-label="Student sections">
+          {navItems.map((tab) => (
             <button
-              onClick={handleLogout}
-              style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                fontSize: 11,
-                color: "#f97316",
-                fontWeight: 700,
-                cursor: "pointer",
-                textDecoration: "underline"
-              }}
+              key={tab}
+              className={`${styles.tabButton} ${activeTab === tab ? styles.tabButtonActive : ""}`}
+              onClick={() => setActiveTab(tab)}
+              type="button"
             >
-              Log out
+              {tabLabels[tab]}
             </button>
+          ))}
+        </nav>
+
+        <main className={styles.mainContent}>
+          {activeTab === "dashboard" && (
+            <AppOverview
+              student={student}
+              portfolio={portfolio}
+              materials={materials}
+              assessments={assessments}
+              questions={questions}
+              onOpenTab={setActiveTab}
+            />
+          )}
+
+          {activeTab === "materials" && (
+            <LearningMaterials
+              studentId={student.id}
+              materials={materials}
+              onToggleSaved={() => {}}
+              onToggleComplete={() => {}}
+              onDownload={() => {}}
+            />
+          )}
+
+          {activeTab === "assessments" && (
+            <Assessments
+              studentId={student.id}
+              assessments={assessments}
+              onSubmitAssessment={() => {}}
+            />
+          )}
+
+          {activeTab === "questions" && (
+            <Questions
+              studentId={student.id}
+              questions={questions}
+              onSubmitQuestionTask={() => {}}
+            />
+          )}
+
+          {activeTab === "portfolio" && (
+            <StudentPortfolio
+              student={student}
+              portfolio={portfolio}
+              materials={materials}
+              assessments={assessments}
+              questions={questions}
+            />
+          )}
+        </main>
+      </div>
+
+      {passwordModalOpen && (
+        <div 
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.45)",
+            backdropFilter: "blur(4px)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20
+          }}
+          onClick={() => setPasswordModalOpen(false)}
+        >
+          <div 
+            style={{ 
+              width: "100%", 
+              maxWidth: 500, 
+              background: "#fff", 
+              borderRadius: 16, 
+              overflow: "hidden", 
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <ChangePassword onClose={() => setPasswordModalOpen(false)} />
           </div>
         </div>
-      </header>
-
-      <nav className={styles.tabBar} aria-label="Student sections">
-        {navItems.map((tab) => (
-          <button
-            key={tab}
-            className={`${styles.tabButton} ${activeTab === tab ? styles.tabButtonActive : ""}`}
-            onClick={() => setActiveTab(tab)}
-            type="button"
-          >
-            {tabLabels[tab]}
-          </button>
-        ))}
-      </nav>
-
-      <main className={styles.mainContent}>
-        {activeTab === "dashboard" && (
-          <AppOverview
-            student={student}
-            portfolio={portfolio}
-            materials={materials}
-            assessments={assessments}
-            questions={questions}
-            onOpenTab={setActiveTab}
-          />
-        )}
-
-        {activeTab === "materials" && (
-          <LearningMaterials
-            studentId={student.id}
-            materials={materials}
-            onToggleSaved={() => {}}
-            onToggleComplete={() => {}}
-            onDownload={() => {}}
-          />
-        )}
-
-        {activeTab === "assessments" && (
-          <Assessments
-            studentId={student.id}
-            assessments={assessments}
-            onSubmitAssessment={() => {}}
-          />
-        )}
-
-        {activeTab === "questions" && (
-          <Questions
-            studentId={student.id}
-            questions={questions}
-            onSubmitQuestionTask={() => {}}
-          />
-        )}
-
-        {activeTab === "portfolio" && (
-          <StudentPortfolio
-            student={student}
-            portfolio={portfolio}
-            materials={materials}
-            assessments={assessments}
-            questions={questions}
-          />
-        )}
-      </main>
-    </div>
+      )}
+    </>
   );
 }
 
