@@ -65,7 +65,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({
       <div style={noticeStyle}>
         <h4 style={{ margin: "0 0 8px", color: "var(--gold)", fontSize: 14 }}>Critical Action</h4>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-          Updating the academic cycle is a global action. <strong>If the Year is advanced, learners below the final grade are promoted.</strong> Learners in the configured final grade are made inactive, removed from class membership, and copied into the exited learners archive with their education-health history.
+          Updating the academic cycle is a global action. <strong>If the Year is advanced, learners below the final grade are promoted.</strong> Learners in the configured final grade are marked completed, removed from class membership, and copied into the exited learners archive with their education-health history.
         </p>
       </div>
 
@@ -166,7 +166,7 @@ export const CycleTab: React.FC<CycleTabProps> = ({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           {[
             { q: "What happens to old marks?", a: "Old marks remain in the database and can be reviewed by cycle and stream from Admin Marks Entry." },
-            { q: "What happens to final-grade learners?", a: "They become inactive, lose class membership and elective enrollment, and appear under Exited Learners for leadership review." },
+            { q: "What happens to final-grade learners?", a: "They become completed, lose class membership and elective enrollment, and appear under Exited Learners for leadership review." },
           ].map((faq, i) => (
             <div key={i} style={faqCardStyle}>
               <p style={{ fontWeight: 700, fontSize: 13, margin: "0 0 5px", color: "var(--text)" }}>{faq.q}</p>

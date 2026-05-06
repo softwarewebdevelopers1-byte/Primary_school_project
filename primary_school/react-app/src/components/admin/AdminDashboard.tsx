@@ -108,10 +108,14 @@ const navItems: NavItem[] = [
 const teacherInitials = "AU";
 const teacherAvatarColor = "#c9963d";
 
-const normalizeStatus = (value?: string) =>
-  value?.toLowerCase() === "inactive" ? "Inactive" : "Active";
+const normalizeStatus = (value?: string) => {
+  const normalized = value?.toLowerCase();
+  if (normalized === "inactive") return "Inactive";
+  if (normalized === "completed") return "Completed";
+  return "Active";
+};
 
-const isActiveStudent = (student: Student) => student.status !== "Inactive";
+const isActiveStudent = (student: Student) => student.status === "Active";
 
 const mapStaffToTeachers = (staff: ApiTeacher[]): Teacher[] =>
   staff.map((member) => ({
@@ -192,7 +196,9 @@ const deriveClasses = (
     return res;
   };
 
-  students.forEach((student) => {
+  students
+    .filter((student) => student.classId && isActiveStudent(student))
+    .forEach((student) => {
     const [grade, stream = ""] = student.classId.split("::");
     const classTeacher = teachers.find(
       (teacher) =>
@@ -240,7 +246,7 @@ const deriveClasses = (
       year: classTeacher?.year || student.year || 2024,
       examType: classTeacher?.examType || student.examType || "opener",
     });
-  });
+    });
 
   teachers
     .filter((teacher) => teacher.classGrade)
@@ -392,8 +398,11 @@ const AdminDashboard: React.FC = () => {
         api.get<ClassSubjectSetting[]>("/school/class-subjects"),
         api.get<{ finalGrade: string }>("/users/graduation-settings"),
       ]);
+      const mappedStudents = mapStudentsFromApi(response.students);
       setTeachers(mapStaffToTeachers(response.staff));
-      setStudents(mapStudentsFromApi(response.students));
+      setStudents(
+        mappedStudents.filter((student) => student.status !== "Completed"),
+      );
       setSubjects(response.subjects || []);
       setAssignments(response.assignments || []);
       setExitedStudents(response.exitedStudents || []);

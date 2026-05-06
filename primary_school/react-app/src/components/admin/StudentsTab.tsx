@@ -381,6 +381,7 @@ const StudentFormModal: React.FC<{
             <select value={status} onChange={(event) => setStatus(event.target.value)} style={inputStyle}>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
+              <option value="Completed">Completed</option>
             </select>
           </div>
         )}
@@ -846,7 +847,14 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   <td style={{ padding: "10px 13px" }}>
                     <span
                       dangerouslySetInnerHTML={{
-                        __html: pill(student.status || "Active", student.status === "Active" ? "green" : "gray"),
+                        __html: pill(
+                          student.status || "Active",
+                          student.status === "Active"
+                            ? "green"
+                            : student.status === "Completed"
+                              ? "gold"
+                              : "gray",
+                        ),
                       }}
                     />
                   </td>

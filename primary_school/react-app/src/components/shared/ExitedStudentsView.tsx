@@ -86,7 +86,7 @@ export const ExitedStudentsView: React.FC<ExitedStudentsViewProps> = ({
           Education health archive
         </h2>
         <p style={{ margin: 0, fontSize: 13, color: "var(--textMut, var(--dh-text-muted))" }}>
-          Learners who completed the configured final grade are inactive and kept outside current class workflows.
+          Learners who completed the configured final grade are marked completed and kept outside current class workflows.
         </p>
       </div>
 

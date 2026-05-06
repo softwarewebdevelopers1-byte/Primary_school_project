@@ -625,7 +625,7 @@ export const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
                     ? students.filter(
                         (student) =>
                           student.classId === currentClass.id &&
-                          student.status !== "Inactive" &&
+                          student.status === "Active" &&
                           (student.enrolledSubjects || []).some(
                             (entry) =>
                               entry.isActive !== false &&

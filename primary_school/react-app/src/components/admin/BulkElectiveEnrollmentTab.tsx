@@ -116,7 +116,10 @@ export const BulkElectiveEnrollmentTab: React.FC<BulkElectiveEnrollmentTabProps>
         ? [selectedSubjectId]
         : [];
   const classStudents = selectedClass
-    ? students.filter((student) => student.classId === selectedClass.id && student.status !== "Inactive")
+    ? students.filter(
+        (student) =>
+          student.classId === selectedClass.id && student.status === "Active",
+      )
     : [];
 
   const setSelectedClass = (nextClassId: string) => {

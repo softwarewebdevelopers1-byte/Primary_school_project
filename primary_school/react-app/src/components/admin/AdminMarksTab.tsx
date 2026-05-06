@@ -130,7 +130,10 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
       )
     : [];
   const classStudents = currentClass
-    ? students.filter((student) => student.classId === currentClass.id && student.status !== "Inactive")
+    ? students.filter(
+        (student) =>
+          student.classId === currentClass.id && student.status === "Active",
+      )
     : [];
 
   useEffect(() => {

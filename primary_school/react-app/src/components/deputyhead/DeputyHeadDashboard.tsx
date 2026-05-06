@@ -78,7 +78,7 @@ export default function DeputyHeadDashboard({
       const data: any = await api.get("/users");
       const allStudents = data.students || [];
       const activeStudents = allStudents.filter(
-        (student: any) => String(student.status || "active").toLowerCase() !== "inactive",
+        (student: any) => String(student.status || "active").toLowerCase() === "active",
       );
       setStudents(activeStudents);
       setExitedStudents(data.exitedStudents || []);

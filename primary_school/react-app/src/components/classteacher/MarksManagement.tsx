@@ -44,7 +44,7 @@ const getStudentAdmissionNumber = (student: any) =>
   student?.admissionNumber || student?.admissionNo || student?.ADM || student?.adm || "";
 
 const isActiveStudent = (student: any) =>
-  String(student?.status || "Active").toLowerCase() !== "inactive";
+  String(student?.status || "Active").toLowerCase() === "active";
 
 interface DisplaySubjectOption extends Subject {
   actualSubjects: Array<{ id: string; name: string }>;
