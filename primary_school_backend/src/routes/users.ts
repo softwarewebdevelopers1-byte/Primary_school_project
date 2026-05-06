@@ -1409,11 +1409,11 @@ router.put(
                 },
               },
             },
-          ];
+          ] as any[];
         }
 
         if (!currentClass || !shiftedClass || shiftedClass === currentClass) {
-          return [];
+          return [] as any[];
         }
 
         // Student elective preservation and carry-forward
@@ -1443,7 +1443,7 @@ router.put(
               },
             },
           },
-        ];
+        ] as any[];
       });
 
       if (userClassUpdates.length > 0) {
