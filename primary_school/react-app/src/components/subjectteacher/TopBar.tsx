@@ -15,7 +15,6 @@ interface TopBarProps {
   theme: DashboardTheme;
   onToggleTheme: () => void;
   onLogout: () => void;
-  onChangePassword: () => void;
   user: any;
   onRefresh?: () => void;
 }
@@ -30,7 +29,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   theme,
   onToggleTheme,
   onLogout,
-  onChangePassword,
   user,
   onRefresh,
 }) => {
@@ -129,21 +127,6 @@ export const TopBar: React.FC<TopBarProps> = ({
               {teacherName}
             </p>
             <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={onChangePassword}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontSize: "10px",
-                  color: "var(--gold)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  textDecoration: "underline"
-                }}
-              >
-                Password
-              </button>
               <button
                 onClick={onLogout}
                 style={{

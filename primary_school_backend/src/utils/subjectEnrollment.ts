@@ -144,8 +144,7 @@ export const isStudentEnrolledInSubject = (
 
   const normalizedSubjectId = normalizeSubjectId(query.subjectId);
   const enrollments = Array.isArray(student.enrolledSubjects) ? student.enrolledSubjects : [];
-
-  return enrollments.some((enrollment) => {
+  const exactEnrollmentMatch = enrollments.some((enrollment) => {
     const enrollmentClassGrade =
       normalizeClassValue(enrollment.classGrade) || normalizeClassValue(student.class);
     const enrollmentClassStream =
@@ -155,6 +154,19 @@ export const isStudentEnrolledInSubject = (
       normalizeSubjectId(enrollment.subjectId) === normalizedSubjectId &&
       enrollmentClassGrade === normalizedClassGrade &&
       enrollmentClassStream === normalizedClassStream &&
+      enrollment.isActive !== false
+    );
+  });
+
+  if (exactEnrollmentMatch) {
+    return true;
+  }
+
+  // Legacy fallback: older cycle updates could leave an elective selection active
+  // under the previous class label even though the learner has already moved.
+  return enrollments.some((enrollment) => {
+    return (
+      normalizeSubjectId(enrollment.subjectId) === normalizedSubjectId &&
       enrollment.isActive !== false
     );
   });

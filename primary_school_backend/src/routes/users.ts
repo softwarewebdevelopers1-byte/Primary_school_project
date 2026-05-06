@@ -1382,6 +1382,9 @@ router.put(
         class: { $ne: null },
         status: { $ne: "inactive" },
       } as any);
+      const classSubjectSettingsMap = buildClassSubjectSettingMap(
+        (await ClassSubjectSettingModel.find().lean()) as any[],
+      );
 
       const userClassUpdates = usersToProcess.flatMap((userDoc) => {
         const currentClass = userDoc.class;
@@ -1419,11 +1422,47 @@ router.put(
         // Student elective preservation and carry-forward
         let enrolledSubjects = (userDoc as any).enrolledSubjects;
         if ((userDoc as any).__t === rolesMapped.ST && Array.isArray(enrolledSubjects)) {
+          const currentClassGrade = normalizeClassValue(currentClass);
+          const currentClassStream = normalizeClassValue((userDoc as any).classStream);
+          const shiftedClassGrade = normalizeClassValue(shiftedClass);
+          const activeEnrollmentKeys = new Set(
+            enrolledSubjects
+              .filter((e: any) => e.isActive !== false)
+              .map((e: any) =>
+                [
+                  normalizeSubjectId(e.subjectId),
+                  normalizeClassValue(e.classGrade),
+                  normalizeClassValue(e.classStream),
+                ].join("::"),
+              ),
+          );
+
           const newEnrollments = enrolledSubjects
-            .filter((e: any) => e.isActive !== false)
+            .filter((e: any) => {
+              if (e.isActive === false) return false;
+              const subjectId = normalizeSubjectId(e.subjectId);
+              const enrollmentClassGrade = normalizeClassValue(e.classGrade) || currentClassGrade;
+              const enrollmentClassStream = normalizeClassValue(e.classStream) || currentClassStream;
+              const targetKey = [subjectId, shiftedClassGrade, enrollmentClassStream].join("::");
+              const setting = getClassSubjectEnrollmentSetting(classSubjectSettingsMap, {
+                subjectId,
+                classGrade: currentClassGrade,
+                classStream: currentClassStream,
+              });
+
+              return (
+                subjectId &&
+                enrollmentClassGrade === currentClassGrade &&
+                enrollmentClassStream === currentClassStream &&
+                setting.isOffered !== false &&
+                setting.enrollmentMode === "elective" &&
+                !activeEnrollmentKeys.has(targetKey)
+              );
+            })
             .map((e: any) => ({
               ...e,
-              classGrade: shiftClassName(e.classGrade, newYear - userYear) || e.classGrade,
+              classGrade: shiftedClassGrade,
+              classStream: normalizeClassValue(e.classStream) || currentClassStream,
               enrolledAt: new Date(),
             }));
           

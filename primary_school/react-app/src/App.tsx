@@ -7,6 +7,7 @@ import DeputyHeadDashboard from "./components/deputyhead/DeputyHeadDashboard";
 import SubjectTeacherDashboard from "./components/subjectteacher/SubjectTeacherDashboard";
 import AdminDashboard from "./components/admin/AdminDashboard";
 import LandingPage from "./components/landingPage";
+import { ChangePasswordPage } from "./components/shared/ChangePasswordPage";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const saved = localStorage.getItem("user");
@@ -27,6 +28,7 @@ function App() {
         <Route path="/headteacher" element={<ProtectedRoute><DeputyHeadDashboard userRole="headteacher" /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
         <Route path="/subjectTeacher" element={<ProtectedRoute><SubjectTeacherDashboard /></ProtectedRoute>} />
+        <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
         
         <Route path="*" element={<ErrorPage />} />
       </Routes>

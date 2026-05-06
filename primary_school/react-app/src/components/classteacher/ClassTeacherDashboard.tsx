@@ -13,7 +13,6 @@ import { Settings } from "./Settings";
 import { SubjectAssignments } from "./SubjectAssignments";
 import { ArchivesView } from "../shared/ArchivesView";
 import { TimetableLibrary } from "../shared/TimetableLibrary";
-import { ChangePassword } from "../shared/ChangePassword";
 import {
   UsersIcon,
   MarkIcon,
@@ -104,7 +103,6 @@ export default function ClassTeacherDashboard() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const { theme, toggleTheme } = useDashboardTheme();
 
   const loadData = useCallback(async () => {
@@ -239,6 +237,10 @@ export default function ClassTeacherDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const handleChangePassword = () => {
+    navigate("/change-password");
   };
 
   // Roles check — guard against roles being a non-array
@@ -421,6 +423,7 @@ export default function ClassTeacherDashboard() {
           onSelectTab={handleSelectTab}
           classAvg={classAvg}
           user={currentUser}
+          onChangePassword={handleChangePassword}
           onLogout={handleLogout}
         />
 
@@ -441,7 +444,6 @@ export default function ClassTeacherDashboard() {
             theme={theme}
             onToggleTheme={toggleTheme}
             onLogout={handleLogout}
-            onChangePassword={() => setPasswordModalOpen(true)}
             user={currentUser}
             onRefresh={handleManualRefresh}
           />
@@ -683,36 +685,6 @@ export default function ClassTeacherDashboard() {
         </div>
       </div>
 
-      {passwordModalOpen && (
-        <div 
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(11, 32, 24, 0.45)",
-            backdropFilter: "blur(4px)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20
-          }}
-          onClick={() => setPasswordModalOpen(false)}
-        >
-          <div 
-            style={{ 
-              width: "100%", 
-              maxWidth: 500, 
-              background: "var(--cream)", 
-              borderRadius: 16, 
-              overflow: "hidden", 
-              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <ChangePassword onClose={() => setPasswordModalOpen(false)} />
-          </div>
-        </div>
-      )}
     </>
   );
 }

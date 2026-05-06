@@ -15,6 +15,7 @@ interface SidebarProps {
   streamsCount: number;
   totalStudents: number;
   department: string;
+  onChangePassword: () => void;
   onLogout: () => void;
 }
 
@@ -40,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   streamsCount,
   totalStudents,
   department,
+  onChangePassword,
   onLogout,
 }) => {
   return (
@@ -145,6 +147,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <path d="M13.73 21a2 2 0 01-3.46 0" />
           </svg>
           {!collapsed && <span>Alerts</span>}
+        </button>
+        <button className={styles.footBtn} onClick={onChangePassword}>
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <path d="M7 11V8a5 5 0 0 1 10 0v3" />
+          </svg>
+          {!collapsed && <span>Password</span>}
         </button>
         <button className={styles.footBtn} onClick={onLogout}>
           <svg

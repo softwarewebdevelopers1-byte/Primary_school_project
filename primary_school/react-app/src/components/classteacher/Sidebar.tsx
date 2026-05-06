@@ -21,6 +21,7 @@ interface SidebarProps {
   onSelectTab: (tabId: string) => void;
   classAvg: number;
   user: any;
+  onChangePassword: () => void;
   onLogout: () => void;
 }
 
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   classAvg,
   user,
+  onChangePassword,
   onLogout,
 }) => {
   return (
@@ -402,6 +404,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             3
           </span>
+        </button>
+        <button
+          onClick={onChangePassword}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            padding: collapsed ? "8px" : "8px 10px",
+            background: "rgba(255,255,255,0.05)",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+            color: "#6b9a82",
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <path d="M7 11V8a5 5 0 0 1 10 0v3" />
+          </svg>
+          {!collapsed && (
+            <span
+              style={{ fontFamily: FONT.sans, fontSize: 12, color: "#6b9a82" }}
+            >
+              Password
+            </span>
+          )}
         </button>
         <button
           onClick={onLogout}

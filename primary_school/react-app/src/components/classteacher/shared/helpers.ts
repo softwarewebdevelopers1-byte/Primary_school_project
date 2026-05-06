@@ -23,12 +23,17 @@ export const isStudentSubject = (student: any, subject: any) => {
   if (!isElective) return true;
 
   const enrollments = Array.isArray(student?.enrolledSubjects) ? student.enrolledSubjects : [];
-  
-  // If it's an elective or part of a shared slot, we MUST find an active enrollment entry for THIS specific subjectId
-  return enrollments.some((entry: any) => {
+
+  const exactEnrollment = enrollments.some((entry: any) => {
     const entrySubId = getSubId(entry?.subjectId);
     return entrySubId === subjectId && entry?.isActive !== false;
   });
+
+  if (exactEnrollment) {
+    return true;
+  }
+
+  return false;
 };
 
 

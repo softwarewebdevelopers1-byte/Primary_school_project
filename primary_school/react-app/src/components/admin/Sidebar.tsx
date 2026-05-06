@@ -15,6 +15,7 @@ interface SidebarProps {
   unassignedCount: number;
   onToggleCollapse: () => void;
   onSelectTab: (tabId: string) => void;
+  onChangePassword: () => void;
   onLogout: () => void;
   teacherInitials: string;
   teacherAvatarColor: string;
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   unassignedCount,
   onToggleCollapse,
   onSelectTab,
+  onChangePassword,
   onLogout,
   teacherInitials,
   teacherAvatarColor,
@@ -527,6 +529,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             3
           </span>
+        </button>
+        <button
+          onClick={onChangePassword}
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 5,
+            padding: 7,
+            background: "rgba(255,255,255,.05)",
+            border: "none",
+            borderRadius: 7,
+            cursor: "pointer",
+            color: "#6b9a82",
+            transition: "background .15s",
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <path d="M7 11V8a5 5 0 0 1 10 0v3" />
+          </svg>
+          {!collapsed && (
+            <span style={{ fontSize: 11, color: "#6b9a82" }}>Password</span>
+          )}
         </button>
         <button
           onClick={onLogout}

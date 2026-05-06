@@ -245,7 +245,9 @@ export const BulkElectiveEnrollmentTab: React.FC<BulkElectiveEnrollmentTabProps>
                     (entry) =>
                       entry.isActive !== false &&
                       linkedSubjectIds.includes(entry.subjectId) &&
-                      entry.subjectId !== selectedSubjectId,
+                      entry.subjectId !== selectedSubjectId &&
+                      entry.classGrade === selectedClass?.grade &&
+                      (entry.classStream || "") === (selectedClass?.stream || ""),
                   );
 
                   return (

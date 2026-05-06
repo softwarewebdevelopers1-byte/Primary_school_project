@@ -220,6 +220,10 @@ export default function DeputyHeadDashboard({
     window.location.href = "/login";
   };
 
+  const handleChangePassword = () => {
+    window.location.href = "/change-password";
+  };
+
   const handleRoleToggle = (role: UserRoleType) => {
     setRoleToggle(role);
     setTab("overview");
@@ -337,6 +341,7 @@ export default function DeputyHeadDashboard({
           onRoleToggle={handleRoleToggle}
           userName={user.name}
           userRole={user.role}
+          onChangePassword={handleChangePassword}
           onLogout={handleLogout}
         />
 

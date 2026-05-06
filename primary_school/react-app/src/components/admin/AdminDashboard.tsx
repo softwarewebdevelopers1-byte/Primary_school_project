@@ -15,7 +15,6 @@ import { BulkElectiveEnrollmentTab } from "./BulkElectiveEnrollmentTab";
 import { PerformanceTab } from "./PerformanceTab";
 import { ArchivesView } from "../shared/ArchivesView";
 import { ExitedStudentsView } from "../shared/ExitedStudentsView";
-import { ChangePassword } from "../shared/ChangePassword";
 import {
   ApiStudent,
   ApiTeacher,
@@ -366,6 +365,10 @@ const AdminDashboard: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem("user");
     window.location.href = "/login";
+  };
+
+  const handleChangePassword = () => {
+    window.location.href = "/change-password";
   };
 
   const classes = useMemo(
@@ -805,10 +808,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleOpenPasswordModal = () => {
-    showModal(<ChangePassword onClose={closeModal} />);
-  };
-
   const showSuccess = (msg: string) => {
     showModal(
       <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -1105,6 +1104,7 @@ const AdminDashboard: React.FC = () => {
         unassignedCount={unassignedCount}
         onToggleCollapse={() => setCollapsed((current) => !current)}
         onSelectTab={handleSelectTab}
+        onChangePassword={handleChangePassword}
         onLogout={handleLogout}
         teacherInitials={teacherInitials}
         teacherAvatarColor={teacherAvatarColor}
@@ -1130,7 +1130,6 @@ const AdminDashboard: React.FC = () => {
           user={user}
           isMobile={isMobile}
           onOpenMenu={() => setMobileMenuOpen(true)}
-          onChangePassword={handleOpenPasswordModal}
         />
 
         <div

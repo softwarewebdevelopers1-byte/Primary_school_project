@@ -79,7 +79,18 @@ const resolveStudentSubjectSelection = (
     );
   });
 
-  return activeEnrollment ? String(activeEnrollment.subjectId).trim() : null;
+  if (activeEnrollment) {
+    return String(activeEnrollment.subjectId).trim();
+  }
+
+  const legacyEnrollment = (student?.enrolledSubjects || []).find((entry: any) => {
+    return (
+      entry?.isActive !== false &&
+      subject.actualSubjects.some((actualSubject) => actualSubject.id === String(entry?.subjectId || "").trim())
+    );
+  });
+
+  return legacyEnrollment ? String(legacyEnrollment.subjectId).trim() : null;
 };
 
 export const MarksManagement: React.FC<MarksManagementProps> = ({
