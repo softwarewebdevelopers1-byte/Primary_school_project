@@ -322,7 +322,7 @@ const ExitedStudentSchema = new Schema<IExitedStudent>({
   finalClassStream: { type: String, default: "" },
   exitReason: { type: String, default: "completed-final-grade" },
   exitedAt: { type: Date, default: Date.now },
-  statusAtExit: { type: String, default: "inactive" },
+  statusAtExit: { type: String, default: "completed" },
   examSummaries: { type: [ExitedStudentExamSummarySchema], default: [] },
   averagePoints: { type: Number, default: 0 },
   averagePercentage: { type: Number, default: 0 },

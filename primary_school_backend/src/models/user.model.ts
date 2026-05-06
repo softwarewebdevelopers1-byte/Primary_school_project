@@ -20,7 +20,7 @@ export let rolesMapped: rolesRecords = {
 const UserSchema = new Schema<user>({
   status: {
     type: String,
-    enum: ["active", "inactive"],
+    enum: ["active", "inactive", "completed"],
     default: "active",
   },
   class: {

@@ -18,6 +18,7 @@ import {
   MarkModel,
   SchoolSettingModel,
   ExitedStudentModel,
+  TimetableModel,
 } from "../models/school.model.js";
 import {
   buildClassSubjectSettingMap,
@@ -297,7 +298,7 @@ const collectCycleCompletionIssues = async (
 ) => {
   const activeStudents = await studentModel
     .find({
-      status: { $ne: "inactive" },
+      status: "active",
       class: { $ne: null },
     } as any)
     .select("_id class classStream enrolledSubjects")
@@ -590,7 +591,7 @@ const archiveAndIsolateFinalGradeStudents = async (
   }
 
   const candidates = await studentModel.find({
-    status: { $ne: "inactive" },
+    status: "active",
     class: { $ne: null },
   } as any);
   const graduatingStudents = candidates.filter(
@@ -627,7 +628,7 @@ const archiveAndIsolateFinalGradeStudents = async (
           finalClassStream: normalizeClassValue(student.classStream),
           exitReason: "completed-final-grade",
           exitedAt: new Date(),
-          statusAtExit: "inactive",
+          statusAtExit: "completed",
           examSummaries,
           averagePoints,
           averagePercentage,
@@ -641,7 +642,7 @@ const archiveAndIsolateFinalGradeStudents = async (
       { _id: student._id },
       {
         $set: {
-          status: "inactive",
+          status: "completed",
           class: null,
           classStream: null,
           term: currentTerm,
@@ -1269,7 +1270,8 @@ router.put("/password", authenticate, async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await userModel.findByIdAndUpdate(userId, { $set: { password: hashedPassword } });
+    (user as any).password = hashedPassword;
+    await user.save();
 
     res.json({ message: "Password updated successfully." });
   } catch (error: any) {
@@ -1380,7 +1382,7 @@ router.put(
           { "roles.role3": rolesMapped.CT },
         ],
         class: { $ne: null },
-        status: { $ne: "inactive" },
+        status: "active",
       } as any);
       const classSubjectSettingsMap = buildClassSubjectSettingMap(
         (await ClassSubjectSettingModel.find().lean()) as any[],
@@ -1495,6 +1497,7 @@ router.put(
           const finalLevel = extractClassLevel(String(finalGradeSetting.value));
           await AssignmentModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
           await ClassSubjectSettingModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
+          await TimetableModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
         }
 
         const assignments = await AssignmentModel.find();
@@ -1869,6 +1872,7 @@ router.delete("/:id", authenticate, async (req: Request, res: Response) => {
       const remainingStudents = await studentModel.countDocuments({
         class: classGrade,
         classStream: classStream || "",
+        status: "active",
       });
 
       if (remainingStudents === 0) {
@@ -1878,6 +1882,10 @@ router.delete("/:id", authenticate, async (req: Request, res: Response) => {
             classStream: classStream || "",
           }),
           ClassSubjectSettingModel.deleteMany({
+            classGrade,
+            classStream: classStream || "",
+          }),
+          TimetableModel.deleteMany({
             classGrade,
             classStream: classStream || "",
           }),
