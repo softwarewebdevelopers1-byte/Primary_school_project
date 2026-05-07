@@ -41,17 +41,13 @@ export const avg = (marks: Record<string, number>, subjectCount?: number): numbe
 };
 
 export const gradePoints = (v: number): number => {
-  if (v >= 80) return 12;
-  if (v >= 75) return 11;
-  if (v >= 70) return 10;
-  if (v >= 65) return 9;
-  if (v >= 60) return 8;
-  if (v >= 55) return 7;
-  if (v >= 50) return 6;
+  if (v >= 80) return 8;
+  if (v >= 65) return 7;
+  if (v >= 55) return 6;
   if (v >= 45) return 5;
-  if (v >= 40) return 4;
-  if (v >= 35) return 3;
-  if (v >= 30) return 2;
+  if (v >= 35) return 4;
+  if (v >= 25) return 3;
+  if (v >= 15) return 2;
   return 1;
 };
 
@@ -60,33 +56,26 @@ export const sumPoints = (marks: Record<string, number>): number => {
 };
 
 export const pointsToGrade = (avgPoints: number): string => {
-  if (avgPoints >= 11.5) return "A";
-  if (avgPoints >= 10.5) return "A-";
-  if (avgPoints >= 9.5) return "B+";
-  if (avgPoints >= 8.5) return "B";
-  if (avgPoints >= 7.5) return "B-";
-  if (avgPoints >= 6.5) return "C+";
-  if (avgPoints >= 5.5) return "C";
-  if (avgPoints >= 4.5) return "C-";
-  if (avgPoints >= 3.5) return "D+";
-  if (avgPoints >= 2.5) return "D";
-  if (avgPoints >= 1.5) return "D-";
-  return "E";
+  const roundedPoints = Math.max(1, Math.min(8, Math.round(avgPoints)));
+  if (roundedPoints >= 8) return "EE1";
+  if (roundedPoints >= 7) return "EE2";
+  if (roundedPoints >= 6) return "ME1";
+  if (roundedPoints >= 5) return "ME2";
+  if (roundedPoints >= 4) return "AE1";
+  if (roundedPoints >= 3) return "AE2";
+  if (roundedPoints >= 2) return "BE1";
+  return "BE2";
 };
 
 export const grade = (v: number): string => {
-  if (v >= 80) return "A";
-  if (v >= 75) return "A-";
-  if (v >= 70) return "B+";
-  if (v >= 65) return "B";
-  if (v >= 60) return "B-";
-  if (v >= 55) return "C+";
-  if (v >= 50) return "C";
-  if (v >= 45) return "C-";
-  if (v >= 40) return "D+";
-  if (v >= 35) return "D";
-  if (v >= 30) return "D-";
-  return "E";
+  if (v >= 80) return "EE1";
+  if (v >= 65) return "EE2";
+  if (v >= 55) return "ME1";
+  if (v >= 45) return "ME2";
+  if (v >= 35) return "AE1";
+  if (v >= 25) return "AE2";
+  if (v >= 15) return "BE1";
+  return "BE2";
 };
 
 export const gb = (v: number): string => {

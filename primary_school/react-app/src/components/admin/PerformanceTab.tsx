@@ -110,33 +110,26 @@ const computeMarkPercentage = (marks: any): number | null => {
 };
 
 const markToPoints = (v: number): number => {
-  if (v >= 80) return 12;
-  if (v >= 75) return 11;
-  if (v >= 70) return 10;
-  if (v >= 65) return 9;
-  if (v >= 60) return 8;
-  if (v >= 55) return 7;
-  if (v >= 50) return 6;
+  if (v >= 80) return 8;
+  if (v >= 65) return 7;
+  if (v >= 55) return 6;
   if (v >= 45) return 5;
-  if (v >= 40) return 4;
-  if (v >= 35) return 3;
-  if (v >= 30) return 2;
+  if (v >= 35) return 4;
+  if (v >= 25) return 3;
+  if (v >= 15) return 2;
   return 1;
 };
 
 const pointsToGrade = (avgPoints: number): string => {
-  if (avgPoints >= 11.5) return "A";
-  if (avgPoints >= 10.5) return "A-";
-  if (avgPoints >= 9.5) return "B+";
-  if (avgPoints >= 8.5) return "B";
-  if (avgPoints >= 7.5) return "B-";
-  if (avgPoints >= 6.5) return "C+";
-  if (avgPoints >= 5.5) return "C";
-  if (avgPoints >= 4.5) return "C-";
-  if (avgPoints >= 3.5) return "D+";
-  if (avgPoints >= 2.5) return "D";
-  if (avgPoints >= 1.5) return "D-";
-  return "E";
+  const roundedPoints = Math.max(1, Math.min(8, Math.round(avgPoints)));
+  if (roundedPoints >= 8) return "EE1";
+  if (roundedPoints >= 7) return "EE2";
+  if (roundedPoints >= 6) return "ME1";
+  if (roundedPoints >= 5) return "ME2";
+  if (roundedPoints >= 4) return "AE1";
+  if (roundedPoints >= 3) return "AE2";
+  if (roundedPoints >= 2) return "BE1";
+  return "BE2";
 };
 
 export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, students, subjects }) => {
@@ -224,7 +217,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         const total = scores.reduce((a, b) => a + b, 0);
         const points = scores.reduce((a, b) => a + markToPoints(b), 0);
         const avg = scores.length > 0 ? Math.round(total / scores.length) : 0;
-        const avgPoints = scores.length > 0 ? points / scores.length : 0;
+        const avgPoints = scores.length > 0 ? Number((points / scores.length).toFixed(1)) : 0;
         return { ...row, total, points, scoredSubjects: scores.length, average: avg, avgPoints };
       }).sort(
         (a, b) =>
@@ -280,8 +273,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         data[sub.name] = row.marks[sub.id] ?? "-";
       });
       data.Total = row.total;
-      data.Points = row.points;
-      data["Avg Pts"] = row.avgPoints.toFixed(2);
+      data.Points = row.points.toFixed(1);
+      data["Avg Pts"] = row.avgPoints.toFixed(1);
       data.Average = `${row.average}%`;
       data.Grade = pointsToGrade(row.avgPoints);
       return data;
@@ -316,8 +309,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         row.stream,
         ...availableSubjects.map(s => row.marks[s.id] ?? "-"),
         row.total,
-        row.points,
-        row.avgPoints.toFixed(2),
+        row.points.toFixed(1),
+        row.avgPoints.toFixed(1),
         `${row.average}%`,
         pointsToGrade(row.avgPoints)
       ]),
@@ -416,8 +409,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
                 <td style={{ ...tableCellStyle, fontWeight: 600 }}>{row.name}</td>
                 <td style={{ ...tableCellStyle, color: "var(--textMut)" }}>{row.admissionNo}</td>
                 <td style={{ ...tableCellStyle, fontSize: 12 }}>{row.stream}</td>
-                <td style={{ ...tableCellStyle, fontWeight: 700, color: "var(--gold)" }}>{row.points}</td>
-                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{row.avgPoints.toFixed(2)}</td>
+                <td style={{ ...tableCellStyle, fontWeight: 700, color: "var(--gold)" }}>{row.points.toFixed(1)}</td>
+                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{row.avgPoints.toFixed(1)}</td>
                 <td style={tableCellStyle}>{row.average}%</td>
                 <td style={{ ...tableCellStyle, fontWeight: 700 }}>{pointsToGrade(row.avgPoints)}</td>
                 <td style={{ ...tableCellStyle, textAlign: "right", fontWeight: 700 }}>{row.total}</td>

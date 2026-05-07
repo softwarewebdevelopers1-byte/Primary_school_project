@@ -114,6 +114,11 @@ const tableHeadingStyle: React.CSSProperties = {
   color: "var(--textMut)",
   letterSpacing: ".06em",
   textTransform: "uppercase",
+  position: "sticky",
+  top: 0,
+  background: "var(--sand)",
+  zIndex: 10,
+  boxShadow: "inset 0 -1px 0 var(--borderL)",
 };
 
 const rowPrimaryTextStyle: React.CSSProperties = {
@@ -343,7 +348,8 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
           background: "var(--white)",
           border: "1px solid var(--border)",
           borderRadius: 13,
-          overflow: "hidden",
+          overflow: "auto",
+          maxHeight: "70vh",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -363,7 +369,12 @@ export const ClassesTab: React.FC<ClassesTabProps> = ({
               );
 
               return (
-                <tr key={currentClass.id} style={{ borderTop: "1px solid var(--borderL)" }}>
+                <tr 
+                  key={currentClass.id} 
+                  style={{ borderTop: "1px solid var(--borderL)", transition: "background 0.2s" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--ct-hover, rgba(0,0,0,0.02))"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                >
                   <td style={{ padding: "10px 13px" }}>
                     <p style={rowPrimaryTextStyle}>{currentClass.name}</p>
                     <p style={rowMetaTextStyle}>

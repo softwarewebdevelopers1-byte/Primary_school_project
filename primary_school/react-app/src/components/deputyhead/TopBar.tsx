@@ -33,8 +33,8 @@ export const TopBar: React.FC<TopBarProps> = ({
     style={{
       background: C.white,
       borderBottom: `1px solid ${C.border}`,
-      padding: "0 22px",
-      height: 58,
+      padding: isMobile ? "0 12px" : "0 22px",
+      height: isMobile ? 50 : 58,
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",

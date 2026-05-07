@@ -50,7 +50,8 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = []
           background: C.white,
           border: `1px solid ${C.border}`,
           borderRadius: 13,
-          overflow: "hidden",
+          overflow: "auto",
+          maxHeight: "70vh",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -76,6 +77,11 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = []
                     color: C.textMuted,
                     letterSpacing: ".06em",
                     textTransform: "uppercase",
+                    position: "sticky",
+                    top: 0,
+                    background: C.sand,
+                    zIndex: 10,
+                    boxShadow: `inset 0 -1px 0 ${C.borderLight}`,
                   }}
                 >
                   {h}
@@ -88,7 +94,9 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = []
               <tr
                 key={t.id}
                 className="dh-row"
-                style={{ borderTop: `1px solid ${C.borderLight}` }}
+                style={{ borderTop: `1px solid ${C.borderLight}`, transition: "background 0.2s" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = "var(--ct-hover, rgba(0,0,0,0.02))"}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
               >
                 <td style={{ padding: "11px 14px" }}>
                   <div

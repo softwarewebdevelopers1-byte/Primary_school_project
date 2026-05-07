@@ -16,8 +16,6 @@ interface ResultsReportsProps {
   examType?: string;
 }
 
-
-
 const SectionHeader: React.FC<{
   eyebrow: string;
   title: string;
@@ -138,7 +136,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               const m = isStudentSubject(s, sub) ? studentMarks[getSubId(sub.id)] : null;
               return m != null ? `${m}` : "-";
             }),
-            totalPoints,
+            totalPoints.toFixed(1),
             avgPoints.toFixed(1),
             pointsToGrade(avgPoints),
           ];
@@ -172,7 +170,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             s.name,
             s.adm || s.admissionNumber || s.admissionNo || "-",
             ...subjects.map(sub => isStudentSubject(s, sub) ? (studentMarks[getSubId(sub.id)] ?? "-") : "N/A"),
-            totalPoints,
+            totalPoints.toFixed(1),
             avgPoints.toFixed(1),
             pointsToGrade(avgPoints)
           ];
@@ -218,7 +216,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
 
         const tableData = slipSubjects.map(sub => {
           const m = slipMarks[getSubId(sub.id)];
-          const p = m != null ? gradePoints(m) : "-";
+          const p = m != null ? gradePoints(m).toFixed(1) : "-";
           const remark = m != null ? getSubjectRemark(m) : "-";
           return [
             sub.name,
@@ -232,7 +230,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         tableData.push([
           { content: "TOTAL", styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
           { content: `${slipTotalMarks}%`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
-          { content: `${slipTotalPoints}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+          { content: slipTotalPoints.toFixed(1), styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
           { content: "", styles: { fillColor: [240, 240, 240] } }
         ]);
 
@@ -256,12 +254,12 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         const slipAvgPoints = slipTotalPoints / (slipAttemptedCount || 1);
 
         doc.text(`Mean Grade: ${pointsToGrade(slipAvgPoints)}`, 20, finalY + 15);
-        doc.text(`Total Points: ${slipTotalPoints}`, 20, finalY + 23);
+        doc.text(`Total Points: ${slipTotalPoints.toFixed(1)}`, 20, finalY + 23);
         doc.text(`Average Points: ${slipAvgPoints.toFixed(1)}`, 20, finalY + 31);
         
         doc.setFontSize(10);
         doc.setFont("helvetica", "italic");
-        doc.text("Grading Scale: 12-Point System (A=12, E=1)", 105, 280, { align: "center" });
+        doc.text("CBC Grading Scale: EE1=8, EE2=7, ME1=6, ME2=5, AE1=4, AE2=3, BE1=2, BE2=1", 105, 280, { align: "center" });
 
         doc.save(`${slip.name.replace(/\s+/g, '_')}_Report.pdf`);
       }
@@ -410,7 +408,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
       </div>
 
       {sortedStudents.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
           <div style={{ background: C.greenLight, border: `1px solid ${C.green}`, padding: "16px", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
             <Avatar name={topStudent!.name} size={40} />
             <div>
@@ -418,7 +416,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{topStudent!.name}</h4>
               <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
                 Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(topStudent!, subjects)) / (getEligibleSubjectCount(topStudent!, subjects) || 1))}</strong>
-                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(topStudent!, subjects))}</strong>
+                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(topStudent!, subjects)).toFixed(1)}</strong>
               </p>
             </div>
           </div>
@@ -429,7 +427,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{leastStudent!.name}</h4>
               <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
                 Grade: <strong>{pointsToGrade(sumPoints(marksForStudentSubjects(leastStudent!, subjects)) / (getEligibleSubjectCount(leastStudent!, subjects) || 1))}</strong>
-                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(leastStudent!, subjects))}</strong>
+                {" "}| Points: <strong>{sumPoints(marksForStudentSubjects(leastStudent!, subjects)).toFixed(1)}</strong>
               </p>
             </div>
           </div>
@@ -453,11 +451,12 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
           background: C.white,
           border: `2px solid ${C.text}`,
           borderRadius: 14,
-          overflow: "hidden",
+          overflow: "auto",
+          maxHeight: "70vh",
           boxShadow: "0 4px 20px rgba(0,0,0,0.08)"
         }}
       >
-        <div style={{ padding: "18px 24px", borderBottom: `2px solid ${C.text}`, background: "#f8f9fa", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "18px 24px", borderBottom: `2px solid ${C.text}`, background: "#f8f9fa", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, left: 0, zIndex: 20 }}>
           <h3 style={{ fontFamily: FONT.serif, fontSize: "1.4rem", fontWeight: 700, color: C.text, margin: 0 }}>
             Academic Performance Index (CBC Mode)
           </h3>
@@ -482,19 +481,18 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             <DlIcon /> Export CBC Report
           </button>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
             <thead>
               <tr style={{ background: "#f1f3f5", borderBottom: `2px solid ${C.text}` }}>
-                <th scope="col" style={thStyle}>Rank</th>
-                <th scope="col" style={thStyle}>Student Name</th>
+                <th scope="col" style={{ ...thStyle, position: "sticky", top: 68, background: "#f1f3f5", zIndex: 10, boxShadow: `inset 0 -1px 0 ${C.text}` }}>Rank</th>
+                <th scope="col" style={{ ...thStyle, position: "sticky", top: 68, background: "#f1f3f5", zIndex: 10, boxShadow: `inset 0 -1px 0 ${C.text}` }}>Student Name</th>
                 {subjects.map(s => (
-                  <th scope="col" key={s.id} style={{ ...thStyle, textAlign: "center" }}>{s.name.slice(0, 3).toUpperCase()}</th>
+                  <th scope="col" key={s.id} style={{ ...thStyle, textAlign: "center", position: "sticky", top: 68, background: "#f1f3f5", zIndex: 10, boxShadow: `inset 0 -1px 0 ${C.text}` }}>{s.name.slice(0, 3).toUpperCase()}</th>
                 ))}
-                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>T.Pts</th>
-                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>Avg.Pts</th>
-                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>Grade</th>
-                <th scope="col" style={{ ...thStyle, textAlign: "right" }}>Actions</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff", position: "sticky", top: 68, zIndex: 10, boxShadow: `inset 0 -1px 0 ${C.text}` }}>T.Pts</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff", position: "sticky", top: 68, zIndex: 10, boxShadow: `inset 0 -1px 0 ${C.text}` }}>Avg.Pts</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff", position: "sticky", top: 68, zIndex: 10, boxShadow: `inset 0 -1px 0 ${C.text}` }}>Grade</th>
+                <th scope="col" style={{ ...thStyle, textAlign: "right", position: "sticky", top: 68, background: "#f1f3f5", zIndex: 10, boxShadow: `inset 0 -1px 0 ${C.text}` }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -506,7 +504,12 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                 const g = pointsToGrade(avgPoints);
                 
                 return (
-                  <tr key={s.id} style={{ borderBottom: `1px solid ${C.border}`, transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#fcfcfc"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                  <tr 
+                    key={s.id} 
+                    style={{ borderBottom: `1px solid ${C.border}`, transition: "background 0.2s" }} 
+                    onMouseEnter={(e) => e.currentTarget.style.background = "var(--ct-hover, rgba(0,0,0,0.02))"} 
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  >
                     <td style={{ ...tdStyle, fontWeight: 700, textAlign: "center" }}>{s.rank}</td>
                     <td style={tdStyle}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -532,9 +535,9 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                         </td>
                       );
                     })}
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: C.text }}>{totalPoints}</td>
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: gradeColor(g) }}>{avgPoints.toFixed(1)}</td>
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: gradeColor(g) }}>{g}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "var(--cream, #fff9eb)", color: C.text }}>{totalPoints.toFixed(1)}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "var(--cream, #fff9eb)", color: gradeColor(g) }}>{avgPoints.toFixed(1)}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "var(--cream, #fff9eb)", color: gradeColor(g) }}>{g}</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
 
                       <button
@@ -560,7 +563,6 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               })}
             </tbody>
           </table>
-        </div>
       </div>
     </div>
   );

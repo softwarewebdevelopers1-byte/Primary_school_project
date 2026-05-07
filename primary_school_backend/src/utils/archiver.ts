@@ -32,28 +32,30 @@ export interface ArchiveClassMarksResult {
   studentCount: number;
 }
 
-const GRADE_SCALE = [
-  { grade: "A", points: 12, min: 80, max: 100, remark: "Plain" },
-  { grade: "A-", points: 11, min: 75, max: 79, remark: "Minus" },
-  { grade: "B+", points: 10, min: 70, max: 74, remark: "Plus" },
-  { grade: "B", points: 9, min: 65, max: 69, remark: "Plain" },
-  { grade: "B-", points: 8, min: 60, max: 64, remark: "Minus" },
-  { grade: "C+", points: 7, min: 55, max: 59, remark: "Minimum" },
-  { grade: "C", points: 6, min: 50, max: 54, remark: "Plain" },
-  { grade: "C-", points: 5, min: 45, max: 49, remark: "Minus" },
-  { grade: "D+", points: 4, min: 40, max: 44, remark: "Plus" },
-  { grade: "D", points: 3, min: 35, max: 39, remark: "Plain" },
-  { grade: "D-", points: 2, min: 30, max: 34, remark: "Minus" },
-  { grade: "E", points: 1, min: 0, max: 29, remark: "Weak" },
+const CBC_GRADE_SCALE = [
+  { grade: "EE1", points: 8, min: 80, max: 100, remark: "Exceeding Expectations" },
+  { grade: "EE2", points: 7, min: 65, max: 79, remark: "Exceeding Expectations" },
+  { grade: "ME1", points: 6, min: 55, max: 64, remark: "Meeting Expectations" },
+  { grade: "ME2", points: 5, min: 45, max: 54, remark: "Meeting Expectations" },
+  { grade: "AE1", points: 4, min: 35, max: 44, remark: "Approaching Expectations" },
+  { grade: "AE2", points: 3, min: 25, max: 34, remark: "Approaching Expectations" },
+  { grade: "BE1", points: 2, min: 15, max: 24, remark: "Below Expectations" },
+  { grade: "BE2", points: 1, min: 0, max: 14, remark: "Below Expectations" },
 ] as const;
-const DEFAULT_GRADE_BAND = GRADE_SCALE[GRADE_SCALE.length - 1]!;
+const DEFAULT_GRADE_BAND = CBC_GRADE_SCALE[CBC_GRADE_SCALE.length - 1]!;
 
 const resolveGradeBand = (average: number) => {
   const normalizedAverage = Math.max(0, Math.min(100, Math.round(average)));
-  return GRADE_SCALE.find((band) => normalizedAverage >= band.min) || DEFAULT_GRADE_BAND;
+  return CBC_GRADE_SCALE.find((band) => normalizedAverage >= band.min) || DEFAULT_GRADE_BAND;
 };
 
-const buildGrade = (average: number) => resolveGradeBand(average).grade;
+const markToPoints = (score: number) => resolveGradeBand(score).points;
+
+const pointsToGrade = (avgPoints: number) => {
+  const roundedPoints = Math.max(1, Math.min(8, Math.round(avgPoints)));
+  const band = CBC_GRADE_SCALE.find((entry) => entry.points === roundedPoints);
+  return band?.grade || DEFAULT_GRADE_BAND.grade;
+};
 
 const toFiniteNumber = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") {
@@ -278,11 +280,20 @@ export async function archiveClassMarks(
   doc.text(`Term ${term}, ${year} | Phase: ${normalizedExamType.toUpperCase()}`, 14, 30);
   doc.text(`Generated on ${new Date().toLocaleString()}`, 14, 37);
 
-  const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Average", "Grade"];
+  const tableColumns = [
+    "Student",
+    "ADM",
+    ...subjectColumns.map((subject) => subject.name),
+    "Average",
+    "Points",
+    "Avg Pts",
+    "Grade",
+  ];
   let hasAtLeastOneScore = false;
   const tableRows = students.map((student) => {
     const studentMarks = marksByStudent.get(student._id.toString()) || new Map();
     let total = 0;
+    let totalPoints = 0;
     let count = 0;
     const rowData = [student.studentsName || "Unknown Student", student.ADM || "-"];
 
@@ -293,6 +304,7 @@ export async function archiveClassMarks(
       if (percentage !== null) {
         rowData.push(String(percentage));
         total += percentage;
+        totalPoints += markToPoints(percentage);
         count += 1;
         hasAtLeastOneScore = true;
       } else {
@@ -301,8 +313,11 @@ export async function archiveClassMarks(
     }
 
     const average = count > 0 ? Math.round(total / count) : 0;
+    const avgPoints = count > 0 ? Number((totalPoints / count).toFixed(1)) : 0;
     rowData.push(`${average}%`);
-    rowData.push(buildGrade(average));
+    rowData.push(totalPoints.toFixed(1));
+    rowData.push(avgPoints.toFixed(1));
+    rowData.push(pointsToGrade(avgPoints));
     return rowData;
   });
 

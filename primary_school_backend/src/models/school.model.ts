@@ -307,7 +307,7 @@ const ExitedStudentExamSummarySchema = new Schema<IExitedStudentExamSummary>({
   points: { type: Number, default: 0 },
   average: { type: Number, default: 0 },
   avgPoints: { type: Number, default: 0 },
-  grade: { type: String, default: "E" },
+  grade: { type: String, default: "BE2" },
   subjectCount: { type: Number, default: 0 },
 }, { _id: false });
 

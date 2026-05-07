@@ -496,33 +496,26 @@ const marksToPercentage = (mark: any) => {
 };
 
 const markToPoints = (score: number) => {
-  if (score >= 80) return 12;
-  if (score >= 75) return 11;
-  if (score >= 70) return 10;
-  if (score >= 65) return 9;
-  if (score >= 60) return 8;
-  if (score >= 55) return 7;
-  if (score >= 50) return 6;
+  if (score >= 80) return 8;
+  if (score >= 65) return 7;
+  if (score >= 55) return 6;
   if (score >= 45) return 5;
-  if (score >= 40) return 4;
-  if (score >= 35) return 3;
-  if (score >= 30) return 2;
+  if (score >= 35) return 4;
+  if (score >= 25) return 3;
+  if (score >= 15) return 2;
   return 1;
 };
 
 const pointsToGrade = (avgPoints: number) => {
-  if (avgPoints >= 11.5) return "A";
-  if (avgPoints >= 10.5) return "A-";
-  if (avgPoints >= 9.5) return "B+";
-  if (avgPoints >= 8.5) return "B";
-  if (avgPoints >= 7.5) return "B-";
-  if (avgPoints >= 6.5) return "C+";
-  if (avgPoints >= 5.5) return "C";
-  if (avgPoints >= 4.5) return "C-";
-  if (avgPoints >= 3.5) return "D+";
-  if (avgPoints >= 2.5) return "D";
-  if (avgPoints >= 1.5) return "D-";
-  return "E";
+  const roundedPoints = Math.max(1, Math.min(8, Math.round(avgPoints)));
+  if (roundedPoints >= 8) return "EE1";
+  if (roundedPoints >= 7) return "EE2";
+  if (roundedPoints >= 6) return "ME1";
+  if (roundedPoints >= 5) return "ME2";
+  if (roundedPoints >= 4) return "AE1";
+  if (roundedPoints >= 3) return "AE2";
+  if (roundedPoints >= 2) return "BE1";
+  return "BE2";
 };
 
 const buildStudentExamSummaries = async (studentId: any) => {
@@ -554,7 +547,7 @@ const buildStudentExamSummaries = async (studentId: any) => {
       const total = scores.reduce((sum, score) => sum + score, 0);
       const points = scores.reduce((sum, score) => sum + markToPoints(score), 0);
       const average = scores.length > 0 ? Math.round(total / scores.length) : 0;
-      const avgPoints = scores.length > 0 ? points / scores.length : 0;
+      const avgPoints = scores.length > 0 ? Number((points / scores.length).toFixed(1)) : 0;
 
       return {
         term: Number(termValue),
@@ -563,7 +556,7 @@ const buildStudentExamSummaries = async (studentId: any) => {
         classGrade,
         classStream,
         total,
-        points,
+        points: Number(points.toFixed(1)),
         average,
         avgPoints,
         grade: pointsToGrade(avgPoints),
