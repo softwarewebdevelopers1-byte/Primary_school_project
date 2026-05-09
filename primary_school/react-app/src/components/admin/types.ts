@@ -144,8 +144,7 @@ export interface ExitedStudentExamSummary {
   total: number;
   points: number;
   average: number;
-  avgPoints: number;
-  grade: string;
+  cbcBand: string;
   subjectCount: number;
 }
 
@@ -163,7 +162,7 @@ export interface ExitedStudent {
   exitReason: string;
   exitedAt: string;
   examSummaries: ExitedStudentExamSummary[];
-  averagePoints: number;
+  totalPoints: number;
   averagePercentage: number;
   examCount: number;
 }

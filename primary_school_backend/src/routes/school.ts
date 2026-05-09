@@ -26,6 +26,7 @@ import {
   normalizeSharedSlotId,
   normalizeSubjectEnrollmentMode,
 } from "../utils/subjectEnrollment.js";
+import { computeMarkPercentage } from "../utils/grading.js";
 
 const router = Router();
 
@@ -101,42 +102,6 @@ const getLatestByClass = (records: any[]) => {
 const hasRole = (roles: string[], role: string) => roles.includes(role);
 
 const DATABASE_ARCHIVE_PREFIX = "marks:";
-
-const toFiniteNumber = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") return null;
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : Number(typeof value === "string" ? value.trim() : value);
-  return Number.isFinite(numericValue) ? numericValue : null;
-};
-
-const computeMarkPercentage = (mark: any): number | null => {
-  const finalScore = toFiniteNumber(mark?.finalScore);
-  if (finalScore !== null) return Math.max(0, Math.min(100, finalScore));
-
-  const components = [
-    { score: toFiniteNumber(mark?.cat1), max: toFiniteNumber(mark?.cat1Max) },
-    { score: toFiniteNumber(mark?.cat2), max: toFiniteNumber(mark?.cat2Max) },
-    { score: toFiniteNumber(mark?.cat3), max: toFiniteNumber(mark?.cat3Max) },
-    { score: toFiniteNumber(mark?.cat4), max: toFiniteNumber(mark?.cat4Max) },
-    { score: toFiniteNumber(mark?.cat5), max: toFiniteNumber(mark?.cat5Max) },
-    { score: toFiniteNumber(mark?.exam), max: toFiniteNumber(mark?.examMax) },
-  ];
-
-  let totalScore = 0;
-  let totalMax = 0;
-
-  for (const component of components) {
-    if (component.score === null) continue;
-    const max = component.max !== null && component.max > 0 ? component.max : 0;
-    if (max <= 0) continue;
-    totalScore += component.score;
-    totalMax += max;
-  }
-
-  return totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : null;
-};
 
 const parseDatabaseArchiveId = (archiveId: string) => {
   if (!archiveId.startsWith(DATABASE_ARCHIVE_PREFIX)) return null;
@@ -865,6 +830,8 @@ router.get("/archives/:id/results", async (req: Request, res: Response) => {
         subjectId,
         subjectName: subjectMap.get(subjectId) || `Subject ${subjectId.slice(-6)}`,
         percentage: computeMarkPercentage(mark),
+        cbcBand: mark.cbcBand || null,
+        points: mark.points ?? null,
         cat1: mark.cat1,
         cat2: mark.cat2,
         cat3: mark.cat3,

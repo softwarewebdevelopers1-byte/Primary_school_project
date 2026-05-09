@@ -59,6 +59,32 @@ export const ClassSubjectSettingModel = mongoose.model<IClassSubjectSetting>(
   ClassSubjectSettingSchema,
 );
 
+export interface ICbcGradingBand extends Document {
+  minMarks: number;
+  maxMarks: number;
+  cbcBand: string;
+  points: number;
+  sortOrder: number;
+  createdBy?: string | null;
+}
+
+const CbcGradingBandSchema: Schema = new Schema({
+  minMarks: { type: Number, required: true },
+  maxMarks: { type: Number, required: true },
+  cbcBand: { type: String, required: true, trim: true },
+  points: { type: Number, required: true },
+  sortOrder: { type: Number, default: 0, index: true },
+  createdBy: { type: String, default: null },
+}, { timestamps: true });
+
+CbcGradingBandSchema.index({ cbcBand: 1 }, { unique: true });
+CbcGradingBandSchema.index({ sortOrder: 1, minMarks: -1 });
+
+export const CbcGradingBandModel = mongoose.model<ICbcGradingBand>(
+  "CbcGradingBand",
+  CbcGradingBandSchema,
+);
+
 export interface IMark extends Document {
   studentId: mongoose.Types.ObjectId;
   subjectId: mongoose.Types.ObjectId;
@@ -80,6 +106,8 @@ export interface IMark extends Document {
   exam: number | null;
   examMax: number;
   finalScore: number | null;
+  cbcBand?: string | null;
+  points?: number | null;
 }
 
 const MarkSchema: Schema = new Schema({
@@ -103,6 +131,8 @@ const MarkSchema: Schema = new Schema({
   exam: { type: Number, default: null },
   examMax: { type: Number, default: 100 },
   finalScore: { type: Number, default: null },
+  cbcBand: { type: String, default: null },
+  points: { type: Number, default: null },
 }, { timestamps: true });
 
 export const MarkModel = mongoose.model<IMark>("Mark", MarkSchema);
@@ -274,8 +304,7 @@ export interface IExitedStudentExamSummary {
   total: number;
   points: number;
   average: number;
-  avgPoints: number;
-  grade: string;
+  cbcBand: string;
   subjectCount: number;
 }
 
@@ -292,7 +321,7 @@ export interface IExitedStudent extends Document {
   exitedAt: Date;
   statusAtExit: string;
   examSummaries: IExitedStudentExamSummary[];
-  averagePoints: number;
+  totalPoints: number;
   averagePercentage: number;
   examCount: number;
 }
@@ -306,8 +335,7 @@ const ExitedStudentExamSummarySchema = new Schema<IExitedStudentExamSummary>({
   total: { type: Number, default: 0 },
   points: { type: Number, default: 0 },
   average: { type: Number, default: 0 },
-  avgPoints: { type: Number, default: 0 },
-  grade: { type: String, default: "E" },
+  cbcBand: { type: String, default: "" },
   subjectCount: { type: Number, default: 0 },
 }, { _id: false });
 
@@ -324,7 +352,7 @@ const ExitedStudentSchema = new Schema<IExitedStudent>({
   exitedAt: { type: Date, default: Date.now },
   statusAtExit: { type: String, default: "completed" },
   examSummaries: { type: [ExitedStudentExamSummarySchema], default: [] },
-  averagePoints: { type: Number, default: 0 },
+  totalPoints: { type: Number, default: 0 },
   averagePercentage: { type: Number, default: 0 },
   examCount: { type: Number, default: 0 },
 }, { timestamps: true });

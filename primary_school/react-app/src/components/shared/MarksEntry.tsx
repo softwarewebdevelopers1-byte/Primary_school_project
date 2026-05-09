@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./MarksEntry.module.css";
 import { Subject, Student, MarksData } from "../subjectteacher/types";
 import { formatSubjectOfferingTag } from "../../lib/subjectEnrollment";
+import { cbcBandBg, cbcBandColor, resolveCbcBand, useCbcGradingBands } from "../../lib/cbcGrading";
 
 interface MarksEntryProps {
   mode: "subject" | "class";
@@ -48,6 +49,8 @@ const createEmptyMarks = (): MarkRow => ({
   exam: null,
   examMax: 100,
   finalScore: null,
+  cbcBand: null,
+  points: null,
 });
 
 const getCatKey = (index: number) => `cat${index}` as CatKey;
@@ -79,6 +82,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   onExamTypeChange,
 }) => {
   const currentSubject = subjects.find((subject) => subject.id === activeSubjectId) || subjects[0] || null;
+  const { bands: cbcBands } = useCbcGradingBands();
   const subjectMarks = marksData[activeSubjectId] || {};
   const currentSubjectLabel = currentSubject?.displayName || currentSubject?.name || "";
   const showEnrollmentSubjectColumn = students.some((student) => Boolean(student.enrollmentSubjectName));
@@ -279,8 +283,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Student</th>
-                <th>Adm. No</th>
+                <th className={styles.stickyName}>Student</th>
+                <th className={styles.stickyAdm}>Adm. No</th>
                 {showEnrollmentSubjectColumn && <th>Subject</th>}
                 {Array.from({ length: catsCount }).map((_, index) => {
                   const key = getCatMaxKey(index + 1);
@@ -315,6 +319,8 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                 </th>
                 <th>Total</th>
                 <th>Final (%)</th>
+                <th>CBC Band</th>
+                <th>Points</th>
                 {mode === "subject" && <th>Status</th>}
               </tr>
             </thead>
@@ -347,17 +353,25 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                       : null;
                 const calculatedPercentage =
                   total !== null && maxTotal > 0 ? Math.round((total / maxTotal) * 100) : null;
+                const resolvedScore =
+                  marks.finalScore !== null && marks.finalScore !== ""
+                    ? Number(marks.finalScore)
+                    : calculatedPercentage;
+                const resolvedCbc =
+                  marks.cbcBand && marks.points !== null && marks.points !== undefined
+                    ? { cbcBand: marks.cbcBand, points: Number(marks.points) }
+                    : resolveCbcBand(resolvedScore, cbcBands);
                 const pushed = pushedStudents.has(student.id);
 
                 return (
                   <tr key={student.id}>
-                    <td>
+                    <td className={styles.stickyName}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div dangerouslySetInnerHTML={{ __html: avatar(student.name, 26) }} />
                         <span style={{ fontWeight: 600, color: "var(--text)" }}>{student.name}</span>
                       </div>
                     </td>
-                    <td style={{ color: "var(--textMut)", fontSize: "12px" }}>{student.adm}</td>
+                    <td className={styles.stickyAdm} style={{ color: "var(--textMut)", fontSize: "12px" }}>{student.adm}</td>
                     {showEnrollmentSubjectColumn && (
                       <td style={{ color: "var(--textMut)", fontSize: "12px" }}>
                         {student.enrollmentSubjectName || "-"}
@@ -422,6 +436,24 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                       ) : (
                         <span style={{ color: "var(--textF)", fontSize: "11px" }}>Pending</span>
                       )}
+                    </td>
+                    <td>
+                      {resolvedScore !== null ? (
+                        <span
+                          className={styles.pill}
+                          style={{
+                            background: cbcBandBg(resolvedCbc.cbcBand),
+                            color: cbcBandColor(resolvedCbc.cbcBand),
+                          }}
+                        >
+                          {resolvedCbc.cbcBand}
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--textF)", fontSize: "11px" }}>Pending</span>
+                      )}
+                    </td>
+                    <td style={{ fontWeight: 800, color: "var(--text)" }}>
+                      {resolvedScore !== null ? resolvedCbc.points : "-"}
                     </td>
                     {mode === "subject" && (
                       <td>

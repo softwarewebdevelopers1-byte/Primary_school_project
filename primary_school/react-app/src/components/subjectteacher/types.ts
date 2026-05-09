@@ -48,6 +48,8 @@ export interface Student {
     exam: number | string | null;
     examMax: number;
     finalScore: number | string | null;
+    cbcBand?: string | null;
+    points?: number | null;
   };
   pushed: boolean;
 }
@@ -83,6 +85,8 @@ export interface MarksData {
       exam: number | string | null;
       examMax: number;
       finalScore: number | string | null;
+      cbcBand?: string | null;
+      points?: number | null;
     };
   };
 }

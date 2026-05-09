@@ -1,9 +1,10 @@
 // components/classteacher/StudentDetails.tsx
 import React from "react";
-import { grade, gradeColor, gradeBg, marksForStudentSubjects, subjectsForStudent, sumPoints, pointsToGrade, getAttemptedSubjectCount } from "./shared/helpers";
+import { gradeColor, gradeBg, marksForStudentSubjects, subjectsForStudent, sumPoints, avg } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { BackIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
+import { resolveCbcBand, useCbcGradingBands } from "../../lib/cbcGrading";
 
 interface StudentDetailsProps {
   student: any;
@@ -16,7 +17,10 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
   subjects,
   onBack,
 }) => {
+  const { bands: cbcBands } = useCbcGradingBands();
   const studentMarks = marksForStudentSubjects(student, subjects);
+  const averageMarks = avg(studentMarks);
+  const summaryBand = resolveCbcBand(averageMarks, cbcBands).cbcBand;
 
 
   return (
@@ -93,11 +97,11 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                   fontFamily: FONT.serif,
                   fontSize: "2.4rem",
                   fontWeight: 600,
-                  color: gradeColor(pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(student, subjects) || 1))),
+                  color: gradeColor(summaryBand),
                   margin: 0,
                 }}
               >
-                {pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(student, subjects) || 1))}
+                {summaryBand}
               </p>
               <p
                 style={{
@@ -107,7 +111,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                   margin: 0,
                 }}
               >
-                {(sumPoints(studentMarks) / (getAttemptedSubjectCount(student, subjects) || 1)).toFixed(1)} points
+                {sumPoints(studentMarks, cbcBands)} points
               </p>
             </div>
           </div>
@@ -185,6 +189,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {subjectsForStudent(student, subjects).map((sub) => {
               const m = studentMarks[sub.id || sub._id];
+              const band = resolveCbcBand(m, cbcBands).cbcBand;
               return (
                 <div
                   key={sub.id}
@@ -214,7 +219,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                       style={{
                         width: `${m}%`,
                         height: "100%",
-                        background: gradeColor(m),
+                        background: gradeColor(band),
                         borderRadius: 4,
                         transition: "width 0.6s ease",
                       }}
@@ -225,7 +230,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                       fontFamily: FONT.serif,
                       fontSize: 15,
                       fontWeight: 600,
-                      color: gradeColor(m),
+                      color: gradeColor(band),
                       width: 48,
                       textAlign: "right",
                     }}
@@ -237,15 +242,15 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                       fontFamily: FONT.sans,
                       fontSize: 11.5,
                       fontWeight: 700,
-                      color: gradeColor(m),
-                      background: gradeBg(m),
+                      color: gradeColor(band),
+                      background: gradeBg(band),
                       padding: "2px 8px",
                       borderRadius: 12,
                       width: 28,
                       textAlign: "center",
                     }}
                   >
-                    {grade(m)}
+                    {band}
                   </span>
                 </div>
               );

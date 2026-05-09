@@ -1,8 +1,9 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { gradeColor, isStudentSubject, marksForStudentSubjects, sumPoints, pointsToGrade, getAttemptedSubjectCount } from "./shared/helpers";
+import { gradeColor, isStudentSubject, marksForStudentSubjects, sumPoints, avg } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
+import { resolveCbcBand, useCbcGradingBands } from "../../lib/cbcGrading";
 
 interface StudentRecordsProps {
   students: any[];
@@ -94,6 +95,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
   onViewStudent,
   classInfo
 }) => {
+  const { bands: cbcBands } = useCbcGradingBands();
   const [search, setSearch] = useState("");
   const filtered = students.filter(
     (s) =>
@@ -225,8 +227,8 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
               ))}
               {[
                 "T.Pts",
-                "Avg.Pts",
-                "Grade",
+                "Average",
+                "CBC Band",
                 "Action",
               ].map((h) => (
                 <th
@@ -317,7 +319,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         fontFamily: FONT.sans,
                         fontSize: 13.5,
                         fontWeight: 600,
-                        color: mark != null ? gradeColor(mark) : C.textMuted
+                        color: mark != null ? gradeColor(resolveCbcBand(mark, cbcBands).cbcBand) : C.textMuted
                       }}>
                         {mark != null ? `${mark}%` : "-"}
                       </td>
@@ -332,7 +334,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         color: C.text,
                       }}
                     >
-                      {sumPoints(studentMarks)}
+                      {sumPoints(studentMarks, cbcBands)}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
@@ -341,10 +343,10 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         fontFamily: FONT.serif,
                         fontSize: 14,
                         fontWeight: 900,
-                        color: gradeColor(pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1))),
+                        color: gradeColor(resolveCbcBand(avg(studentMarks), cbcBands).cbcBand),
                       }}
                     >
-                      {(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1)).toFixed(1)}
+                      {avg(studentMarks)}%
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
@@ -353,10 +355,10 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         fontFamily: FONT.serif,
                         fontSize: 14,
                         fontWeight: 900,
-                        color: gradeColor(pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1))),
+                        color: gradeColor(resolveCbcBand(avg(studentMarks), cbcBands).cbcBand),
                       }}
                     >
-                      {pointsToGrade(sumPoints(studentMarks) / (getAttemptedSubjectCount(s, subjects) || 1))}
+                      {resolveCbcBand(avg(studentMarks), cbcBands).cbcBand}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px" }}>

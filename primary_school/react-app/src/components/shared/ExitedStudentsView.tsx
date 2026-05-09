@@ -108,7 +108,7 @@ export const ExitedStudentsView: React.FC<ExitedStudentsViewProps> = ({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ textAlign: "left", background: "var(--sand, var(--dh-sand))" }}>
-              {["Student", "Adm No", "Final class", "Exams", "Avg Pts", "Avg %", ""].map((heading) => (
+              {["Student", "Adm No", "Final class", "Exams", "Total Points", "Avg Marks", ""].map((heading) => (
                 <th key={heading} style={{ padding: 12, fontSize: 11, color: "var(--textMut, var(--dh-text-muted))", textTransform: "uppercase" }}>
                   {heading}
                 </th>
@@ -131,7 +131,7 @@ export const ExitedStudentsView: React.FC<ExitedStudentsViewProps> = ({
                     Grade {student.finalClassGrade} {student.finalClassStream || ""}
                   </td>
                   <td style={{ padding: 12 }}>{student.examCount}</td>
-                  <td style={{ padding: 12, fontWeight: 700 }}>{Number(student.averagePoints || 0).toFixed(2)}</td>
+                  <td style={{ padding: 12, fontWeight: 700 }}>{Number(student.totalPoints || 0)}</td>
                   <td style={{ padding: 12 }}>{student.averagePercentage || 0}%</td>
                   <td style={{ padding: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
                     <button style={buttonStyle} onClick={() => setSelected(student)}>
@@ -173,14 +173,14 @@ export const ExitedStudentsView: React.FC<ExitedStudentsViewProps> = ({
             </div>
             <div style={{ padding: 20, display: "grid", gap: 14 }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-                <div style={panelStyle}><strong>{Number(selected.averagePoints || 0).toFixed(2)}</strong><br /><span style={{ color: "var(--textMut, var(--dh-text-muted))", fontSize: 12 }}>Average points</span></div>
+                <div style={panelStyle}><strong>{Number(selected.totalPoints || 0)}</strong><br /><span style={{ color: "var(--textMut, var(--dh-text-muted))", fontSize: 12 }}>Total points</span></div>
                 <div style={panelStyle}><strong>{selected.averagePercentage || 0}%</strong><br /><span style={{ color: "var(--textMut, var(--dh-text-muted))", fontSize: 12 }}>Average score</span></div>
                 <div style={panelStyle}><strong>{selected.examCount}</strong><br /><span style={{ color: "var(--textMut, var(--dh-text-muted))", fontSize: 12 }}>Done exams</span></div>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ textAlign: "left", background: "var(--sand, var(--dh-sand))" }}>
-                    {["Cycle", "Class", "Subjects", "Points", "Avg Pts", "Average", "Grade"].map((heading) => (
+                    {["Cycle", "Class", "Subjects", "Points", "Average", "CBC Band"].map((heading) => (
                       <th key={heading} style={{ padding: 10, fontSize: 11, color: "var(--textMut, var(--dh-text-muted))" }}>{heading}</th>
                     ))}
                   </tr>
@@ -192,9 +192,8 @@ export const ExitedStudentsView: React.FC<ExitedStudentsViewProps> = ({
                       <td style={{ padding: 10 }}>Grade {exam.classGrade} {exam.classStream || ""}</td>
                       <td style={{ padding: 10 }}>{exam.subjectCount}</td>
                       <td style={{ padding: 10 }}>{exam.points}</td>
-                      <td style={{ padding: 10 }}>{Number(exam.avgPoints || 0).toFixed(2)}</td>
                       <td style={{ padding: 10 }}>{exam.average}%</td>
-                      <td style={{ padding: 10, fontWeight: 700 }}>{exam.grade}</td>
+                      <td style={{ padding: 10, fontWeight: 700 }}>{exam.cbcBand || "-"}</td>
                     </tr>
                   ))}
                 </tbody>

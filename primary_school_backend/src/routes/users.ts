@@ -27,6 +27,12 @@ import {
   getClassSubjectEnrollmentSetting,
   normalizeSubjectId,
 } from "../utils/subjectEnrollment.js";
+import {
+  buildMarkGradingFields,
+  computeMarkPercentage,
+  getCbcGradingBands,
+  toFiniteNumber,
+} from "../utils/grading.js";
 import jwt from "jsonwebtoken";
 import { authenticate } from "../middleware/auth.js";
 
@@ -236,19 +242,6 @@ const canManageClassElectiveEnrollments = async (
     normalizeClassValue(currentUser?.class) === classGrade &&
     normalizeClassValue(currentUser?.classStream) === classStream
   );
-};
-
-const toFiniteNumber = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const numericValue =
-    typeof value === "number"
-      ? value
-      : Number(typeof value === "string" ? value.trim() : value);
-
-  return Number.isFinite(numericValue) ? numericValue : null;
 };
 
 const hasRecordedScore = (mark: any) =>
@@ -461,71 +454,11 @@ const extractClassLevel = (className: string | null | undefined) => {
 };
 
 const marksToPercentage = (mark: any) => {
-  const finalScore = toFiniteNumber(mark?.finalScore);
-  if (finalScore !== null) {
-    return Math.min(100, Math.max(0, Math.round(finalScore)));
-  }
-
-  const cats = [mark?.cat1, mark?.cat2, mark?.cat3, mark?.cat4, mark?.cat5];
-  const catMaxes = [
-    mark?.cat1Max,
-    mark?.cat2Max,
-    mark?.cat3Max,
-    mark?.cat4Max,
-    mark?.cat5Max,
-  ];
-  const exam = toFiniteNumber(mark?.exam);
-  const examMax = toFiniteNumber(mark?.examMax) ?? 100;
-  let total = 0;
-  let maxTotal = 0;
-
-  cats.forEach((cat, index) => {
-    const score = toFiniteNumber(cat);
-    if (score !== null) {
-      total += score;
-      maxTotal += toFiniteNumber(catMaxes[index]) ?? 40;
-    }
-  });
-
-  if (exam !== null) {
-    total += exam;
-    maxTotal += examMax;
-  }
-
-  return maxTotal > 0 ? Math.round((total / maxTotal) * 100) : null;
-};
-
-const markToPoints = (score: number) => {
-  if (score >= 80) return 12;
-  if (score >= 75) return 11;
-  if (score >= 70) return 10;
-  if (score >= 65) return 9;
-  if (score >= 60) return 8;
-  if (score >= 55) return 7;
-  if (score >= 50) return 6;
-  if (score >= 45) return 5;
-  if (score >= 40) return 4;
-  if (score >= 35) return 3;
-  if (score >= 30) return 2;
-  return 1;
-};
-
-const pointsToGrade = (avgPoints: number) => {
-  if (avgPoints >= 11.5) return "A";
-  if (avgPoints >= 10.5) return "A-";
-  if (avgPoints >= 9.5) return "B+";
-  if (avgPoints >= 8.5) return "B";
-  if (avgPoints >= 7.5) return "B-";
-  if (avgPoints >= 6.5) return "C+";
-  if (avgPoints >= 5.5) return "C";
-  if (avgPoints >= 4.5) return "C-";
-  if (avgPoints >= 3.5) return "D+";
-  if (avgPoints >= 2.5) return "D";
-  if (avgPoints >= 1.5) return "D-";
-  return "E";
+  return computeMarkPercentage(mark);
 };
 
 const buildStudentExamSummaries = async (studentId: any) => {
+  const gradingBands = await getCbcGradingBands();
   const marks = await MarkModel.find({ studentId } as any).lean();
   const marksByCycle = new Map<string, any[]>();
 
@@ -552,9 +485,13 @@ const buildStudentExamSummaries = async (studentId: any) => {
         .map((mark) => marksToPercentage(mark))
         .filter((score): score is number => typeof score === "number");
       const total = scores.reduce((sum, score) => sum + score, 0);
-      const points = scores.reduce((sum, score) => sum + markToPoints(score), 0);
+      const points = cycleMarks.reduce((sum, mark) => {
+        const score = marksToPercentage(mark);
+        if (score === null) return sum;
+        return sum + Number(mark.points ?? buildMarkGradingFields(score, gradingBands).points ?? 0);
+      }, 0);
       const average = scores.length > 0 ? Math.round(total / scores.length) : 0;
-      const avgPoints = scores.length > 0 ? points / scores.length : 0;
+      const averageBand = scores.length > 0 ? buildMarkGradingFields(average, gradingBands).cbcBand || "" : "";
 
       return {
         term: Number(termValue),
@@ -565,8 +502,7 @@ const buildStudentExamSummaries = async (studentId: any) => {
         total,
         points,
         average,
-        avgPoints,
-        grade: pointsToGrade(avgPoints),
+        cbcBand: averageBand,
         subjectCount: scores.length,
       };
     })
@@ -601,11 +537,7 @@ const archiveAndIsolateFinalGradeStudents = async (
   const archived = [];
   for (const student of graduatingStudents as any[]) {
     const examSummaries = await buildStudentExamSummaries(student._id);
-    const averagePoints =
-      examSummaries.length > 0
-        ? examSummaries.reduce((sum, summary) => sum + summary.avgPoints, 0) /
-          examSummaries.length
-        : 0;
+    const totalPoints = examSummaries.reduce((sum, summary) => sum + summary.points, 0);
     const averagePercentage =
       examSummaries.length > 0
         ? Math.round(
@@ -630,7 +562,7 @@ const archiveAndIsolateFinalGradeStudents = async (
           exitedAt: new Date(),
           statusAtExit: "completed",
           examSummaries,
-          averagePoints,
+          totalPoints,
           averagePercentage,
           examCount: examSummaries.length,
         },
@@ -659,7 +591,7 @@ const archiveAndIsolateFinalGradeStudents = async (
       admissionNo: student.ADM,
       finalClassGrade: student.class,
       finalClassStream: student.classStream,
-      averagePoints,
+      totalPoints,
       averagePercentage,
       examCount: examSummaries.length,
     });

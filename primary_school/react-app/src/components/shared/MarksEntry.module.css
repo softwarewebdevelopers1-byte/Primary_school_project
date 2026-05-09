@@ -98,6 +98,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 880px;
 }
 
 .table th {
@@ -115,6 +116,31 @@
   padding: 10px 12px;
   font-size: 13px;
   border-top: 1px solid var(--borderL);
+  background: var(--white);
+}
+
+.stickyName,
+.stickyAdm {
+  position: sticky;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--borderL);
+}
+
+.stickyName {
+  left: 0;
+  min-width: 220px;
+  max-width: 260px;
+}
+
+.stickyAdm {
+  left: 220px;
+  min-width: 96px;
+}
+
+.table th.stickyName,
+.table th.stickyAdm {
+  z-index: 4;
+  background: var(--sand);
 }
 
 .markInput {
@@ -258,7 +284,17 @@
   }
 
   .table {
-    min-width: 640px;
+    min-width: 820px;
+  }
+
+  .stickyName {
+    min-width: 180px;
+    max-width: 200px;
+  }
+
+  .stickyAdm {
+    left: 180px;
+    min-width: 88px;
   }
 
   .table th,

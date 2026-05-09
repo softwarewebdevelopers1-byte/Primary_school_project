@@ -6,6 +6,7 @@ import {  newStaff } from "./data/seed.js";
 import userRoutes from "./routes/users.js";
 import schoolRoutes from "./routes/school.js";
 import marksRoutes from "./routes/marks.js";
+import gradingRoutes from "./routes/grading.js";
 import mongoose from "mongoose";
 
 let app = express();
@@ -31,6 +32,7 @@ newStaff();
 app.use("/api/users", userRoutes);
 app.use("/api/school", schoolRoutes);
 app.use("/api/marks", marksRoutes);
+app.use("/api/grading", gradingRoutes);
 
 app.listen(DotEnvFile.DEVPort, (): void => {
   console.log(`Server is running on port ${DotEnvFile.DEVPort}`);

@@ -4,48 +4,17 @@ import { AssignmentModel, ClassSubjectSettingModel, MarkModel } from "../models/
 import { userModel, rolesMapped, studentModel } from "../models/user.model.js";
 import { authenticate } from "../middleware/auth.js";
 import { buildClassSubjectSettingMap, filterStudentsForSubject } from "../utils/subjectEnrollment.js";
+import {
+  buildMarkGradingFields,
+  computeMarkPercentage,
+  getCbcGradingBands,
+  toFiniteNumber,
+  validateMarkValue,
+} from "../utils/grading.js";
 
 const router = Router();
 
 router.use(authenticate);
-
-const toFiniteNumber = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") return null;
-  const n = typeof value === "number" ? value : Number(typeof value === "string" ? value.trim() : value);
-  return Number.isFinite(n) ? n : null;
-};
-
-const computeMarkPercentage = (mark: any): number | null => {
-  const finalScore = toFiniteNumber(mark?.finalScore);
-  if (finalScore !== null) return Math.min(100, Math.max(0, finalScore));
-
-  const cats = [mark?.cat1, mark?.cat2, mark?.cat3, mark?.cat4, mark?.cat5];
-  const catMaxes = [mark?.cat1Max, mark?.cat2Max, mark?.cat3Max, mark?.cat4Max, mark?.cat5Max];
-  const exam = toFiniteNumber(mark?.exam);
-  const examMax = toFiniteNumber(mark?.examMax) ?? 100;
-
-  let totalScore = 0;
-  let totalMax = 0;
-  let hasAnyValue = false;
-
-  for (let i = 0; i < cats.length; i++) {
-    const val = toFiniteNumber(cats[i]);
-    if (val !== null) {
-      totalScore += val;
-      totalMax += toFiniteNumber(catMaxes[i]) ?? 40;
-      hasAnyValue = true;
-    }
-  }
-
-  if (exam !== null) {
-    totalScore += exam;
-    totalMax += examMax;
-    hasAnyValue = true;
-  }
-
-  if (!hasAnyValue || totalMax <= 0) return null;
-  return Math.round((totalScore / totalMax) * 100);
-};
 
 // GET averages per assignment for a teacher
 router.get("/averages/teacher/:teacherId", async (req: Request, res: Response) => {
@@ -265,11 +234,13 @@ router.get("/", async (req: Request, res: Response) => {
           cat5Max: studentMark.cat5Max,
           exam: studentMark.exam,
           examMax: studentMark.examMax,
-          finalScore: studentMark.finalScore
+          finalScore: studentMark.finalScore,
+          cbcBand: studentMark.cbcBand || null,
+          points: studentMark.points ?? null
         } : { 
           cat1: null, cat2: null, cat3: null, cat4: null, cat5: null, 
           cat1Max: 40, cat2Max: 40, cat3Max: 40, cat4Max: 40, cat5Max: 40,
-          exam: null, examMax: 100, finalScore: null 
+          exam: null, examMax: 100, finalScore: null, cbcBand: null, points: null
         }
       };
     });
@@ -327,38 +298,50 @@ router.post("/save", async (req: Request, res: Response) => {
       ).map((student: any) => student._id.toString()),
     );
 
+    const gradingBands = await getCbcGradingBands();
     const operations = marksData
       .filter((item: any) => eligibleStudentIds.has(String(item.studentId)))
-      .map((item: any) => ({
-      updateOne: {
-        filter: { 
-          studentId: item.studentId, 
-          subjectId: normalizedSubjectId,
-          classGrade: normalizedClassGrade, 
-          classStream: normalizedClassStream, 
-          term: Number(term), 
-          year: Number(year),
-          examType: examType
-        },
-        update: { 
-          $set: { 
-            cat1: item.cat1, 
-            cat2: item.cat2, 
-            cat3: item.cat3, 
-            cat4: item.cat4, 
-            cat5: item.cat5, 
-            cat1Max: catConfigs?.cat1Max ?? item.cat1Max ?? 40,
-            cat2Max: catConfigs?.cat2Max ?? item.cat2Max ?? 40,
-            cat3Max: catConfigs?.cat3Max ?? item.cat3Max ?? 40,
-            cat4Max: catConfigs?.cat4Max ?? item.cat4Max ?? 40,
-            cat5Max: catConfigs?.cat5Max ?? item.cat5Max ?? 40,
-            exam: item.exam,
-            examMax: catConfigs?.examMax ?? item.examMax ?? 100
-          } 
-        },
-        upsert: true
-      }
-    }));
+      .map((item: any) => {
+        const markPayload = {
+          cat1: item.cat1,
+          cat2: item.cat2,
+          cat3: item.cat3,
+          cat4: item.cat4,
+          cat5: item.cat5,
+          cat1Max: catConfigs?.cat1Max ?? item.cat1Max ?? 40,
+          cat2Max: catConfigs?.cat2Max ?? item.cat2Max ?? 40,
+          cat3Max: catConfigs?.cat3Max ?? item.cat3Max ?? 40,
+          cat4Max: catConfigs?.cat4Max ?? item.cat4Max ?? 40,
+          cat5Max: catConfigs?.cat5Max ?? item.cat5Max ?? 40,
+          exam: item.exam,
+          examMax: catConfigs?.examMax ?? item.examMax ?? 100,
+          finalScore: item.finalScore ?? null,
+        };
+        validateMarkValue(markPayload.finalScore, "Final marks");
+        const percentage = computeMarkPercentage(markPayload);
+        const gradingFields = buildMarkGradingFields(percentage, gradingBands);
+
+        return {
+          updateOne: {
+            filter: {
+              studentId: item.studentId,
+              subjectId: normalizedSubjectId,
+              classGrade: normalizedClassGrade,
+              classStream: normalizedClassStream,
+              term: Number(term),
+              year: Number(year),
+              examType: examType,
+            },
+            update: {
+              $set: {
+                ...markPayload,
+                ...gradingFields,
+              },
+            },
+            upsert: true,
+          },
+        };
+      });
 
     if (operations.length > 0) {
       await MarkModel.bulkWrite(operations);
@@ -407,6 +390,7 @@ router.post("/summary-save", async (req: Request, res: Response) => {
     ]);
     const classSubjectSettingsMap = buildClassSubjectSettingMap(classSubjectSettings as any[]);
 
+    const gradingBands = await getCbcGradingBands();
     const operations = marksData
       .filter((item: any) => {
         const student = (students as any[]).find((candidate) => candidate._id.toString() === String(item.studentId));
@@ -424,25 +408,32 @@ router.post("/summary-save", async (req: Request, res: Response) => {
           classSubjectSettingsMap,
         ).length > 0;
       })
-      .map((item: any) => ({
-      updateOne: {
-        filter: { 
-          studentId: item.studentId, 
-          subjectId: item.subjectId, 
-          classGrade: normalizedClassGrade, 
-          classStream: normalizedClassStream, 
-          term: Number(term), 
-          year: Number(year),
-          examType: examType
-        },
-        update: { 
-          $set: { 
-            finalScore: item.finalScore
-          } 
-        },
-        upsert: true
-      }
-    }));
+      .map((item: any) => {
+        validateMarkValue(item.finalScore, "Final marks");
+        const percentage = computeMarkPercentage({ finalScore: item.finalScore });
+        const gradingFields = buildMarkGradingFields(percentage, gradingBands);
+
+        return {
+          updateOne: {
+            filter: {
+              studentId: item.studentId,
+              subjectId: item.subjectId,
+              classGrade: normalizedClassGrade,
+              classStream: normalizedClassStream,
+              term: Number(term),
+              year: Number(year),
+              examType: examType,
+            },
+            update: {
+              $set: {
+                finalScore: item.finalScore,
+                ...gradingFields,
+              },
+            },
+            upsert: true,
+          },
+        };
+      });
 
 
     if (operations.length > 0) {

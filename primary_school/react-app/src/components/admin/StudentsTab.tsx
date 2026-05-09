@@ -785,10 +785,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           background: "var(--white)",
           border: "1px solid var(--border)",
           borderRadius: 13,
-          overflow: "hidden",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={{ width: "100%", minWidth: 860, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--sand)" }}>
               {[
@@ -799,7 +800,17 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                 "Status",
                 "Actions",
               ].map((heading) => (
-                <th key={heading} style={tableHeadingStyle}>
+                <th
+                  key={heading}
+                  style={{
+                    ...tableHeadingStyle,
+                    ...(heading === "Student"
+                      ? { position: "sticky", left: 0, zIndex: 2, background: "var(--sand)", minWidth: 210 }
+                      : heading === "Admission no."
+                        ? { position: "sticky", left: 210, zIndex: 2, background: "var(--sand)", minWidth: 130 }
+                        : {}),
+                  }}
+                >
                   {heading}
                 </th>
               ))}
@@ -819,11 +830,11 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 
               return (
                 <tr key={student.id} style={{ borderTop: "1px solid var(--borderL)" }}>
-                  <td style={{ padding: "10px 13px" }}>
+                  <td style={{ padding: "10px 13px", position: "sticky", left: 0, zIndex: 1, background: "var(--white)", minWidth: 210, boxShadow: "1px 0 0 var(--borderL)" }}>
                     <p style={rowPrimaryTextStyle}>{student.name}</p>
                     <p style={rowMetaTextStyle}>{student.gender}</p>
                   </td>
-                  <td style={bodyTextStyle}>{student.admissionNo}</td>
+                  <td style={{ ...bodyTextStyle, position: "sticky", left: 210, zIndex: 1, background: "var(--white)", minWidth: 130, boxShadow: "1px 0 0 var(--borderL)" }}>{student.admissionNo}</td>
                   <td style={{ padding: "10px 13px" }}>
                     <p style={{ ...rowPrimaryTextStyle, fontWeight: 600 }}>
                       {currentClass?.name || "Not assigned"}

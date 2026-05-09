@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { api } from "../../lib/api";
+import { resolveCbcBand, useCbcGradingBands, type CbcGradingBand } from "../../lib/cbcGrading";
 import { Class, Student, Subject } from "./types";
 
 interface PerformanceTabProps {
@@ -22,7 +23,6 @@ interface ClassPerformanceRow {
   points: number;
   scoredSubjects: number;
   average: number;
-  avgPoints: number;
   rank: number;
 }
 
@@ -109,37 +109,10 @@ const computeMarkPercentage = (marks: any): number | null => {
   return totalMax <= 0 ? null : Math.round((totalScore / totalMax) * 100);
 };
 
-const markToPoints = (v: number): number => {
-  if (v >= 80) return 12;
-  if (v >= 75) return 11;
-  if (v >= 70) return 10;
-  if (v >= 65) return 9;
-  if (v >= 60) return 8;
-  if (v >= 55) return 7;
-  if (v >= 50) return 6;
-  if (v >= 45) return 5;
-  if (v >= 40) return 4;
-  if (v >= 35) return 3;
-  if (v >= 30) return 2;
-  return 1;
-};
-
-const pointsToGrade = (avgPoints: number): string => {
-  if (avgPoints >= 11.5) return "A";
-  if (avgPoints >= 10.5) return "A-";
-  if (avgPoints >= 9.5) return "B+";
-  if (avgPoints >= 8.5) return "B";
-  if (avgPoints >= 7.5) return "B-";
-  if (avgPoints >= 6.5) return "C+";
-  if (avgPoints >= 5.5) return "C";
-  if (avgPoints >= 4.5) return "C-";
-  if (avgPoints >= 3.5) return "D+";
-  if (avgPoints >= 2.5) return "D";
-  if (avgPoints >= 1.5) return "D-";
-  return "E";
-};
+const markToPoints = (v: number, bands: CbcGradingBand[]): number => resolveCbcBand(v, bands).points;
 
 export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, students, subjects }) => {
+  const { bands: cbcBands } = useCbcGradingBands();
   const [selectedId, setSelectedId] = useState(() => {
     const saved = sessionStorage.getItem("selectedPerformanceTarget");
     return saved ? JSON.parse(saved) : "";
@@ -147,6 +120,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
   const [performanceRows, setPerformanceRows] = useState<ClassPerformanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [rankingMode, setRankingMode] = useState<"total_points" | "total_marks" | "average_marks">("total_points");
 
   const uniqueGrades = useMemo(() => {
     const grades = Array.from(new Set(classes.map(c => c.grade)));
@@ -194,7 +168,6 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
           points: 0,
           scoredSubjects: 0,
           average: 0,
-          avgPoints: 0,
           rank: 0
         });
       });
@@ -222,33 +195,32 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
       const ranked = Array.from(rowsByStudent.values()).map(row => {
         const scores = Object.values(row.marks).filter((m): m is number => typeof m === "number");
         const total = scores.reduce((a, b) => a + b, 0);
-        const points = scores.reduce((a, b) => a + markToPoints(b), 0);
+        const points = scores.reduce((a, b) => a + markToPoints(b, cbcBands), 0);
         const avg = scores.length > 0 ? Math.round(total / scores.length) : 0;
-        const avgPoints = scores.length > 0 ? points / scores.length : 0;
-        return { ...row, total, points, scoredSubjects: scores.length, average: avg, avgPoints };
+        return { ...row, total, points, scoredSubjects: scores.length, average: avg };
       }).sort(
-        (a, b) =>
-          b.avgPoints - a.avgPoints ||
-          b.average - a.average ||
-          b.points - a.points ||
-          b.total - a.total ||
-          a.name.localeCompare(b.name)
+        (a, b) => {
+          const primary =
+            rankingMode === "total_marks"
+              ? b.total - a.total
+              : rankingMode === "average_marks"
+                ? b.average - a.average
+                : b.points - a.points;
+          return primary || b.points - a.points || b.total - a.total || b.average - a.average || a.name.localeCompare(b.name);
+        }
       );
 
       let rank = 0;
-      let prevAvgPoints = -1;
       let prevAverage = -1;
       let prevPoints = -1;
       let prevTotal = -1;
       ranked.forEach(row => {
         if (
-          row.avgPoints !== prevAvgPoints ||
           row.average !== prevAverage ||
           row.points !== prevPoints ||
           row.total !== prevTotal
         ) {
           rank += 1;
-          prevAvgPoints = row.avgPoints;
           prevAverage = row.average;
           prevPoints = row.points;
           prevTotal = row.total;
@@ -265,7 +237,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
 
   useEffect(() => {
     loadPerformance();
-  }, [selectedId, targetClasses[0]?.term, targetClasses[0]?.year, targetClasses[0]?.examType]);
+  }, [selectedId, targetClasses[0]?.term, targetClasses[0]?.year, targetClasses[0]?.examType, rankingMode, cbcBands.length]);
 
   const handleDownloadExcel = () => {
     if (performanceRows.length === 0) return;
@@ -281,9 +253,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
       });
       data.Total = row.total;
       data.Points = row.points;
-      data["Avg Pts"] = row.avgPoints.toFixed(2);
       data.Average = `${row.average}%`;
-      data.Grade = pointsToGrade(row.avgPoints);
+      data["CBC Band"] = resolveCbcBand(row.average, cbcBands).cbcBand;
       return data;
     });
 
@@ -308,7 +279,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
     }
     
     autoTable(doc, {
-      head: [["Rank", "Student", "Adm No", "Stream", ...availableSubjects.map(s => s.name), "Total", "Pts", "Avg Pts", "Avg", "Grade"]],
+      head: [["Rank", "Student", "Adm No", "Stream", ...availableSubjects.map(s => s.name), "Total", "Points", "Average", "CBC Band"]],
       body: performanceRows.map(row => [
         row.rank,
         row.name,
@@ -317,9 +288,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         ...availableSubjects.map(s => row.marks[s.id] ?? "-"),
         row.total,
         row.points,
-        row.avgPoints.toFixed(2),
         `${row.average}%`,
-        pointsToGrade(row.avgPoints)
+        resolveCbcBand(row.average, cbcBands).cbcBand
       ]),
       startY: 30,
       theme: "grid",
@@ -370,6 +340,14 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
             </optgroup>
           </select>
         </label>
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={labelStyle}>Ranking Mode</span>
+          <select value={rankingMode} onChange={(event) => setRankingMode(event.target.value as any)} style={inputStyle}>
+            <option value="total_points">Total points</option>
+            <option value="total_marks">Total marks</option>
+            <option value="average_marks">Average marks</option>
+          </select>
+        </label>
         <div style={statBoxStyle}>
           <p style={labelStyle}>{isGradeSelected ? "Grade Average" : "Stream Average"}</p>
           <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{isLoading ? "..." : `${classAvg}%`}</p>
@@ -399,17 +377,16 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
               <th style={tableHeadStyle}>Adm No</th>
               <th style={tableHeadStyle}>Stream</th>
               <th style={tableHeadStyle}>Points</th>
-              <th style={tableHeadStyle}>Avg Pts</th>
               <th style={tableHeadStyle}>Average</th>
-              <th style={tableHeadStyle}>Grade</th>
+              <th style={tableHeadStyle}>CBC Band</th>
               <th style={{ ...tableHeadStyle, textAlign: "right" }}>Total</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={9} style={{ ...tableCellStyle, padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
+              <tr><td colSpan={8} style={{ ...tableCellStyle, padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
             ) : performanceRows.length === 0 ? (
-              <tr><td colSpan={9} style={{ ...tableCellStyle, padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
+              <tr><td colSpan={8} style={{ ...tableCellStyle, padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
             ) : performanceRows.map(row => (
               <tr key={row.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td style={tableCellStyle}>{row.rank}</td>
@@ -417,9 +394,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
                 <td style={{ ...tableCellStyle, color: "var(--textMut)" }}>{row.admissionNo}</td>
                 <td style={{ ...tableCellStyle, fontSize: 12 }}>{row.stream}</td>
                 <td style={{ ...tableCellStyle, fontWeight: 700, color: "var(--gold)" }}>{row.points}</td>
-                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{row.avgPoints.toFixed(2)}</td>
                 <td style={tableCellStyle}>{row.average}%</td>
-                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{pointsToGrade(row.avgPoints)}</td>
+                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{resolveCbcBand(row.average, cbcBands).cbcBand}</td>
                 <td style={{ ...tableCellStyle, textAlign: "right", fontWeight: 700 }}>{row.total}</td>
               </tr>
             ))}

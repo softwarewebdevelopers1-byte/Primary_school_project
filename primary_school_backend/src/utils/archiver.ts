@@ -3,6 +3,11 @@ import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
 import { ArchiveModel, MarkModel, SubjectModel } from "../models/school.model.js";
 import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
+import {
+  buildMarkGradingFields,
+  computeMarkPercentage,
+  getCbcGradingBands,
+} from "./grading.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -32,78 +37,8 @@ export interface ArchiveClassMarksResult {
   studentCount: number;
 }
 
-const GRADE_SCALE = [
-  { grade: "A", points: 12, min: 80, max: 100, remark: "Plain" },
-  { grade: "A-", points: 11, min: 75, max: 79, remark: "Minus" },
-  { grade: "B+", points: 10, min: 70, max: 74, remark: "Plus" },
-  { grade: "B", points: 9, min: 65, max: 69, remark: "Plain" },
-  { grade: "B-", points: 8, min: 60, max: 64, remark: "Minus" },
-  { grade: "C+", points: 7, min: 55, max: 59, remark: "Minimum" },
-  { grade: "C", points: 6, min: 50, max: 54, remark: "Plain" },
-  { grade: "C-", points: 5, min: 45, max: 49, remark: "Minus" },
-  { grade: "D+", points: 4, min: 40, max: 44, remark: "Plus" },
-  { grade: "D", points: 3, min: 35, max: 39, remark: "Plain" },
-  { grade: "D-", points: 2, min: 30, max: 34, remark: "Minus" },
-  { grade: "E", points: 1, min: 0, max: 29, remark: "Weak" },
-] as const;
-const DEFAULT_GRADE_BAND = GRADE_SCALE[GRADE_SCALE.length - 1]!;
-
-const resolveGradeBand = (average: number) => {
-  const normalizedAverage = Math.max(0, Math.min(100, Math.round(average)));
-  return GRADE_SCALE.find((band) => normalizedAverage >= band.min) || DEFAULT_GRADE_BAND;
-};
-
-const buildGrade = (average: number) => resolveGradeBand(average).grade;
-
-const toFiniteNumber = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const numericValue =
-    typeof value === "number" ? value : Number(typeof value === "string" ? value.trim() : value);
-
-  return Number.isFinite(numericValue) ? numericValue : null;
-};
-
 const resolveMarkPercentage = (mark: any): number | null => {
-  const explicitFinalScore = toFiniteNumber(mark?.finalScore);
-  if (explicitFinalScore !== null) {
-    return Math.max(0, Math.min(100, Math.round(explicitFinalScore)));
-  }
-
-  const components = [
-    { score: toFiniteNumber(mark?.cat1), max: toFiniteNumber(mark?.cat1Max) },
-    { score: toFiniteNumber(mark?.cat2), max: toFiniteNumber(mark?.cat2Max) },
-    { score: toFiniteNumber(mark?.cat3), max: toFiniteNumber(mark?.cat3Max) },
-    { score: toFiniteNumber(mark?.cat4), max: toFiniteNumber(mark?.cat4Max) },
-    { score: toFiniteNumber(mark?.cat5), max: toFiniteNumber(mark?.cat5Max) },
-    { score: toFiniteNumber(mark?.exam), max: toFiniteNumber(mark?.examMax) },
-  ];
-
-  let totalScore = 0;
-  let totalMax = 0;
-
-  for (const component of components) {
-    if (component.score === null) {
-      continue;
-    }
-
-    const componentMax = component.max !== null && component.max > 0 ? component.max : null;
-    if (componentMax === null) {
-      continue;
-    }
-
-    totalScore += component.score;
-    totalMax += componentMax;
-  }
-
-  if (totalMax <= 0) {
-    return null;
-  }
-
-  const calculatedPercentage = Math.round((totalScore / totalMax) * 100);
-  return Math.max(0, Math.min(100, calculatedPercentage));
+  return computeMarkPercentage(mark);
 };
 
 const removeStoredFiles = async (fileNames: string[]) => {
@@ -268,6 +203,7 @@ export async function archiveClassMarks(
   }
 
   const doc = new jsPDF("landscape");
+  const gradingBands = await getCbcGradingBands();
   doc.setFontSize(22);
   doc.setTextColor(20, 50, 40);
   doc.text("Primary School Academic Report", 14, 15);
@@ -278,11 +214,12 @@ export async function archiveClassMarks(
   doc.text(`Term ${term}, ${year} | Phase: ${normalizedExamType.toUpperCase()}`, 14, 30);
   doc.text(`Generated on ${new Date().toLocaleString()}`, 14, 37);
 
-  const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Average", "Grade"];
+  const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Total", "Average", "Total Points"];
   let hasAtLeastOneScore = false;
   const tableRows = students.map((student) => {
     const studentMarks = marksByStudent.get(student._id.toString()) || new Map();
     let total = 0;
+    let totalPoints = 0;
     let count = 0;
     const rowData = [student.studentsName || "Unknown Student", student.ADM || "-"];
 
@@ -291,8 +228,12 @@ export async function archiveClassMarks(
       const percentage = resolveMarkPercentage(mark);
 
       if (percentage !== null) {
-        rowData.push(String(percentage));
+        const gradingFields = mark?.cbcBand && mark?.points !== null && mark?.points !== undefined
+          ? { cbcBand: mark.cbcBand, points: mark.points }
+          : buildMarkGradingFields(percentage, gradingBands);
+        rowData.push(`${percentage} | ${gradingFields.cbcBand} | ${gradingFields.points}`);
         total += percentage;
+        totalPoints += Number(gradingFields.points || 0);
         count += 1;
         hasAtLeastOneScore = true;
       } else {
@@ -301,8 +242,9 @@ export async function archiveClassMarks(
     }
 
     const average = count > 0 ? Math.round(total / count) : 0;
+    rowData.push(String(total));
     rowData.push(`${average}%`);
-    rowData.push(buildGrade(average));
+    rowData.push(String(totalPoints));
     return rowData;
   });
 

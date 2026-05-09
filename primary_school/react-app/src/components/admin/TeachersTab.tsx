@@ -459,14 +459,23 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           background: "var(--white)",
           border: "1px solid var(--border)",
           borderRadius: 13,
-          overflow: "hidden",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={{ width: "100%", minWidth: 860, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--sand)" }}>
               {["Staff", "First assigned Role", "Department", "Contact", "Scope", "Status", ""].map((heading) => (
-                <th key={heading} style={tableHeadingStyle}>
+                <th
+                  key={heading}
+                  style={{
+                    ...tableHeadingStyle,
+                    ...(heading === "Staff"
+                      ? { position: "sticky", left: 0, zIndex: 2, background: "var(--sand)", minWidth: 230 }
+                      : {}),
+                  }}
+                >
                   {heading}
                 </th>
               ))}
@@ -475,7 +484,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           <tbody>
             {filteredTeachers.map((teacher) => (
               <tr key={teacher.id} style={{ borderTop: "1px solid var(--borderL)" }}>
-                <td style={{ padding: "10px 13px" }}>
+                <td style={{ padding: "10px 13px", position: "sticky", left: 0, zIndex: 1, background: "var(--white)", minWidth: 230, boxShadow: "1px 0 0 var(--borderL)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                     <div dangerouslySetInnerHTML={{ __html: avatar(teacher.name, 30) }} />
                     <div>

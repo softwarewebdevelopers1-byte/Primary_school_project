@@ -13,6 +13,7 @@ import { TimetableTab } from "./TimetableTab";
 import { AdminMarksTab } from "./AdminMarksTab";
 import { BulkElectiveEnrollmentTab } from "./BulkElectiveEnrollmentTab";
 import { PerformanceTab } from "./PerformanceTab";
+import { CbcGradingConfigTab } from "./CbcGradingConfigTab";
 import { ArchivesView } from "../shared/ArchivesView";
 import { ExitedStudentsView } from "../shared/ExitedStudentsView";
 import {
@@ -92,6 +93,11 @@ const navItems: NavItem[] = [
     id: "cycle",
     label: "Academic Cycle",
     svg: "<circle cx='12' cy='12' r='10'/><path d='M12 6v6l4 2'/>",
+  },
+  {
+    id: "cbc-grading",
+    label: "CBC Grading Configuration",
+    svg: "<path d='M4 6h16'/><path d='M4 12h16'/><path d='M4 18h7'/><path d='M15 18l2 2 4-4'/>",
   },
   {
     id: "archives",
@@ -880,6 +886,7 @@ const AdminDashboard: React.FC = () => {
       assignments: "Subject assignments",
       timetables: "Timetable generator",
       cycle: "Academic cycle",
+      "cbc-grading": "CBC grading configuration",
       archives: "Archives",
       exited: "Exited learners",
     };
@@ -1054,6 +1061,10 @@ const AdminDashboard: React.FC = () => {
           teachers[0]?.year || students[0]?.year || new Date().getFullYear(),
       };
       return <TimetableTab classes={classes} currentPeriod={currentPeriod} />;
+    }
+
+    if (activeTab === "cbc-grading") {
+      return <CbcGradingConfigTab />;
     }
 
     if (activeTab === "archives") {

@@ -37,6 +37,8 @@ interface ArchiveResultStudent {
       cat5: number | null;
       exam: number | null;
       finalScore: number | null;
+      cbcBand?: string | null;
+      points?: number | null;
     }
   >;
 }
@@ -567,7 +569,9 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
                         const mark = student.subjects[subject.id];
                         return (
                           <td key={subject.id} style={{ padding: "10px 12px", borderBottom: `1px solid ${C.borderLight}`, color: C.text }}>
-                            {typeof mark?.percentage === "number" ? `${mark.percentage}%` : "-"}
+                            {typeof mark?.percentage === "number"
+                              ? `${mark.percentage}% | ${mark.cbcBand || "-"} | ${mark.points ?? "-"}`
+                              : "-"}
                           </td>
                         );
                       })}
