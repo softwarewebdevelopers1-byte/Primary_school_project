@@ -352,11 +352,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         color: C.text,
                       }}
                     >
-<<<<<<< HEAD
                       {sumPoints(studentMarks, cbcBands)}
-=======
-                      {sumPoints(studentMarks).toFixed(1)}
->>>>>>> cba98d0467c8e9b1c2bcb541daaaab117ba973fd
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
