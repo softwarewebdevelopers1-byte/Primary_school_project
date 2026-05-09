@@ -220,6 +220,7 @@ export async function archiveClassMarks(
     const studentMarks = marksByStudent.get(student._id.toString()) || new Map();
     let total = 0;
     let totalPoints = 0;
+    let totalPoints = 0;
     let count = 0;
     const rowData = [student.studentsName || "Unknown Student", student.ADM || "-"];
 

@@ -204,14 +204,14 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({
               <strong>Class Teacher:</strong> {selectedClass.teacher || "Unassigned"}
             </p>
           </div>
-          <div style={{ padding: 24, overflowY: "auto",display:"flex",justifyContent:"center"}}>
+          <div style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             <h4 style={{ margin: "0 0 12px", fontFamily: F.sans, color: C.text }}>Enrolled Students ({students.filter(s => s.classGrade === selectedClass.grade && (s.classStream || "") === (selectedClass.stream || "")).length})</h4>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: C.sand, textAlign: "left" }}>
-                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted }}>Name</th>
-                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted }}>Adm No</th>
-                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted }}>Gender</th>
+                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Name</th>
+                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Adm No</th>
+                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Gender</th>
                 </tr>
               </thead>
               <tbody>

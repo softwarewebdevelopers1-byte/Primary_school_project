@@ -176,7 +176,8 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
           background: C.white,
           border: `1px solid ${C.border}`,
           borderRadius: 14,
-          overflowX: "auto",
+          overflow: "auto",
+          maxHeight: "70vh",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -200,6 +201,11 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
+                    position: "sticky",
+                    top: 0,
+                    background: C.cream,
+                    zIndex: 10,
+                    boxShadow: `inset 0 -1px 0 ${C.text}`,
                   }}
                 >
                   {h}
@@ -219,6 +225,11 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
+                    position: "sticky",
+                    top: 0,
+                    background: C.cream,
+                    zIndex: 10,
+                    boxShadow: `inset 0 -1px 0 ${C.text}`,
                   }}
                   title={s.fullName || s.name}
                 >
@@ -244,7 +255,11 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
-                    background: h !== "Action" ? "#333" : "transparent"
+                    background: h !== "Action" ? "#333" : C.cream,
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 10,
+                    boxShadow: `inset 0 -1px 0 ${C.text}`,
                   }}
                 >
                   {h}
@@ -263,7 +278,10 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                   style={{
                     borderTop: `1px solid ${C.borderLight}`,
                     cursor: "pointer",
+                    transition: "background 0.2s",
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--ct-hover, rgba(0,0,0,0.02))"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                   onClick={() => onViewStudent(s)}
                 >
                   <td style={{ padding: "12px 14px" }}>
@@ -334,7 +352,11 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         color: C.text,
                       }}
                     >
+<<<<<<< HEAD
                       {sumPoints(studentMarks, cbcBands)}
+=======
+                      {sumPoints(studentMarks).toFixed(1)}
+>>>>>>> cba98d0467c8e9b1c2bcb541daaaab117ba973fd
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>

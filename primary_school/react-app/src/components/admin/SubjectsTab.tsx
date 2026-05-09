@@ -102,52 +102,26 @@ const noticeStyle: React.CSSProperties = {
   color: "var(--textM)",
 };
 
-const cardTitleStyle: React.CSSProperties = {
-  fontFamily: "var(--serif)",
-  fontSize: "1.2rem",
-  fontWeight: 600,
-  color: "var(--text)",
-  margin: "0 0 6px",
-};
-
-const chipStyle: React.CSSProperties = {
-  padding: "2px 8px",
-  borderRadius: 9,
+const tableHeadingStyle: React.CSSProperties = {
+  padding: "9px 13px",
+  textAlign: "left",
   fontSize: 10,
   fontWeight: 700,
-  background: "var(--goldL)",
-  color: "var(--gold)",
-};
-
-const smallLabelStyle: React.CSSProperties = {
-  fontSize: 9.5,
-  fontWeight: 700,
-  color: "var(--textF)",
+  color: "var(--textMut)",
+  letterSpacing: ".06em",
   textTransform: "uppercase",
-  letterSpacing: ".04em",
-  margin: "0 0 4px",
-};
-
-const cardValueStyle: React.CSSProperties = {
-  fontSize: 13,
-  fontWeight: 700,
-  color: "var(--text)",
-  margin: 0,
-};
-
-const metricBoxStyle: React.CSSProperties = {
-  flex: 1,
+  position: "sticky",
+  top: 0,
   background: "var(--sand)",
-  borderRadius: 10,
-  padding: "9px 10px",
+  zIndex: 10,
+  boxShadow: "inset 0 -1px 0 var(--borderL)",
 };
 
-const emptyCardStyle: React.CSSProperties = {
-  background: "var(--white)",
-  border: "1px solid var(--border)",
-  borderRadius: 13,
-  padding: "2rem",
-  color: "var(--textF)",
+const tableCellStyle: React.CSSProperties = {
+  padding: "10px 13px",
+  fontSize: 12.5,
+  color: "var(--textM)",
+  borderTop: "1px solid var(--borderL)",
 };
 
 const SubjectFormModal: React.FC<{
@@ -315,63 +289,82 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 13,
+          background: "var(--white)",
+          border: "1px solid var(--border)",
+          borderRadius: 13,
+          overflow: "auto",
+          maxHeight: "70vh",
         }}
       >
-        {filteredSubjects.map((subject) => {
-          const usageCount = getUsageCount(subject.id);
-
-          return (
-            <div
-              key={subject.id}
-              style={{
-                background: "var(--white)",
-                border: "1px solid var(--border)",
-                borderRadius: 13,
-                padding: "1.2rem",
-                borderLeft: "4px solid var(--gold)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-                <div>
-                  <h3 style={cardTitleStyle}>{subject.name}</h3>
-                  <span style={chipStyle}>{subject.department}</span>
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button 
-                    onClick={() => openSubjectModal(subject)}
-                    style={{ ...miniButtonStyle, background: "var(--cream)", border: "1px solid var(--border)" }}
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteSubject(subject)}
-                    style={{ ...miniButtonStyle, background: "var(--dBg)", color: "var(--dText)", border: "1px solid var(--dText)" }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 9, marginTop: 10 }}>
-                <div style={metricBoxStyle}>
-                  <p style={smallLabelStyle}>Offered Classes</p>
-                  <p style={cardValueStyle}>{usageCount}</p>
-                </div>
-                <div style={metricBoxStyle}>
-                  <p style={smallLabelStyle}>Dropped elsewhere</p>
-                  <p style={cardValueStyle}>{Math.max(classes.length - usageCount, 0)}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {filteredSubjects.length === 0 && (
-          <div style={emptyCardStyle}>No subjects found. Add one to get started.</div>
-        )}
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              {["Subject Name", "Department", "Offered Classes", "Dropped Elsewhere", "Actions"].map((h) => (
+                <th key={h} style={tableHeadingStyle}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredSubjects.map((subject) => {
+              const usageCount = getUsageCount(subject.id);
+              return (
+                <tr 
+                  key={subject.id}
+                  style={{ transition: "background 0.2s" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--ct-hover, rgba(0,0,0,0.02))"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                >
+                  <td style={tableCellStyle}>
+                    <p style={{ margin: 0, fontWeight: 700, color: "var(--text)", fontFamily: "var(--serif)", fontSize: "1rem" }}>
+                      {subject.name}
+                    </p>
+                  </td>
+                  <td style={tableCellStyle}>
+                    <span style={{ 
+                      padding: "2px 8px", 
+                      borderRadius: 9, 
+                      fontSize: 10, 
+                      fontWeight: 700, 
+                      background: "var(--goldL)", 
+                      color: "var(--gold)" 
+                    }}>
+                      {subject.department}
+                    </span>
+                  </td>
+                  <td style={tableCellStyle}>
+                    <span style={{ fontWeight: 700 }}>{usageCount}</span> classes
+                  </td>
+                  <td style={tableCellStyle}>
+                    <span style={{ color: "var(--textMut)" }}>{Math.max(classes.length - usageCount, 0)}</span> classes
+                  </td>
+                  <td style={tableCellStyle}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button 
+                        onClick={() => openSubjectModal(subject)}
+                        style={{ ...miniButtonStyle, background: "var(--cream)", border: "1px solid var(--border)" }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteSubject(subject)}
+                        style={{ ...miniButtonStyle, background: "var(--dBg)", color: "var(--dText)", border: "1px solid var(--dText)" }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {filteredSubjects.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ padding: "3rem", textAlign: "center", color: "var(--textF)" }}>
+                  No subjects found. Add one to get started.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

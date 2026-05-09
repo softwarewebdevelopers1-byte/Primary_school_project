@@ -112,6 +112,11 @@ const tableHeadingStyle: React.CSSProperties = {
   color: "var(--textMut)",
   letterSpacing: ".06em",
   textTransform: "uppercase",
+  position: "sticky",
+  top: 0,
+  background: "var(--sand)",
+  zIndex: 10,
+  boxShadow: "inset 0 -1px 0 var(--borderL)",
 };
 
 const rowPrimaryTextStyle: React.CSSProperties = {

@@ -103,6 +103,7 @@ export const sum = (marks: Record<string, number>): number => {
   return Object.values(marks || {}).reduce((a, b) => a + (typeof b === "number" ? b : 0), 0);
 };
 
+<<<<<<< HEAD
 export const grade = (v: number, bands: CbcGradingBand[] = []): string => resolveCbcBand(v, bands).cbcBand;
 
 export const gradePoints = (v: number, bands: CbcGradingBand[] = []): number => resolveCbcBand(v, bands).points;
@@ -123,11 +124,75 @@ export const getSubjectRemark = (score: number, bands: CbcGradingBand[] = []): s
 
 export const gradeColor = (v: number | string): string => {
   return cbcBandColor(typeof v === "number" ? "" : v);
+=======
+export const grade = (v: number): string => {
+  if (v >= 80) return "EE1";
+  if (v >= 65) return "EE2";
+  if (v >= 55) return "ME1";
+  if (v >= 45) return "ME2";
+  if (v >= 35) return "AE1";
+  if (v >= 25) return "AE2";
+  if (v >= 15) return "BE1";
+  return "BE2";
+};
+
+export const gradePoints = (v: number): number => {
+  if (v >= 80) return 8;
+  if (v >= 65) return 7;
+  if (v >= 55) return 6;
+  if (v >= 45) return 5;
+  if (v >= 35) return 4;
+  if (v >= 25) return 3;
+  if (v >= 15) return 2;
+  return 1;
+};
+
+
+export const sumPoints = (marks: Record<string, number>): number => {
+  return Object.values(marks || {}).reduce((acc, m) => acc + gradePoints(m), 0);
+};
+
+export const pointsToGrade = (avgPoints: number): string => {
+  const roundedPoints = Math.max(1, Math.min(8, Math.round(avgPoints)));
+  if (roundedPoints >= 8) return "EE1";
+  if (roundedPoints >= 7) return "EE2";
+  if (roundedPoints >= 6) return "ME1";
+  if (roundedPoints >= 5) return "ME2";
+  if (roundedPoints >= 4) return "AE1";
+  if (roundedPoints >= 3) return "AE2";
+  if (roundedPoints >= 2) return "BE1";
+  return "BE2";
+};
+
+export const getSubjectRemark = (score: number): string => {
+  const pts = gradePoints(score);
+  if (pts >= 7) return "Exceeding Expectations";
+  if (pts >= 5) return "Meeting Expectations";
+  if (pts >= 3) return "Approaching Expectations";
+  return "Below Expectations";
+};
+
+export const gradeColor = (v: number | string): string => {
+  const g = typeof v === "number" ? grade(v) : v;
+  if (["EE1", "EE2"].includes(g)) return "#1D9E75";
+  if (["ME1", "ME2"].includes(g)) return "#185FA5";
+  if (["AE1", "AE2"].includes(g)) return "#BA7517";
+  return "#993C1D";
+>>>>>>> cba98d0467c8e9b1c2bcb541daaaab117ba973fd
 };
 
 
 export const gradeBg = (v: number | string): string => {
+<<<<<<< HEAD
   return cbcBandBg(typeof v === "number" ? "" : v);
+=======
+  const g = typeof v === "number" ? grade(v) : v;
+  if (["EE1", "EE2"].includes(g)) return "#eafaf1";
+  if (["ME1", "ME2"].includes(g)) return "#ebf5fb";
+  if (["AE1", "AE2"].includes(g)) return "#fef9e7";
+  if (["BE1", "BE2"].includes(g)) return "#fdedec";
+  return "#f4f4f4";
+>>>>>>> cba98d0467c8e9b1c2bcb541daaaab117ba973fd
 };
 
 

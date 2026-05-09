@@ -187,6 +187,12 @@ export const BulkElectiveEnrollmentTab: React.FC<BulkElectiveEnrollmentTabProps>
                 gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
                 gap: 10,
                 alignItems: "end",
+                position: "sticky",
+                top: -16,
+                background: "var(--white)",
+                zIndex: 10,
+                paddingBottom: 10,
+                borderBottom: "1px solid var(--borderL)",
               }}
             >
               <div>
@@ -234,7 +240,7 @@ export const BulkElectiveEnrollmentTab: React.FC<BulkElectiveEnrollmentTabProps>
               </button>
             </div>
 
-            <div style={{ border: "1px solid var(--borderL)", borderRadius: 10, overflow: "hidden" }}>
+            <div style={{ border: "1px solid var(--borderL)", borderRadius: 10, overflow: "hidden", marginTop: 14 }}>
               <div style={{ maxHeight: 430, overflowY: "auto" }}>
                 {classStudents.map((student) => {
                   const isEnrolled = (student.enrolledSubjects || []).some(

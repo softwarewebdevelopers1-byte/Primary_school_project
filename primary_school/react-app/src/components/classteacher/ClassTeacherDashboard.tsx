@@ -599,7 +599,7 @@ export default function ClassTeacherDashboard() {
                 background: C.cream,
                 borderBottom: `1px solid ${C.border}`,
                 display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
                 gap: 12,
                 flexShrink: 0,
               }}

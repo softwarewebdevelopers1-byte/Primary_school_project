@@ -500,7 +500,7 @@ const buildStudentExamSummaries = async (studentId: any) => {
         classGrade,
         classStream,
         total,
-        points,
+        points: Number(points.toFixed(1)),
         average,
         cbcBand: averageBand,
         subjectCount: scores.length,
