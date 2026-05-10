@@ -1,9 +1,9 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { gradeColor, isStudentSubject, marksForStudentSubjects, sumPoints, avg } from "./shared/helpers";
+import { averagePoints, gradeColor, isStudentSubject, marksForStudentSubjects, sumPoints } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
-import { resolveCbcBand, useCbcGradingBands } from "../../lib/cbcGrading";
+import { resolveCbcBand, resolveCbcBandByPoints, useCbcGradingBands } from "../../lib/cbcGrading";
 
 interface StudentRecordsProps {
   students: any[];
@@ -238,7 +238,7 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
               ))}
               {[
                 "T.Pts",
-                "Average",
+                "Avg Pts",
                 "CBC Band",
                 "Action",
               ].map((h) => (
@@ -271,6 +271,8 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
 
             {filtered.map((s) => {
               const studentMarks = marksForStudentSubjects(s, subjects);
+              const avgPoint = averagePoints(studentMarks, cbcBands);
+              const summaryBand = resolveCbcBandByPoints(avgPoint, cbcBands).cbcBand;
               return (
                 <tr
                   key={s.id}
@@ -361,10 +363,10 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         fontFamily: FONT.serif,
                         fontSize: 14,
                         fontWeight: 900,
-                        color: gradeColor(resolveCbcBand(avg(studentMarks), cbcBands).cbcBand),
+                        color: gradeColor(summaryBand),
                       }}
                     >
-                      {avg(studentMarks)}%
+                      {avgPoint}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
@@ -373,10 +375,10 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                         fontFamily: FONT.serif,
                         fontSize: 14,
                         fontWeight: 900,
-                        color: gradeColor(resolveCbcBand(avg(studentMarks), cbcBands).cbcBand),
+                        color: gradeColor(summaryBand),
                       }}
                     >
-                      {resolveCbcBand(avg(studentMarks), cbcBands).cbcBand}
+                      {summaryBand}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px" }}>

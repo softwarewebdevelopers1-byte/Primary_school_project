@@ -4,9 +4,9 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
-import { gradeBg, gradeColor, getSubjectRemark, getSubId, isStudentSubject, marksForStudentSubjects, subjectsForStudent, sum, sumPoints } from "./shared/helpers";
+import { averagePoints, gradeBg, gradeColor, getSubjectRemark, getSubId, isStudentSubject, marksForStudentSubjects, subjectsForStudent, sum, sumPoints } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
-import { resolveCbcBand, useCbcGradingBands } from "../../lib/cbcGrading";
+import { resolveCbcBand, resolveCbcBandByPoints, useCbcGradingBands } from "../../lib/cbcGrading";
 
 interface ResultsReportsProps {
   students: any[];
@@ -58,8 +58,9 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
     const totalMarks = sum(marks);
     const averageMarks = attempted > 0 ? Math.round(totalMarks / attempted) : 0;
     const totalPoints = sumPoints(marks, cbcBands);
-    const cbcBand = attempted > 0 ? resolveCbcBand(averageMarks, cbcBands).cbcBand : "-";
-    return { marks, attempted, totalMarks, averageMarks, totalPoints, cbcBand };
+    const averagePoint = attempted > 0 ? averagePoints(marks, cbcBands) : 0;
+    const cbcBand = attempted > 0 ? resolveCbcBandByPoints(averagePoint, cbcBands).cbcBand : "-";
+    return { marks, attempted, totalMarks, averageMarks, totalPoints, averagePoint, cbcBand };
   };
 
   const sortedStudents = [...students].sort((a, b) => {
@@ -67,8 +68,6 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
     const right = buildMetrics(b);
     return (
       right.totalPoints - left.totalPoints ||
-      right.totalMarks - left.totalMarks ||
-      right.averageMarks - left.averageMarks ||
       String(a.name || "").localeCompare(String(b.name || ""))
     );
   });
@@ -77,7 +76,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
   let previousKey = "";
   const rankedStudents = sortedStudents.map((student) => {
     const metrics = buildMetrics(student);
-    const key = `${metrics.totalPoints}:${metrics.totalMarks}:${metrics.averageMarks}`;
+    const key = `${metrics.totalPoints}`;
     if (key !== previousKey) {
       rank += 1;
       previousKey = key;
@@ -98,7 +97,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
         autoTable(doc, {
-          head: [["Rank", "Student", "ADM", ...subjects.map((s) => s.name.slice(0, 3).toUpperCase()), "Total Points", "Total Marks", "Average Marks", "CBC Band"]],
+          head: [["Rank", "Student", "ADM", ...subjects.map((s) => s.name.slice(0, 3).toUpperCase()), "Total Points", "Total Marks", "Average Points", "CBC Band"]],
           body: rankedStudents.map((student) => [
             student.rank,
             student.name,
@@ -106,12 +105,11 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
             ...subjects.map((subject) => {
               const mark = isStudentSubject(student, subject) ? student.metrics.marks[getSubId(subject.id)] : null;
               if (mark == null) return "-";
-              const resolved = resolveCbcBand(mark, cbcBands);
-              return `${mark} | ${resolved.cbcBand} | ${resolved.points}`;
+              return `${mark}%`;
             }),
             student.metrics.totalPoints,
             student.metrics.totalMarks,
-            `${student.metrics.averageMarks}%`,
+            student.metrics.averagePoint,
             student.metrics.cbcBand,
           ]),
           startY: 28,
@@ -128,12 +126,11 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
           ...Object.fromEntries(subjects.map((subject) => {
             const mark = isStudentSubject(student, subject) ? student.metrics.marks[getSubId(subject.id)] : null;
             if (mark == null) return [subject.name, "N/A"];
-            const resolved = resolveCbcBand(mark, cbcBands);
-            return [subject.name, `${mark} | ${resolved.cbcBand} | ${resolved.points}`];
+            return [subject.name, `${mark}%`];
           })),
           "Total Points": student.metrics.totalPoints,
           "Total Marks": student.metrics.totalMarks,
-          "Average Marks": `${student.metrics.averageMarks}%`,
+          "Average Points": student.metrics.averagePoint,
           "CBC Band": student.metrics.cbcBand,
         }));
         const worksheet = XLSX.utils.json_to_sheet(worksheetData);
@@ -187,7 +184,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setFont("helvetica", "bold");
         doc.text(`CBC Band: ${slip.metrics.cbcBand}`, 20, finalY + 15);
         doc.text(`Total Points: ${slip.metrics.totalPoints}`, 20, finalY + 23);
-        doc.text(`Average Marks: ${slip.metrics.averageMarks}%`, 20, finalY + 31);
+        doc.text(`Average Points: ${slip.metrics.averagePoint}`, 20, finalY + 31);
         doc.save(`${slip.name.replace(/\s+/g, "_")}_CBC_Report.pdf`);
       }
       setMsg({ text: `Successfully downloaded ${type}${studentName ? ` for ${studentName}` : ""}`, type: "success" });
@@ -249,7 +246,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                 <th style={{ ...thStyle, position: "sticky", left: 0, background: "#f1f3f5", zIndex: 2 }}>Student Name</th>
                 {subjects.map((subject) => <th key={subject.id} style={{ ...thStyle, textAlign: "center" }}>{subject.name.slice(0, 3).toUpperCase()}</th>)}
                 <th style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>T.Pts</th>
-                <th style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>Average</th>
+                <th style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>Avg Pts</th>
                 <th style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>CBC Band</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
               </tr>
@@ -267,10 +264,10 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                   {subjects.map((subject) => {
                     const mark = isStudentSubject(student, subject) ? student.metrics.marks[getSubId(subject.id)] : null;
                     const resolved = mark != null ? resolveCbcBand(mark, cbcBands) : null;
-                    return <td key={subject.id} style={{ ...tdStyle, textAlign: "center" }}>{mark != null ? <span style={{ color: gradeColor(resolved!.cbcBand), fontWeight: 600 }}>{mark} | {resolved!.cbcBand} | {resolved!.points}</span> : <span style={{ color: C.textFaint }}>-</span>}</td>;
+                    return <td key={subject.id} style={{ ...tdStyle, textAlign: "center" }}>{mark != null ? <span style={{ color: gradeColor(resolved!.cbcBand), fontWeight: 600 }}>{mark}%</span> : <span style={{ color: C.textFaint }}>-</span>}</td>;
                   })}
                   <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: C.text }}>{student.metrics.totalPoints}</td>
-                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb" }}>{student.metrics.averageMarks}%</td>
+                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb" }}>{student.metrics.averagePoint}</td>
                   <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: gradeColor(student.metrics.cbcBand) }}>{student.metrics.cbcBand}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
                     <button onClick={() => handleDownload("Report Slip", student.name)} className="ct-pill" style={{ padding: "6px 12px", background: gradeBg(student.metrics.cbcBand), border: `1px solid ${gradeColor(student.metrics.cbcBand)}`, borderRadius: 20, fontSize: 11, fontWeight: 700, color: gradeColor(student.metrics.cbcBand), cursor: "pointer" }}>Print Slip</button>

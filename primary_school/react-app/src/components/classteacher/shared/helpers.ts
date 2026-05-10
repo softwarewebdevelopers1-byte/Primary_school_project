@@ -112,6 +112,12 @@ export const sumPoints = (marks: Record<string, number>, bands: CbcGradingBand[]
   return Object.values(marks || {}).reduce((acc, m) => acc + gradePoints(m, bands), 0);
 };
 
+export const averagePoints = (marks: Record<string, number>, bands: CbcGradingBand[] = []): number => {
+  const vals = Object.values(marks || {}).filter(v => typeof v === "number");
+  if (vals.length === 0) return 0;
+  return Math.round(sumPoints(marks, bands) / vals.length);
+};
+
 export const getSubjectRemark = (score: number, bands: CbcGradingBand[] = []): string => {
   const band = grade(score, bands);
   if (band.startsWith("EE")) return "Exceeding Expectations";

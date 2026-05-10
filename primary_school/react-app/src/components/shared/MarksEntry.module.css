@@ -124,10 +124,10 @@
   background: var(--white);
 }
 
-.stickyName,
-.stickyAdm {
+.stickyName {
   position: sticky;
-  z-index: 2;
+  z-index: 3;
+  background: var(--white);
   box-shadow: 1px 0 0 var(--borderL);
 }
 
@@ -137,14 +137,9 @@
   max-width: 260px;
 }
 
-.stickyAdm {
-  left: 220px;
-  min-width: 96px;
-}
-
 .table th.stickyName,
-.table th.stickyAdm {
-  z-index: 4;
+.table th.stickyName {
+  z-index: 12;
   background: var(--sand);
 }
 
@@ -299,11 +294,6 @@
   .stickyName {
     min-width: 180px;
     max-width: 200px;
-  }
-
-  .stickyAdm {
-    left: 180px;
-    min-width: 88px;
   }
 
   .table th,

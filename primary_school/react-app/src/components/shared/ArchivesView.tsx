@@ -480,7 +480,7 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 80,
+            zIndex: 1200,
             background: "rgba(8, 17, 13, 0.62)",
             display: "flex",
             alignItems: "center",
@@ -509,8 +509,12 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 12,
-                alignItems: "flex-start",
+                alignItems: isCompact ? "stretch" : "flex-start",
                 flexDirection: isCompact ? "column" : "row",
+                position: "sticky",
+                top: 0,
+                zIndex: 3,
+                background: C.white,
               }}
             >
               <div>
@@ -530,6 +534,8 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
                   background: C.sand,
                   color: C.textMid,
                   border: `1px solid ${C.border}`,
+                  alignSelf: isCompact ? "flex-end" : "flex-start",
+                  flexShrink: 0,
                 }}
               >
                 Close
@@ -549,6 +555,10 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
                           color: C.textMuted,
                           background: C.sand,
                           borderBottom: `1px solid ${C.border}`,
+                          position: heading === "Student" ? "sticky" : undefined,
+                          left: heading === "Student" ? 0 : undefined,
+                          zIndex: heading === "Student" ? 2 : 1,
+                          minWidth: heading === "Student" ? 220 : undefined,
                         }}
                       >
                         {heading}
@@ -559,7 +569,7 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
                 <tbody>
                   {results.students.map((student) => (
                     <tr key={student.studentId}>
-                      <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.borderLight}`, color: C.text, fontWeight: 700 }}>
+                      <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.borderLight}`, color: C.text, fontWeight: 700, position: "sticky", left: 0, zIndex: 1, background: C.white, minWidth: 220, boxShadow: `1px 0 0 ${C.borderLight}` }}>
                         {student.name}
                       </td>
                       <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.borderLight}`, color: C.textMuted }}>
@@ -569,9 +579,7 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
                         const mark = student.subjects[subject.id];
                         return (
                           <td key={subject.id} style={{ padding: "10px 12px", borderBottom: `1px solid ${C.borderLight}`, color: C.text }}>
-                            {typeof mark?.percentage === "number"
-                              ? `${mark.percentage}% | ${mark.cbcBand || "-"} | ${mark.points ?? "-"}`
-                              : "-"}
+                            {typeof mark?.percentage === "number" ? `${mark.percentage}%` : "-"}
                           </td>
                         );
                       })}

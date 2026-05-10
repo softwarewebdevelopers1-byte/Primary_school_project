@@ -35,6 +35,24 @@ export const resolveCbcBand = (
     : { cbcBand: "Unconfigured", points: 0 };
 };
 
+export const resolveCbcBandByPoints = (
+  points: number | null | undefined,
+  bands: CbcGradingBand[],
+) => {
+  if (typeof points !== "number" || !Number.isFinite(points)) {
+    return { cbcBand: "-", points: 0 };
+  }
+
+  const roundedPoints = Math.max(0, Math.round(points));
+  const band = normalizeCbcBands(bands).find(
+    (candidate) => Number(candidate.points) === roundedPoints,
+  );
+
+  return band
+    ? { cbcBand: band.cbcBand, points: Number(band.points) || 0 }
+    : { cbcBand: "Unconfigured", points: roundedPoints };
+};
+
 export const cbcBandColor = (band: string) => {
   const prefix = String(band || "").slice(0, 2).toUpperCase();
   if (prefix === "EE") return "#1D9E75";

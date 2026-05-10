@@ -284,7 +284,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
             <thead>
               <tr>
                 <th className={styles.stickyName}>Student</th>
-                <th className={styles.stickyAdm}>Adm. No</th>
+                <th>Adm. No</th>
                 {showEnrollmentSubjectColumn && <th>Subject</th>}
                 {Array.from({ length: catsCount }).map((_, index) => {
                   const key = getCatMaxKey(index + 1);
@@ -371,7 +371,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
                         <span style={{ fontWeight: 600, color: "var(--text)" }}>{student.name}</span>
                       </div>
                     </td>
-                    <td className={styles.stickyAdm} style={{ color: "var(--textMut)", fontSize: "12px" }}>{student.adm}</td>
+                    <td style={{ color: "var(--textMut)", fontSize: "12px" }}>{student.adm}</td>
                     {showEnrollmentSubjectColumn && (
                       <td style={{ color: "var(--textMut)", fontSize: "12px" }}>
                         {student.enrollmentSubjectName || "-"}
