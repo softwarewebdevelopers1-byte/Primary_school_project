@@ -1758,8 +1758,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response) => {
           role3: rolesArray[2] || null,
         };
       }
-    }
-
+    }  
     const user = await userModel.findByIdAndUpdate(id, updateData, {
       returnDocument: "after",
       overwriteDiscriminatorKey: true,
