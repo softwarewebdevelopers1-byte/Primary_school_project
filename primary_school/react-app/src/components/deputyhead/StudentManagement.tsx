@@ -53,9 +53,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
           borderRadius: 13,
           overflow: "auto",
           maxHeight: "70vh",
+          WebkitOverflowScrolling: "touch"
         }}
       >
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
           <thead>
             <tr style={{ background: C.sand }}>
               {[
@@ -66,7 +67,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                 "Status",
                 "Average",
                 "",
-              ].map((h) => (
+              ].map((h, i) => (
                 <th
                   key={h}
                   style={{
@@ -80,9 +81,12 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                     textTransform: "uppercase",
                     position: "sticky",
                     top: 0,
+                    left: i === 0 ? 0 : undefined,
                     background: C.sand,
-                    zIndex: 10,
-                    boxShadow: `inset 0 -1px 0 ${C.borderLight}`,
+                    zIndex: i === 0 ? 15 : 10,
+                    boxShadow: i === 0 
+                      ? `inset 0 -1px 0 ${C.borderLight}, 2px 0 5px rgba(0,0,0,0.05)` 
+                      : `inset 0 -1px 0 ${C.borderLight}`,
                   }}
                 >
                   {h}
@@ -99,7 +103,15 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                 onMouseEnter={(e) => e.currentTarget.style.background = "var(--ct-hover, rgba(0,0,0,0.02))"}
                 onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
               >
-                <td style={{ padding: "11px 14px" }}>
+                <td style={{ 
+                  padding: "11px 14px",
+                  position: "sticky",
+                  left: 0,
+                  zIndex: 5,
+                  background: C.white,
+                  boxShadow: "2px 0 5px rgba(0,0,0,0.05), 1px 0 0 var(--borderL)",
+                  minWidth: 180
+                }}>
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 9 }}
                   >

@@ -51,6 +51,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
 }) => {
   const { bands: cbcBands } = useCbcGradingBands();
   const [msg, setMsg] = React.useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [rankingMode, setRankingMode] = React.useState<"total_points" | "total_marks">("total_points");
 
   const buildMetrics = (student: any) => {
     const marks = marksForStudentSubjects(student, subjects);
@@ -63,23 +64,31 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
     return { marks, attempted, totalMarks, averageMarks, totalPoints, averagePoint, cbcBand };
   };
 
+  // Sort strictly by the chosen ranking field only
   const sortedStudents = [...students].sort((a, b) => {
     const left = buildMetrics(a);
     const right = buildMetrics(b);
-    return (
-      right.totalPoints - left.totalPoints ||
-      String(a.name || "").localeCompare(String(b.name || ""))
-    );
+
+    let diff = 0;
+    if (rankingMode === "total_marks") {
+      diff = right.totalMarks - left.totalMarks;
+    } else {
+      diff = right.totalPoints - left.totalPoints;
+    }
+
+    return diff || String(a.name || "").localeCompare(String(b.name || ""));
   });
 
+  // Dense ranking: ties share the same rank, next position is consecutive (not skipped)
   let rank = 0;
-  let previousKey = "";
+  let previousValue: number | null = null;
   const rankedStudents = sortedStudents.map((student) => {
     const metrics = buildMetrics(student);
-    const key = `${metrics.totalPoints}`;
-    if (key !== previousKey) {
+    const currentValue = rankingMode === "total_marks" ? metrics.totalMarks : metrics.totalPoints;
+
+    if (currentValue !== previousValue) {
       rank += 1;
-      previousKey = key;
+      previousValue = currentValue;
     }
     return { ...student, rank, metrics };
   });
@@ -94,7 +103,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.setFontSize(16);
         doc.text(`CBC Class Merit List - Term ${term}, ${year} (${examType.toUpperCase()})`, 14, 15);
         doc.setFontSize(10);
-        doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 22);
+        doc.text(`Ranked by: ${rankingMode === "total_marks" ? "Total Marks" : "Total Points"} | Generated on ${new Date().toLocaleDateString()}`, 14, 22);
 
         autoTable(doc, {
           head: [["Rank", "Student", "ADM", ...subjects.map((s) => s.name.slice(0, 3).toUpperCase()), "Total Points", "Total Marks", "Average Points", "CBC Band"]],
@@ -132,6 +141,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
           "Total Marks": student.metrics.totalMarks,
           "Average Points": student.metrics.averagePoint,
           "CBC Band": student.metrics.cbcBand,
+          "Ranked By": rankingMode === "total_marks" ? "Total Marks" : "Total Points",
         }));
         const worksheet = XLSX.utils.json_to_sheet(worksheetData);
         const wb = XLSX.utils.book_new();
@@ -154,7 +164,8 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         doc.text(`Name: ${slip.name}`, 20, 40);
         doc.text(`Admission No: ${slip.adm || slip.admissionNumber || slip.admissionNo || "-"}`, 20, 48);
         doc.text(`Term: ${term} | Year: ${year} | Phase: ${examType.toUpperCase()}`, 20, 56);
-        doc.line(20, 62, 190, 62);
+        doc.text(`Class Position: ${slip.rank} | Ranked by: ${rankingMode === "total_marks" ? "Total Marks" : "Total Points"}`, 20, 64);
+        doc.line(20, 70, 190, 70);
 
         const slipSubjects = subjectsForStudent(slip, subjects);
         const tableData = slipSubjects.map((subject) => {
@@ -173,7 +184,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
         autoTable(doc, {
           head: [["Subject", "Marks", "CBC Band", "Points", "Remark"]],
           body: tableData,
-          startY: 68,
+          startY: 76,
           theme: "grid",
           headStyles: { fillColor: [30, 30, 30], textColor: [255, 255, 255] },
           styles: { fontSize: 10, cellPadding: 4 },
@@ -197,7 +208,42 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
   return (
     <div className="ct-anim" style={{ display: "grid", gap: 30 }}>
       <SectionHeader eyebrow="Reports" title="Results & reports" sub={`Download and review CBC summaries for Term ${term}, ${year} (${examType}).`} />
+
       {msg && <div style={{ padding: "10px 20px", borderRadius: 8, background: msg.type === "success" ? "#eaf3de" : "#fdeaea", color: msg.type === "success" ? "#3b6d11" : "#a32d2d", fontSize: 13, fontWeight: 600 }}>{msg.text}</div>}
+
+      {/* Ranking Mode Selector */}
+      <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: "1rem 1.4rem", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <span style={{ fontFamily: FONT.sans, fontSize: 13, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Ranking Basis:
+        </span>
+        <div style={{ display: "flex", gap: 8 }}>
+          {([["total_points", "Total Points"], ["total_marks", "Total Marks"]] as const).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setRankingMode(val)}
+              style={{
+                padding: "8px 18px",
+                borderRadius: 8,
+                border: `2px solid ${rankingMode === val ? C.gold : C.border}`,
+                background: rankingMode === val ? C.gold : C.sand,
+                color: rankingMode === val ? "#fff" : C.text,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.18s",
+                fontFamily: FONT.sans,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span style={{ fontSize: 12, color: C.textMuted, fontFamily: FONT.sans }}>
+          {rankingMode === "total_marks"
+            ? "Students ranked by sum of percentage marks across their subjects."
+            : "Students ranked by sum of CBC points across their subjects."}
+        </span>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
         {["Full class report", "Individual result slips", "Subject summary"].map((title) => (
@@ -220,13 +266,16 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
 
       {topStudent && leastStudent && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-          {[["Top Student", topStudent, C.greenLight, C.green], ["Lowest Total Points", leastStudent, "#fdeaea", C.dangerText]].map(([label, student, bg, color]: any) => (
+          {([[`Top Student`, topStudent, C.greenLight, C.green], [`Lowest ${rankingMode === "total_marks" ? "Total Marks" : "Total Points"}`, leastStudent, "#fdeaea", C.dangerText]] as any[]).map(([label, student, bg, color]: any) => (
             <div key={label} style={{ background: bg, border: `1px solid ${color}`, padding: 16, borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
               <Avatar name={student.name} size={40} />
               <div>
                 <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color, textTransform: "uppercase" }}>{label}</p>
                 <h4 style={{ margin: "2px 0", fontSize: 16, color: C.text, fontFamily: FONT.serif }}>{student.name}</h4>
-                <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>CBC Band: <strong>{student.metrics.cbcBand}</strong> | Points: <strong>{student.metrics.totalPoints}</strong></p>
+                <p style={{ margin: 0, fontSize: 13, color: C.textMuted }}>
+                  CBC Band: <strong>{student.metrics.cbcBand}</strong> | Points: <strong>{student.metrics.totalPoints}</strong>
+                  {rankingMode === "total_marks" && <> | Marks: <strong>{student.metrics.totalMarks}</strong></>}
+                </p>
               </div>
             </div>
           ))}
@@ -234,18 +283,26 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
       )}
 
       <div style={{ background: C.white, border: `2px solid ${C.text}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
-        <div style={{ padding: "18px 24px", borderBottom: `2px solid ${C.text}`, background: "#f8f9fa", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontFamily: FONT.serif, fontSize: "1.4rem", fontWeight: 700, color: C.text, margin: 0 }}>CBC Performance Index</h3>
-          <button onClick={() => handleDownload("Full Merit List")} className="ct-actionbtn" style={{ padding: "8px 16px", background: C.text, border: "none", borderRadius: 8, color: C.white, cursor: "pointer" }}><DlIcon /> Export CBC Report</button>
+        <div style={{ padding: "18px 24px", borderBottom: `2px solid ${C.text}`, background: "#f8f9fa", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <h3 style={{ fontFamily: FONT.serif, fontSize: "1.4rem", fontWeight: 700, color: C.text, margin: 0 }}>CBC Performance Index</h3>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: C.textMuted, fontFamily: FONT.sans }}>
+              Ranked by: <strong>{rankingMode === "total_marks" ? "Total Marks" : "Total Points"}</strong>
+            </p>
+          </div>
+          <button onClick={() => handleDownload("Full Merit List")} className="ct-actionbtn" style={{ padding: "8px 16px", background: C.text, border: "none", borderRadius: 8, color: C.white, cursor: "pointer" }}>
+            <DlIcon /> Export CBC Report
+          </button>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
             <thead>
               <tr style={{ background: "#f1f3f5", borderBottom: `2px solid ${C.text}` }}>
                 <th style={thStyle}>Rank</th>
-                <th style={{ ...thStyle, position: "sticky", left: 0, background: "#f1f3f5", zIndex: 2 }}>Student Name</th>
+                <th style={{ ...thStyle, position: "sticky", left: 0, top: 0, background: "#f1f3f5", zIndex: 10, boxShadow: "2px 0 5px rgba(0,0,0,0.05), inset 0 -1px 0 var(--borderL)" }}>Student Name</th>
                 {subjects.map((subject) => <th key={subject.id} style={{ ...thStyle, textAlign: "center" }}>{subject.name.slice(0, 3).toUpperCase()}</th>)}
                 <th style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>T.Pts</th>
+                <th style={{ ...thStyle, textAlign: "center", background: rankingMode === "total_marks" ? C.gold : "#333", color: "#fff" }}>T.Marks</th>
                 <th style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>Avg Pts</th>
                 <th style={{ ...thStyle, textAlign: "center", background: "#333", color: "#fff" }}>CBC Band</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>Actions</th>
@@ -255,7 +312,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
               {rankedStudents.map((student) => (
                 <tr key={student.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                   <td style={{ ...tdStyle, fontWeight: 700, textAlign: "center" }}>{student.rank}</td>
-                  <td style={{ ...tdStyle, position: "sticky", left: 0, background: C.white, zIndex: 1 }}>
+                  <td style={{ ...tdStyle, position: "sticky", left: 0, background: C.white, zIndex: 5, boxShadow: "2px 0 5px rgba(0,0,0,0.05)", minWidth: 200 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <Avatar name={student.name} size={28} />
                       <span style={{ fontWeight: 700, color: C.text }}>{student.name}</span>
@@ -266,9 +323,10 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
                     const resolved = mark != null ? resolveCbcBand(mark, cbcBands) : null;
                     return <td key={subject.id} style={{ ...tdStyle, textAlign: "center" }}>{mark != null ? <span style={{ color: gradeColor(resolved!.cbcBand), fontWeight: 600 }}>{mark}%</span> : <span style={{ color: C.textFaint }}>-</span>}</td>;
                   })}
-                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: C.text }}>{student.metrics.totalPoints}</td>
-                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb" }}>{student.metrics.averagePoint}</td>
-                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: "#fff9eb", color: gradeColor(student.metrics.cbcBand) }}>{student.metrics.cbcBand}</td>
+                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: rankingMode === "total_points" ? "#fff9eb" : undefined, color: C.text }}>{student.metrics.totalPoints}</td>
+                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, background: rankingMode === "total_marks" ? "#fff9eb" : undefined }}>{student.metrics.totalMarks}</td>
+                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900 }}>{student.metrics.averagePoint}</td>
+                  <td style={{ ...tdStyle, textAlign: "center", fontWeight: 900, color: gradeColor(student.metrics.cbcBand) }}>{student.metrics.cbcBand}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
                     <button onClick={() => handleDownload("Report Slip", student.name)} className="ct-pill" style={{ padding: "6px 12px", background: gradeBg(student.metrics.cbcBand), border: `1px solid ${gradeColor(student.metrics.cbcBand)}`, borderRadius: 20, fontSize: 11, fontWeight: 700, color: gradeColor(student.metrics.cbcBand), cursor: "pointer" }}>Print Slip</button>
                   </td>

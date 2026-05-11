@@ -205,30 +205,52 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({
             </p>
           </div>
           <div style={{ padding: 24, overflowY: "auto", display: "flex", flexDirection: "column" }}>
-            <h4 style={{ margin: "0 0 12px", fontFamily: F.sans, color: C.text }}>Enrolled Students ({students.filter(s => s.classGrade === selectedClass.grade && (s.classStream || "") === (selectedClass.stream || "")).length})</h4>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: C.sand, textAlign: "left" }}>
-                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Name</th>
-                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Adm No</th>
-                  <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Gender</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.filter(s => s.classGrade === selectedClass.grade && (s.classStream || "") === (selectedClass.stream || "")).map((s, i) => (
-                  <tr key={s.id || i} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
-                    <td style={{ padding: "10px 12px", fontFamily: F.sans, fontSize: 13, color: C.text }}>{s.name}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: F.sans, fontSize: 13, color: C.textMid }}>{s.admissionNo || s.adm || "-"}</td>
-                    <td style={{ padding: "10px 12px", fontFamily: F.sans, fontSize: 13, color: C.textMuted }}>{s.gender || "-"}</td>
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 450 }}>
+                <thead>
+                  <tr style={{ background: C.sand, textAlign: "left" }}>
+                    <th style={{ 
+                      padding: "8px 12px", 
+                      fontFamily: F.sans, 
+                      fontSize: 12, 
+                      color: C.textMuted, 
+                      position: "sticky", 
+                      top: 0, 
+                      left: 0,
+                      background: C.sand, 
+                      zIndex: 10, 
+                      boxShadow: `inset 0 -1px 0 ${C.borderLight}, 2px 0 5px rgba(0,0,0,0.05)` 
+                    }}>Name</th>
+                    <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Adm No</th>
+                    <th style={{ padding: "8px 12px", fontFamily: F.sans, fontSize: 12, color: C.textMuted, position: "sticky", top: 0, background: C.sand, zIndex: 1, boxShadow: `inset 0 -1px 0 ${C.borderLight}` }}>Gender</th>
                   </tr>
-                ))}
-                {students.filter(s => s.classGrade === selectedClass.grade && (s.classStream || "") === (selectedClass.stream || "")).length === 0 && (
-                  <tr>
-                    <td colSpan={3} style={{ padding: 20, textAlign: "center", color: C.textMuted, fontFamily: F.sans }}>No students found for this class.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {students.filter(s => s.classGrade === selectedClass.grade && (s.classStream || "") === (selectedClass.stream || "")).map((s, i) => (
+                    <tr key={s.id || i} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
+                      <td style={{ 
+                        padding: "10px 12px", 
+                        fontFamily: F.sans, 
+                        fontSize: 13, 
+                        color: C.text,
+                        position: "sticky",
+                        left: 0,
+                        background: C.white,
+                        zIndex: 5,
+                        boxShadow: "2px 0 5px rgba(0,0,0,0.05)"
+                      }}>{s.name}</td>
+                      <td style={{ padding: "10px 12px", fontFamily: F.sans, fontSize: 13, color: C.textMid }}>{s.admissionNo || s.adm || "-"}</td>
+                      <td style={{ padding: "10px 12px", fontFamily: F.sans, fontSize: 13, color: C.textMuted }}>{s.gender || "-"}</td>
+                    </tr>
+                  ))}
+                  {students.filter(s => s.classGrade === selectedClass.grade && (s.classStream || "") === (selectedClass.stream || "")).length === 0 && (
+                    <tr>
+                      <td colSpan={3} style={{ padding: 20, textAlign: "center", color: C.textMuted, fontFamily: F.sans }}>No students found for this class.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

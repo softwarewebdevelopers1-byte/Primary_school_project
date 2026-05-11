@@ -126,25 +126,28 @@
 
 .stickyName {
   position: sticky;
-  z-index: 3;
-  background: var(--white);
-  box-shadow: 1px 0 0 var(--borderL);
-}
-
-.stickyName {
   left: 0;
+  z-index: 5; /* Higher than normal cells */
+  background-color: var(--white) !important;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05), 1px 0 0 var(--borderL);
   min-width: 220px;
   max-width: 260px;
 }
 
-.table th.stickyName,
+/* Header cell for sticky name - must stay above scrolling headers and cells */
 .table th.stickyName {
-  z-index: 12;
-  background: var(--sand);
+  z-index: 15;
+  left: 0;
+  background-color: var(--sand) !important;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05), inset 0 -1px 0 var(--borderL);
 }
 
 .table tr:hover td {
   background-color: var(--ct-hover, rgba(0,0,0,0.02));
+}
+
+.table tr:hover td.stickyName {
+  background-color: var(--ct-hover, rgba(0,0,0,0.02)) !important;
 }
 
 .markInput {
