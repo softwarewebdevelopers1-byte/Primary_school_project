@@ -29,9 +29,6 @@ interface MarksEntryProps {
   examType?: string;
   onTermChange?: (term: number) => void;
   onExamTypeChange?: (type: string) => void;
-  hasMore?: boolean;
-  loadingMore?: boolean;
-  onLoadMore?: () => void;
 }
 
 type MarkRow = Student["marks"];
@@ -83,9 +80,6 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   examType,
   onTermChange,
   onExamTypeChange,
-  hasMore,
-  loadingMore,
-  onLoadMore,
 }) => {
   const currentSubject = subjects.find((subject) => subject.id === activeSubjectId) || subjects[0] || null;
   const { bands: cbcBands } = useCbcGradingBands();
@@ -480,27 +474,6 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
             </tbody>
           </table>
         </div>
-        </div>
-
-        {hasMore && (
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 24, paddingBottom: 12 }}>
-            <button
-              onClick={onLoadMore}
-              disabled={loadingMore}
-              className={styles.btnAdd}
-              style={{
-                padding: "10px 24px",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: loadingMore ? "not-allowed" : "pointer",
-                background: "var(--white)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              {loadingMore ? "Loading more..." : "Load More Students"}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

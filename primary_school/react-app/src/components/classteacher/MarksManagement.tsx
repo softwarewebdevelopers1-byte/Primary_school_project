@@ -99,11 +99,7 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
   onRefresh,
   user,
 }) => {
-  const [activeSubjectId, setActiveSubjectId] = useState<string>("");
-  const [marksPage, setMarksPage] = useState<Record<string, number>>({});
-  const [hasMoreMarks, setHasMoreMarks] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [activeSubjectId, setActiveSubjectId] = useState("");
   const [marksData, setMarksData] = useState<MarksData>({});
   const [subjectStudents, setSubjectStudents] = useState<Record<string, Student[]>>({});
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -231,42 +227,33 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
     }
   }, [displaySubjects, activeSubjectId]);
 
-  const loadDetailedMarks = useCallback(async (isLoadMore = false) => {
+  const loadDetailedMarks = useCallback(async () => {
     const currentSubject = displaySubjects.find((subject) => subject.id === activeSubjectId);
     if (!currentSubject) return;
 
     try {
-      if (!isLoadMore) setLoading(true);
-      else setLoadingMore(true);
-
-      const currentPage = isLoadMore ? (marksPage[activeSubjectId] || 1) + 1 : 1;
-
       const subjectPayloads = await Promise.all(
         currentSubject.actualSubjects.map(async (actualSubject) => ({
           subjectId: actualSubject.id,
-          data: await api.get<{ data: any[]; total: number }>("/marks", {
+          data: await api.get("/marks", {
             subjectId: actualSubject.id,
             classGrade: user.classGrade,
             classStream: user.classStream,
             term,
             year,
             examType,
-            page: currentPage,
-            limit: 8,
           }),
         })),
       );
 
       const marksByActualSubject = new Map<string, Map<string, any>>();
-      let maxTotal = 0;
       subjectPayloads.forEach(({ subjectId, data }) => {
         marksByActualSubject.set(
           subjectId,
           new Map(
-            (data.data as any[]).map((item) => [item.studentId.toString(), item]),
+            (data as any[]).map((item) => [item.studentId.toString(), item]),
           ),
         );
-        maxTotal = Math.max(maxTotal, data.total);
       });
 
       const relevantStudents: Student[] = [];
@@ -288,55 +275,36 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
         );
         const markRecord = marksByActualSubject.get(actualSubjectId)?.get(String(student.id));
 
-        if (markRecord) {
-          relevantStudents.push({
-            id: String(student.id),
-            name: student.name,
-            adm: getStudentAdmissionNumber(student),
-            gender: student.gender || "N/A",
-            enrolledSubjects: student.enrolledSubjects || [],
-            enrollmentSubjectId: actualSubjectId,
-            enrollmentSubjectName:
-              currentSubject.actualSubjects.length > 1 ? subjectRecord?.name || null : null,
-            marks: markRecord?.marks || createEmptyMarks(),
-            pushed: false,
-          });
-        }
+        relevantStudents.push({
+          id: String(student.id),
+          name: student.name,
+          adm: getStudentAdmissionNumber(student),
+          gender: student.gender || "N/A",
+          enrolledSubjects: student.enrolledSubjects || [],
+          enrollmentSubjectId: actualSubjectId,
+          enrollmentSubjectName:
+            currentSubject.actualSubjects.length > 1 ? subjectRecord?.name || null : null,
+          marks: markRecord?.marks || createEmptyMarks(),
+          pushed: false,
+        });
       });
 
-      setMarksData((prev) => {
-        const existing = isLoadMore ? prev[activeSubjectId] || {} : {};
-        const incoming = relevantStudents.reduce((acc, student) => {
+      setMarksData((prev) => ({
+        ...prev,
+        [activeSubjectId]: relevantStudents.reduce((acc, student) => {
           acc[student.id] = student.marks;
           return acc;
-        }, {} as MarksData[string]);
-        return {
-          ...prev,
-          [activeSubjectId]: { ...existing, ...incoming },
-        };
-      });
-
-      setSubjectStudents((prev) => {
-        const existing = isLoadMore ? prev[activeSubjectId] || [] : [];
-        return {
-          ...prev,
-          [activeSubjectId]: [...existing, ...relevantStudents],
-        };
-      });
-
-      setMarksPage(prev => ({ ...prev, [activeSubjectId]: currentPage }));
-      setHasMoreMarks(prev => ({ 
-        ...prev, 
-        [activeSubjectId]: (subjectStudents[activeSubjectId]?.length || 0) + relevantStudents.length < maxTotal 
+        }, {} as MarksData[string]),
+      }));
+      setSubjectStudents((prev) => ({
+        ...prev,
+        [activeSubjectId]: relevantStudents,
       }));
     } catch (err) {
       setSubjectStudents((prev) => ({
         ...prev,
         [activeSubjectId]: [],
       }));
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
     }
   }, [
     activeSubjectId,
@@ -347,22 +315,18 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
     user.classGrade,
     user.classStream,
     year,
-    marksPage,
-    subjectStudents,
   ]);
 
   useEffect(() => {
     setMarksData({});
     setSubjectStudents({});
-    setMarksPage({});
-    setHasMoreMarks({});
   }, [term, year, examType]);
 
   useEffect(() => {
     if (activeSubjectId) {
       void loadDetailedMarks();
     }
-  }, [activeSubjectId, loadDetailedMarks]);
+  }, [activeSubjectId, loadDetailedMarks, term, year, examType]);
 
   const handleMarkUpdate = (subjectId: string, studentId: string, key: string, value: string) => {
     setMarksData((prev) => {
@@ -577,9 +541,6 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
         examType={examType}
         onTermChange={setTerm}
         onExamTypeChange={setExamType}
-        hasMore={hasMoreMarks[activeSubjectId]}
-        loadingMore={loadingMore}
-        onLoadMore={() => loadDetailedMarks(true)}
       />
     </div>
   );
