@@ -361,6 +361,12 @@ const AdminDashboard: React.FC = () => {
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [loadingMoreStudents, setLoadingMoreStudents] = useState(false);
+  const [loadingMoreStaff, setLoadingMoreStaff] = useState(false);
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [staffPage, setStaffPage] = useState(1);
+  const [hasMoreStudents, setHasMoreStudents] = useState(false);
+  const [hasMoreStaff, setHasMoreStaff] = useState(false);
   const [error, setError] = useState("");
   const { theme, toggleTheme } = useDashboardTheme();
   const [user, setUserState] = useState(() => {
@@ -400,7 +406,7 @@ const AdminDashboard: React.FC = () => {
       setLoading(true);
       setError("");
       const [response, subjectSettings, graduationSettings] = await Promise.all([
-        api.get<UsersDashboardResponse>("/users"),
+        api.get<UsersDashboardResponse & { totalStudents: number; totalStaff: number }>("/users", { studentsPage: 1, staffPage: 1 }),
         api.get<ClassSubjectSetting[]>("/school/class-subjects"),
         api.get<{ finalGrade: string }>("/users/graduation-settings"),
       ]);
@@ -414,12 +420,50 @@ const AdminDashboard: React.FC = () => {
       setExitedStudents(response.exitedStudents || []);
       setFinalGrade(graduationSettings.finalGrade || "");
       setClassSubjectSettings(subjectSettings || []);
+      setStudentsPage(1);
+      setStaffPage(1);
+      setHasMoreStudents(mappedStudents.length < response.totalStudents);
+      setHasMoreStaff(response.staff.length < response.totalStaff);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to load dashboard data.",
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreStudents = async () => {
+    if (loadingMoreStudents || !hasMoreStudents) return;
+    try {
+      setLoadingMoreStudents(true);
+      const nextPage = studentsPage + 1;
+      const response = await api.get<UsersDashboardResponse & { totalStudents: number }>("/users", { studentsPage: nextPage, staffPage });
+      const newStudents = mapStudentsFromApi(response.students).filter((s) => s.status !== "Completed");
+      setStudents(prev => [...prev, ...newStudents]);
+      setStudentsPage(nextPage);
+      setHasMoreStudents((students.length + newStudents.length) < response.totalStudents);
+    } catch (err) {
+      console.error("Failed to load more students", err);
+    } finally {
+      setLoadingMoreStudents(false);
+    }
+  };
+
+  const loadMoreStaff = async () => {
+    if (loadingMoreStaff || !hasMoreStaff) return;
+    try {
+      setLoadingMoreStaff(true);
+      const nextPage = staffPage + 1;
+      const response = await api.get<UsersDashboardResponse & { totalStaff: number }>("/users", { staffPage: nextPage, studentsPage });
+      const newStaff = mapStaffToTeachers(response.staff);
+      setTeachers(prev => [...prev, ...newStaff]);
+      setStaffPage(nextPage);
+      setHasMoreStaff((teachers.length + newStaff.length) < response.totalStaff);
+    } catch (err) {
+      console.error("Failed to load more staff", err);
+    } finally {
+      setLoadingMoreStaff(false);
     }
   };
 
@@ -874,6 +918,7 @@ const AdminDashboard: React.FC = () => {
   const assignedCT = classes.filter(
     (currentClass) => currentClass.classTeacherId,
   ).length;
+
   const tabTitle = useMemo(() => {
     const titles: Record<string, string> = {
       overview: "School overview",
@@ -889,34 +934,10 @@ const AdminDashboard: React.FC = () => {
       "cbc-grading": "CBC grading configuration",
       archives: "Archives",
       exited: "Exited learners",
+      performance: "Performance & analytics",
     };
-    return titles[activeTab] || "Admin dashboard";
+    return titles[activeTab] || "Admin Dashboard";
   }, [activeTab]);
-
-  const pill = (text: string, color: string) => {
-    const palette: Record<string, { bg: string; text: string }> = {
-      green: { bg: "var(--sBg)", text: "var(--sText)" },
-      amber: { bg: "var(--wBg)", text: "var(--wText)" },
-      red: { bg: "var(--dBg)", text: "var(--dText)" },
-      blue: { bg: "var(--iBg)", text: "var(--iText)" },
-      gray: { bg: "var(--sand)", text: "var(--textMut)" },
-    };
-    const colors = palette[color] || palette.gray;
-    return `<span style="display:inline-block;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;background:${colors.bg};color:${colors.text};">${text}</span>`;
-  };
-
-  const avatar = (name: string, size: number) => {
-    const initials = name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-    return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#163325;color:#fff;display:flex;align-items:center;justify-content:center;font-size:${Math.max(
-      10,
-      size / 2.4,
-    )}px;font-weight:700;">${initials}</div>`;
-  };
 
   const renderActiveTab = () => {
     if (activeTab === "classes") {
@@ -924,14 +945,29 @@ const AdminDashboard: React.FC = () => {
         <ClassesTab
           classes={classes}
           teachers={teachers}
-          onSaveClassTeacher={saveTeacher}
-          onUnassignClassTeacher={unassignClassTeacher}
-          onBulkTermUpdate={handleBulkTermUpdate}
-          onSwitchTab={setActiveTab}
-          avatar={avatar}
+          subjects={subjects}
+          onRefresh={loadDashboardUsers}
+          onAssignCT={(teacherId, grade, stream) => {
+            const teacher = teachers.find((t) => t.id === teacherId);
+            if (teacher) {
+              const roles = teacher.roles || [];
+              if (!roles.includes("classteacher")) roles.push("classteacher");
+              api
+                .put(`/users/${teacherId}`, {
+                  ...teacher,
+                  classGrade: grade,
+                  classStream: stream,
+                  roles,
+                })
+                .then(() => {
+                  loadDashboardUsers();
+                  refreshUser();
+                });
+            }
+          }}
+          onUnassignCT={unassignClassTeacher}
           showModal={showModal}
           closeModal={closeModal}
-          showConfirm={showConfirm}
         />
       );
     }
@@ -942,13 +978,34 @@ const AdminDashboard: React.FC = () => {
           students={students}
           classes={classes}
           subjects={subjects}
-          classSubjectSettings={classSubjectSettings}
-          onSaveStudent={saveStudent}
-          onDeleteStudent={deleteStudent}
-          pill={pill}
+          onSave={saveStudent}
+          onDelete={deleteStudent}
           showModal={showModal}
           closeModal={closeModal}
           showConfirm={showConfirm}
+          hasMore={hasMoreStudents}
+          loadingMore={loadingMoreStudents}
+          onLoadMore={loadMoreStudents}
+        />
+      );
+    }
+
+    if (activeTab === "marks") {
+      return (
+        <AdminMarksTab
+          classes={classes}
+          subjects={subjects}
+          onRefresh={loadDashboardUsers}
+        />
+      );
+    }
+
+    if (activeTab === "performance") {
+      return (
+        <PerformanceTab
+          classes={classes}
+          students={students}
+          subjects={subjects}
         />
       );
     }
@@ -957,9 +1014,8 @@ const AdminDashboard: React.FC = () => {
       return (
         <SubjectsTab
           subjects={subjects}
-          classes={classes}
-          onSaveSubject={saveSubject}
-          onDeleteSubject={deleteSubject}
+          onSave={saveSubject}
+          onDelete={deleteSubject}
           showModal={showModal}
           closeModal={closeModal}
           showConfirm={showConfirm}
@@ -973,30 +1029,7 @@ const AdminDashboard: React.FC = () => {
           classes={classes}
           students={students}
           subjects={subjects}
-          onBulkEnrollElective={bulkEnrollElective}
-        />
-      );
-    }
-
-    if (activeTab === "marks") {
-      return (
-        <AdminMarksTab
-          classes={classes}
-          students={students}
-          subjects={subjects}
-          onRefresh={loadDashboardUsers}
-          avatar={avatar}
-        />
-      );
-    }
-
-    if (activeTab === "performance") {
-      return (
-        <PerformanceTab
-          classes={classes}
-          students={students}
-          subjects={subjects}
-          avatar={avatar}
+          onBulkEnroll={bulkEnrollElective}
         />
       );
     }
@@ -1005,14 +1038,15 @@ const AdminDashboard: React.FC = () => {
       return (
         <TeachersTab
           teachers={teachers}
-          classes={classes}
-          onSaveTeacher={saveTeacher}
-          onDeleteTeacher={deleteTeacher}
-          avatar={avatar}
-          pill={pill}
+          subjects={subjects}
+          onSave={saveTeacher}
+          onDelete={deleteTeacher}
           showModal={showModal}
           closeModal={closeModal}
           showConfirm={showConfirm}
+          hasMore={hasMoreStaff}
+          loadingMore={loadingMoreStaff}
+          onLoadMore={loadMoreStaff}
         />
       );
     }
@@ -1091,8 +1125,6 @@ const AdminDashboard: React.FC = () => {
         students={students}
         assignments={assignments}
         onSwitchTab={setActiveTab}
-        pill={pill}
-        avatar={avatar}
       />
     );
   };

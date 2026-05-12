@@ -693,21 +693,44 @@ router.post("/login", async (req: Request, res: Response) => {
 // GET all users (staff and students) + subjects and assignments
 router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
-    const [allUsers, allSubjects, allAssignments, activeCycle] =
-      await Promise.all([
-        userModel.find(),
-        SubjectModel.find(),
-        AssignmentModel.find(),
-        resolveActiveCycle(),
-      ]);
+    const studentsLimit = Number(req.query.limit) || 8;
+    const studentsPage = Number(req.query.studentsPage) || 1;
+    const staffPage = Number(req.query.staffPage) || 1;
+
+    const studentsQuery = { __t: rolesMapped.ST };
+    const staffQuery = { __t: { $ne: rolesMapped.ST } };
+
+    const [
+      studentsData,
+      staffData,
+      totalStudents,
+      totalStaff,
+      allSubjects,
+      allAssignments,
+      activeCycle,
+    ] = await Promise.all([
+      userModel
+        .find(studentsQuery)
+        .skip((studentsPage - 1) * studentsLimit)
+        .limit(studentsLimit),
+      userModel
+        .find(staffQuery)
+        .skip((staffPage - 1) * studentsLimit)
+        .limit(studentsLimit),
+      userModel.countDocuments(studentsQuery),
+      userModel.countDocuments(staffQuery),
+      SubjectModel.find(),
+      AssignmentModel.find(),
+      resolveActiveCycle(),
+    ]);
+
     const allMarks = await MarkModel.find({
       term: activeCycle.term,
       year: activeCycle.year,
       examType: activeCycle.examType,
+      studentId: { $in: studentsData.map((s: any) => s._id) },
     } as any);
 
-    const students = allUsers.filter((u: any) => u.__t === rolesMapped.ST);
-    const staff = allUsers.filter((u: any) => u.__t !== rolesMapped.ST);
     const exitedStudents = await ExitedStudentModel.find().sort({
       exitedAt: -1,
       name: 1,
@@ -759,7 +782,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     });
 
     // Map backend models to frontend expected format if necessary
-    const mappedStudents = students.map((s: any) => {
+    const mappedStudents = studentsData.map((s: any) => {
       // Find marks for this student
       const studentMarksList = allMarks.filter(
         (m: any) => m.studentId.toString() === s._id.toString(),
@@ -813,7 +836,7 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
       };
     });
 
-    const mappedStaffPromises = staff.map(async (t: any) => {
+    const mappedStaffPromises = staffData.map(async (t: any) => {
       const staffRoles = await extractRoles(t);
       return {
         id: t._id,
@@ -844,6 +867,11 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     res.json({
       students: mappedStudents,
       staff: mappedStaff,
+      totalStudents,
+      totalStaff,
+      studentsPage,
+      staffPage,
+      limit: studentsLimit,
       subjects: allSubjects.map((s: any) => ({
         id: s._id,
         name: s.name,

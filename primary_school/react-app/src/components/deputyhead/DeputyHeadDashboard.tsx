@@ -40,6 +40,14 @@ export default function DeputyHeadDashboard({
   const [classes, setClasses] = useState<any[]>([]);
   const [exitedStudents, setExitedStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMoreStudents, setLoadingMoreStudents] = useState(false);
+  const [loadingMoreStaff, setLoadingMoreStaff] = useState(false);
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [staffPage, setStaffPage] = useState(1);
+  const [hasMoreStudents, setHasMoreStudents] = useState(false);
+  const [hasMoreStaff, setHasMoreStaff] = useState(false);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [totalStaff, setTotalStaff] = useState(0);
   const [storedUser, setStoredUser] = useState(() => {
     const saved = localStorage.getItem("user");
     if (saved) {
@@ -72,22 +80,40 @@ export default function DeputyHeadDashboard({
     refreshUser();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (isLoadMoreStudents = false, isLoadMoreStaff = false) => {
     try {
-      setLoading(true);
-      const data: any = await api.get("/users");
-      const allStudents = data.students || [];
-      const activeStudents = allStudents.filter(
+      if (!isLoadMoreStudents && !isLoadMoreStaff) setLoading(true);
+      else if (isLoadMoreStudents) setLoadingMoreStudents(true);
+      else if (isLoadMoreStaff) setLoadingMoreStaff(true);
+
+      const sPage = isLoadMoreStudents ? studentsPage + 1 : 1;
+      const tPage = isLoadMoreStaff ? staffPage + 1 : 1;
+
+      const response: any = await api.get("/users", {
+        studentsPage: sPage,
+        staffPage: tPage,
+        limit: 8
+      });
+
+      const newStudents = (response.students || []).filter(
         (student: any) => String(student.status || "active").toLowerCase() === "active",
       );
-      setStudents(activeStudents);
-      setExitedStudents(data.exitedStudents || []);
-      setSubjects(data.subjects || []);
+      
+      setStudents(prev => isLoadMoreStudents ? [...prev, ...newStudents] : newStudents);
+      setExitedStudents(response.exitedStudents || []);
+      setSubjects(response.subjects || []);
+      setTotalStudents(response.totalStudents || 0);
+      setTotalStaff(response.totalStaff || 0);
+      
+      if (isLoadMoreStudents) setStudentsPage(sPage);
+      if (isLoadMoreStaff) setStaffPage(tPage);
+
+      setHasMoreStudents(students.length + newStudents.length < (response.totalStudents || 0));
 
       // Calculate teacher averages from their assignments
-      const staffWithAvgs = (data.staff || []).map((t: any) => {
+      const newStaff = (response.staff || []).map((t: any) => {
         // Find assignments for this teacher
-        const tAssignments = (data.assignments || []).filter(
+        const tAssignments = (response.assignments || []).filter(
           (a: any) => a.teacherId === t.id,
         );
         let totalMarks = 0;
@@ -95,7 +121,7 @@ export default function DeputyHeadDashboard({
 
         tAssignments.forEach((a: any) => {
           // Find students in this class
-          const classStudents = activeStudents.filter(
+          const classStudents = (isLoadMoreStudents ? [...students, ...newStudents] : newStudents).filter(
             (s: any) =>
               String(s.classGrade) === String(a.classGrade) &&
               s.classStream === a.classStream,
@@ -115,11 +141,14 @@ export default function DeputyHeadDashboard({
           avg: count > 0 ? Math.round(totalMarks / count) : 0,
         };
       });
-      setStaff(staffWithAvgs);
+
+      setStaff(prev => isLoadMoreStaff ? [...prev, ...newStaff] : newStaff);
+      setHasMoreStaff(staff.length + newStaff.length < (response.totalStaff || 0));
 
       // Derive classes from students and assignments
       const classMap = new Map();
-      activeStudents.forEach((s: any) => {
+      const currentStudents = isLoadMoreStudents ? [...students, ...newStudents] : newStudents;
+      currentStudents.forEach((s: any) => {
         if (!s.classGrade) return;
         const key = `${s.classGrade}${s.classStream || ""}`;
         if (!classMap.has(key)) {
@@ -153,7 +182,8 @@ export default function DeputyHeadDashboard({
       });
 
       // Find class teachers from staff
-      (data.staff || []).forEach((t: any) => {
+      const currentStaff = isLoadMoreStaff ? [...staff, ...newStaff] : newStaff;
+      currentStaff.forEach((t: any) => {
         if (
           (t.roleLabel?.toLowerCase() === "classteacher" ||
             t.roles.includes("classTeacher")) &&
@@ -167,7 +197,7 @@ export default function DeputyHeadDashboard({
       });
 
       // Count subjects per class from assignments
-      (data.assignments || []).forEach((a: any) => {
+      (response.assignments || []).forEach((a: any) => {
         const key = `${a.classGrade}${a.classStream || ""}`;
         if (classMap.has(key)) {
           classMap.get(key).subjects += 1;
@@ -178,6 +208,8 @@ export default function DeputyHeadDashboard({
     } catch (err) {
     } finally {
       setLoading(false);
+      setLoadingMoreStudents(false);
+      setLoadingMoreStaff(false);
     }
   };
 
@@ -256,7 +288,14 @@ export default function DeputyHeadDashboard({
           />
         );
       case "teachers":
-        return <TeacherManagement staff={staff} />;
+        return (
+          <TeacherManagement 
+            staff={staff} 
+            hasMore={hasMoreStaff}
+            loadingMore={loadingMoreStaff}
+            onLoadMore={() => loadData(false, true)}
+          />
+        );
       case "classes":
         return (
           <ClassManagement
@@ -268,7 +307,15 @@ export default function DeputyHeadDashboard({
           />
         );
       case "students":
-        return <StudentManagement students={students} subjects={subjects} />;
+        return (
+          <StudentManagement 
+            students={students} 
+            subjects={subjects} 
+            hasMore={hasMoreStudents}
+            loadingMore={loadingMoreStudents}
+            onLoadMore={() => loadData(true, false)}
+          />
+        );
       case "exited":
         return (
           <ExitedStudentsView

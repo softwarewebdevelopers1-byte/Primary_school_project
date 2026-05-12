@@ -213,7 +213,13 @@ router.get("/", async (req: Request, res: Response) => {
         ),
     );
 
-    const studentMarks = enrolledStudents.map((s: any) => {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 8;
+
+    const totalStudentsCount = enrolledStudents.length;
+    const paginatedStudents = enrolledStudents.slice((page - 1) * limit, page * limit);
+
+    const studentMarks = paginatedStudents.map((s: any) => {
       const studentMark = markByStudentId.get(s._id.toString());
       return {
         studentId: s._id,
@@ -245,7 +251,12 @@ router.get("/", async (req: Request, res: Response) => {
       };
     });
 
-    res.json(studentMarks);
+    res.json({
+      data: studentMarks,
+      total: totalStudentsCount,
+      page,
+      limit
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

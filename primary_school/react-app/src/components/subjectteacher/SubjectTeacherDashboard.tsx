@@ -66,6 +66,9 @@ const SubjectTeacherDashboard: React.FC = () => {
   const [pushedSubjects, setPushedSubjects] = useState<Set<string>>(new Set());
   const [pushedStudents, setPushedStudents] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [marksPage, setMarksPage] = useState<Record<string, number>>({});
+  const [hasMoreMarks, setHasMoreMarks] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState<{ text: string, type: "success" | "error" } | null>(null);
   const [term, setTerm] = useState<number>(currentUser?.term || 1);
   const [year, setYear] = useState<number>(currentUser?.year || 2024);
@@ -186,26 +189,30 @@ const SubjectTeacherDashboard: React.FC = () => {
     loadAssignments();
   }, [loadAssignments]);
 
-  const loadStudentsAndMarks = useCallback(async () => {
+  const loadStudentsAndMarks = useCallback(async (isLoadMore = false) => {
     const currentSubject = subjects.find(s => s.id === activeSubjectId);
     if (!currentSubject) return;
 
     try {
+      if (!isLoadMore) setLoading(true);
+      else setLoadingMore(true);
+
+      const currentPage = isLoadMore ? (marksPage[activeSubjectId] || 1) + 1 : 1;
+
       // Ensure we send params in a way that matches what the backend expects
-      const data: any[] = await api.get("/marks", {
+      const response: { data: any[]; total: number } = await api.get("/marks", {
         subjectId: currentSubject.subjectId, // Use the actual subject ID
         classGrade: currentSubject.classGrade,
         classStream: currentSubject.classStream,
         term: term,
         year: year,
-        examType: examType
+        examType: examType,
+        page: currentPage,
+        limit: 8
       });
 
-      if (!Array.isArray(data)) {
-        
-        setStudents([]);
-        return;
-      }
+      const data = response.data || [];
+      const total = response.total || 0;
 
       const mappedStudents: Student[] = data.map(item => ({
         id: item.studentId.toString(),
@@ -222,24 +229,39 @@ const SubjectTeacherDashboard: React.FC = () => {
         return acc;
       }, {} as SubjectMarksMap);
 
-      setStudents(mappedStudents);
-      syncPushState(activeSubjectId, subjectMarks);
+      setStudents(prev => isLoadMore ? [...prev, ...mappedStudents] : mappedStudents);
+      
+      const newMarksData = isLoadMore ? { ...(marksData[activeSubjectId] || {}), ...subjectMarks } : subjectMarks;
+      syncPushState(activeSubjectId, newMarksData);
 
-      // Update marksData
       setMarksData(prev => ({
         ...prev,
-        [activeSubjectId]: subjectMarks
+        [activeSubjectId]: newMarksData
       }));
+
+      setMarksPage(prev => ({ ...prev, [activeSubjectId]: currentPage }));
+      setHasMoreMarks(prev => ({ 
+        ...prev, 
+        [activeSubjectId]: (isLoadMore ? students.length : 0) + mappedStudents.length < total 
+      }));
+
     } catch (err) {
-      setStudents([]);
-      setPushedStudents(new Set());
+      if (!isLoadMore) {
+        setStudents([]);
+        setPushedStudents(new Set());
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
-  }, [activeSubjectId, subjects, term, year, examType, syncPushState]);
+  }, [activeSubjectId, subjects, term, year, examType, syncPushState, marksPage, marksData, students.length]);
 
   // Clear state when switching period
   useEffect(() => {
     setStudents([]);
     setMarksData({});
+    setMarksPage({});
+    setHasMoreMarks({});
   }, [term, year, examType]);
 
   useEffect(() => {
@@ -429,7 +451,31 @@ const SubjectTeacherDashboard: React.FC = () => {
       case "subjects":
         return <SubjectsTab subjects={subjects} onSelectSubject={setActiveSubjectId} onEnterMarks={(id) => { setActiveSubjectId(id); setActiveTab("marks"); }} pushedSubjects={pushedSubjects} gc={gc} term={term} year={year} />;
       case "marks":
-        return <MarksTab subjects={subjects} activeSubjectId={activeSubjectId} students={students} marksData={marksData} pushedSubjects={pushedSubjects} pushedStudents={pushedStudents} onSubjectChange={setActiveSubjectId} onMarkUpdate={handleMarkUpdate} onSaveMarks={handleSaveMarks} onConfigUpdate={handleConfigUpdate} onRemoveCat={handleRemoveCat} onPushMarks={handlePushMarks} avatar={avatar} term={term} year={year} examType={examType} onTermChange={setTerm} onExamTypeChange={setExamType} />;
+        return (
+          <MarksTab 
+            subjects={subjects} 
+            activeSubjectId={activeSubjectId} 
+            students={students} 
+            marksData={marksData} 
+            pushedSubjects={pushedSubjects} 
+            pushedStudents={pushedStudents} 
+            onSubjectChange={setActiveSubjectId} 
+            onMarkUpdate={handleMarkUpdate} 
+            onSaveMarks={handleSaveMarks} 
+            onConfigUpdate={handleConfigUpdate} 
+            onRemoveCat={handleRemoveCat} 
+            onPushMarks={handlePushMarks} 
+            avatar={avatar} 
+            term={term} 
+            year={year} 
+            examType={examType} 
+            onTermChange={setTerm} 
+            onExamTypeChange={setExamType} 
+            hasMore={hasMoreMarks[activeSubjectId]}
+            loadingMore={loadingMore}
+            onLoadMore={() => loadStudentsAndMarks(true)}
+          />
+        );
       case "timetable":
         return (
           <TimetableLibrary

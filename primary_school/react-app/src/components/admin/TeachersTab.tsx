@@ -377,6 +377,9 @@ interface TeachersTabProps {
   showModal: (content: React.ReactNode) => void;
   closeModal: () => void;
   showConfirm: (msg: string, onOk: () => void, danger?: boolean) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export const TeachersTab: React.FC<TeachersTabProps> = ({
@@ -389,6 +392,9 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   showModal,
   closeModal,
   showConfirm,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }) => {
   const [search, setSearch] = useState("");
 
@@ -544,6 +550,29 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           </tbody>
         </table>
       </div>
+
+      {hasMore && (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 24, marginBottom: 12 }}>
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            style={{
+              padding: "10px 24px",
+              background: "var(--white)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--textM)",
+              cursor: loadingMore ? "not-allowed" : "pointer",
+              transition: "all .2s ease",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+            }}
+          >
+            {loadingMore ? "Loading more..." : "Load More Staff"}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

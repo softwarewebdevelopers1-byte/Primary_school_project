@@ -110,4 +110,7 @@ export interface MarksTabProps {
   examType?: string;
   onTermChange?: (term: number) => void;
   onExamTypeChange?: (type: string) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }

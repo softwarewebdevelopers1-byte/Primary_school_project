@@ -7,9 +7,17 @@ import { gc } from "./shared/helpers";
 
 interface TeacherManagementProps {
   staff?: any[];
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
-export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = [] }) => {
+export const TeacherManagement: React.FC<TeacherManagementProps> = ({ 
+  staff = [],
+  hasMore,
+  loadingMore,
+  onLoadMore,
+}) => {
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [search, setSearch] = useState("");
   const filtered = staff.filter(
@@ -210,6 +218,30 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = []
             ))}
           </tbody>
         </table>
+      </div>
+
+      {hasMore && (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 24, marginBottom: 12 }}>
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            style={{
+              padding: "10px 24px",
+              background: C.white,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              fontFamily: F.sans,
+              fontSize: 13,
+              fontWeight: 600,
+              color: C.textMid,
+              cursor: loadingMore ? "not-allowed" : "pointer",
+              transition: "all .2s ease",
+            }}
+          >
+            {loadingMore ? "Loading more..." : "Load More Staff"}
+          </button>
+        </div>
+      )}
     </div>
 
     {selectedTeacher && (
