@@ -19,6 +19,7 @@ import {
   SchoolSettingModel,
   ExitedStudentModel,
   TimetableModel,
+  ParentConcernModel,
 } from "../models/school.model.js";
 import {
   buildClassSubjectSettingMap,
@@ -40,6 +41,96 @@ const SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 const router = Router();
 const allowedExamTypes = new Set(["opener", "midterm", "closing"]);
+const STUDENT_DEFAULT_PASSWORD = "student";
+const LEGACY_STUDENT_DEFAULT_PASSWORD = "student123";
+const BCRYPT_HASH_PATTERN = /^\$2[aby]\$/;
+
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizePhoneDigits = (value: unknown) =>
+  typeof value === "string" ? value.replace(/\D/g, "") : "";
+
+const buildPhoneDigitVariants = (value: unknown) => {
+  const digits = normalizePhoneDigits(value);
+  const variants = new Set<string>();
+
+  if (!digits) {
+    return [];
+  }
+
+  variants.add(digits);
+
+  if (digits.startsWith("0") && digits.length > 1) {
+    variants.add(`254${digits.slice(1)}`);
+  }
+
+  if (digits.startsWith("254") && digits.length > 3) {
+    variants.add(`0${digits.slice(3)}`);
+  }
+
+  return Array.from(variants);
+};
+
+const buildLoosePhoneRegexes = (value: unknown) =>
+  buildPhoneDigitVariants(value).map((digits) => {
+    const looseDigits = digits
+      .split("")
+      .map((digit) => escapeRegex(digit))
+      .join("\\D*");
+    return new RegExp(`^\\D*${looseDigits}\\D*$`);
+  });
+
+const buildGuardianPhoneQuery = (value: unknown) => {
+  const phone = typeof value === "string" ? value.trim() : "";
+  const phoneRegexes = buildLoosePhoneRegexes(phone);
+  const phoneConditions: any[] = [];
+
+  if (phone) {
+    phoneConditions.push({ guardianPhone: phone });
+  }
+
+  if (phoneRegexes.length > 0) {
+    phoneConditions.push({ guardianPhone: { $in: phoneRegexes } });
+  }
+
+  if (phoneConditions.length === 0) {
+    return null;
+  }
+
+  return {
+    status: { $ne: "inactive" },
+    $or: phoneConditions,
+  };
+};
+
+const verifyPassword = async (password: string, storedPassword: unknown) => {
+  if (typeof storedPassword !== "string" || !storedPassword) {
+    return false;
+  }
+
+  if (BCRYPT_HASH_PATTERN.test(storedPassword)) {
+    return bcrypt.compare(password, storedPassword);
+  }
+
+  return password === storedPassword;
+};
+
+const isLegacyStudentDefaultPassword = async (storedPassword: unknown) =>
+  verifyPassword(LEGACY_STUDENT_DEFAULT_PASSWORD, storedPassword);
+
+const toStudentSummary = (student: any) => ({
+  id: student._id,
+  name: student.studentsName,
+  admissionNumber: student.ADM,
+  classGrade: student.class,
+  classStream: student.classStream,
+  gender: student.gender,
+  guardianName: student.guardianName,
+  guardianPhone: student.guardianPhone,
+  status: student.status,
+  enrolledSubjects: student.enrolledSubjects || [],
+});
 
 const formatCycleLabel = (term: number, year: number, examType: string) =>
   `Term ${term}, ${year} (${examType})`;
@@ -216,6 +307,9 @@ const validateStudentElectiveEnrollments = async (
 
 const hasRole = (roles: unknown, role: string) =>
   Array.isArray(roles) && roles.includes(role);
+
+const canViewParentConcerns = (roles: unknown) =>
+  hasRole(roles, rolesMapped.DT) || hasRole(roles, rolesMapped.HT);
 
 const canManageClassElectiveEnrollments = async (
   req: Request,
@@ -636,41 +730,90 @@ const extractRoles = async (user: any) => {
 // POST login
 router.post("/login", async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const loginIdentifier =
+      typeof req.body.email === "string"
+        ? req.body.email.trim()
+        : typeof req.body.phone === "string"
+          ? req.body.phone.trim()
+          : typeof req.body.identifier === "string"
+            ? req.body.identifier.trim()
+            : "";
+    const { password } = req.body;
+
+    if (!loginIdentifier || !password) {
       return res
         .status(400)
-        .json({ message: "Email and password are required" });
+        .json({ message: "Login identifier and password are required" });
     }
 
-    const user: any = await userModel.findOne({
-      $or: [{ email }, { ADM: email }], // Support email or Admission No (for students)
+    let parentLogin = false;
+    let user: any = await userModel.findOne({
+      $or: [{ email: loginIdentifier }, { ADM: loginIdentifier }],
     });
+
+    if (!user) {
+      const guardianPhoneQuery = buildGuardianPhoneQuery(loginIdentifier);
+      if (guardianPhoneQuery) {
+        user = await studentModel
+          .findOne(guardianPhoneQuery as any)
+          .sort({ studentsName: 1 });
+        parentLogin = Boolean(user);
+      }
+    }
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    let isMatch = await verifyPassword(password, user.password);
+    const canUseNewDefaultForLegacyStudent =
+      parentLogin &&
+      password === STUDENT_DEFAULT_PASSWORD &&
+      user.__t === rolesMapped.ST &&
+      (await isLegacyStudentDefaultPassword(user.password));
+
+    if (!isMatch && canUseNewDefaultForLegacyStudent) {
+      isMatch = true;
+      user.password = await bcrypt.hash(STUDENT_DEFAULT_PASSWORD, 10);
+      await user.save();
+    }
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Extract all roles
     const roles = await extractRoles(user);
+    const guardianPhone =
+      user.__t === rolesMapped.ST ? user.guardianPhone || loginIdentifier : undefined;
 
     const token = jwt.sign(
-      { id: user._id, email: user.email || user.ADM, roles },
+      {
+        id: user._id,
+        email: user.email || user.ADM || loginIdentifier,
+        roles,
+        ...(guardianPhone ? { guardianPhone } : {}),
+      },
       SECRET,
       { expiresIn: "1d" },
     );
+
+    const linkedStudents =
+      parentLogin && guardianPhone
+        ? await studentModel
+            .find(buildGuardianPhoneQuery(guardianPhone) as any)
+            .select("-password")
+            .sort({ studentsName: 1 })
+            .lean()
+        : [];
 
     res.json({
       token,
       user: {
         id: user._id,
         name: user.teachersName || user.studentsName,
-        email: user.email || user.ADM,
+        email: user.email || user.ADM || guardianPhone,
+        phone: guardianPhone,
         roles,
         primaryRole: roles[0],
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.teachersName || user.studentsName)}&background=random&color=fff`,
@@ -683,6 +826,8 @@ router.post("/login", async (req: Request, res: Response) => {
         term: user.term,
         year: user.year,
         examType: user.examType,
+        parentLogin,
+        linkedStudents: linkedStudents.map(toStudentSummary),
       },
     });
   } catch (error: any) {
@@ -916,6 +1061,206 @@ router.delete("/exited-students/:id", authenticate, async (req: Request, res: Re
   }
 });
 
+router.get("/student-dashboard", authenticate, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    const roles = Array.isArray(authUser?.roles) ? authUser.roles : [];
+
+    if (!roles.includes(rolesMapped.ST)) {
+      return res.status(403).json({ message: "Student dashboard access only." });
+    }
+
+    const primaryStudent: any = await studentModel
+      .findById(authUser.id)
+      .select("-password")
+      .lean();
+
+    if (!primaryStudent) {
+      return res.status(404).json({ message: "Student record not found." });
+    }
+
+    const guardianPhone = authUser.guardianPhone || primaryStudent.guardianPhone;
+    const guardianPhoneQuery = buildGuardianPhoneQuery(guardianPhone);
+    const linkedStudents: any[] = guardianPhoneQuery
+      ? await studentModel
+          .find(guardianPhoneQuery as any)
+          .select("-password")
+          .sort({ studentsName: 1 })
+          .lean()
+      : [primaryStudent];
+
+    const studentMap = new Map<string, any>();
+    for (const student of linkedStudents) {
+      studentMap.set(student._id.toString(), student);
+    }
+    studentMap.set(primaryStudent._id.toString(), primaryStudent);
+
+    const students = Array.from(studentMap.values());
+    const studentIds = students.map((student) => student._id);
+    const marks = await MarkModel.find({ studentId: { $in: studentIds } } as any)
+      .populate("subjectId", "name department")
+      .sort({ year: -1, term: -1, examType: 1 })
+      .lean();
+
+    const marksByStudent = new Map<string, any[]>();
+    for (const mark of marks as any[]) {
+      const studentId = mark.studentId?.toString();
+      const existing = marksByStudent.get(studentId) || [];
+      existing.push({
+        id: mark._id,
+        subjectId: mark.subjectId?._id || mark.subjectId,
+        subjectName: mark.subjectId?.name || "Unknown subject",
+        classGrade: mark.classGrade,
+        classStream: mark.classStream,
+        term: mark.term,
+        year: mark.year,
+        examType: mark.examType,
+        cat1: mark.cat1,
+        cat2: mark.cat2,
+        cat3: mark.cat3,
+        cat4: mark.cat4,
+        cat5: mark.cat5,
+        exam: mark.exam,
+        finalScore: mark.finalScore,
+        percentage: computeMarkPercentage(mark),
+        cbcBand: mark.cbcBand || null,
+        points: mark.points ?? null,
+      });
+      marksByStudent.set(studentId, existing);
+    }
+
+    res.json({
+      parent: {
+        name: primaryStudent.guardianName || "Parent",
+        phone: guardianPhone || "",
+      },
+      students: students.map((student) => ({
+        ...toStudentSummary(student),
+        performance: marksByStudent.get(student._id.toString()) || [],
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post("/parent-concerns", authenticate, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    const roles = Array.isArray(authUser?.roles) ? authUser.roles : [];
+
+    if (!roles.includes(rolesMapped.ST)) {
+      return res.status(403).json({ message: "Only parents can send suggestions from this portal." });
+    }
+
+    const message = typeof req.body.message === "string" ? req.body.message.trim() : "";
+    if (message.length < 5) {
+      return res.status(400).json({ message: "Please enter a suggestion or concern." });
+    }
+
+    if (message.length > 1000) {
+      return res.status(400).json({ message: "Message should be 1000 characters or fewer." });
+    }
+
+    const parentStudent: any = await studentModel.findById(authUser.id).lean();
+    if (!parentStudent) {
+      return res.status(404).json({ message: "Student record not found." });
+    }
+
+    const selectedStudent =
+      req.body.studentId
+        ? await studentModel.findById(req.body.studentId).lean()
+        : parentStudent;
+    const concernStudent: any = selectedStudent || parentStudent;
+    const parentName = parentStudent.guardianName || "Parent";
+    const parentPhone = authUser.guardianPhone || parentStudent.guardianPhone || "";
+    const concern = await ParentConcernModel.create({
+      parentId: parentStudent._id,
+      parentName,
+      parentPhone,
+      studentId: concernStudent?._id || parentStudent._id,
+      studentName: concernStudent?.studentsName || parentStudent.studentsName,
+      admissionNo: concernStudent?.ADM || parentStudent.ADM,
+      classGrade: concernStudent?.class || parentStudent.class,
+      classStream: concernStudent?.classStream || parentStudent.classStream,
+      message,
+      status: "Open",
+      priority: req.body.priority || "Medium",
+    });
+
+    res.status(201).json({
+      message: "Suggestion sent to school leadership.",
+      concern: {
+        id: concern._id,
+        status: concern.status,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/parent-concerns", authenticate, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    if (!canViewParentConcerns(authUser?.roles)) {
+      return res.status(403).json({ message: "Deputy or headteacher access required." });
+    }
+
+    const concerns = await ParentConcernModel.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(
+      concerns.map((concern: any) => ({
+        id: concern._id,
+        parent: concern.parentName,
+        parentPhone: concern.parentPhone,
+        student: concern.studentName || "Linked student",
+        admissionNo: concern.admissionNo || "",
+        class: formatClassLabel(concern.classGrade, concern.classStream),
+        issue: concern.message,
+        date: concern.createdAt
+          ? new Date(concern.createdAt).toISOString().slice(0, 10)
+          : "",
+        status: concern.status,
+        priority: concern.priority,
+        expiresAt: concern.expiresAt,
+      })),
+    );
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put("/parent-concerns/:id/status", authenticate, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    if (!canViewParentConcerns(authUser?.roles)) {
+      return res.status(403).json({ message: "Deputy or headteacher access required." });
+    }
+
+    const status = typeof req.body.status === "string" ? req.body.status : "";
+    if (!["Open", "Pending", "Resolved"].includes(status)) {
+      return res.status(400).json({ message: "Invalid concern status." });
+    }
+
+    const concern = await ParentConcernModel.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true },
+    );
+
+    if (!concern) {
+      return res.status(404).json({ message: "Parent concern not found." });
+    }
+
+    res.json({ message: "Parent concern updated.", concern });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.get("/:id", authenticate, async (req: Request, res: Response) => {
   try {
     const user: any = await userModel.findById(req.params.id);
@@ -1121,7 +1466,7 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
         classStream,
         { requireCompleteLinkedGroups: false },
       );
-      const hashedPassword = await bcrypt.hash("student123", 10);
+      const hashedPassword = await bcrypt.hash(STUDENT_DEFAULT_PASSWORD, 10);
       newUser = await studentModel.create({
         studentsName: req.body.name,
         ADM: req.body.admissionNo,

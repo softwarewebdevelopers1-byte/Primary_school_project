@@ -118,7 +118,7 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -137,7 +137,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const response: any = await api.post("/users/login", { email, password });
+      const response: any = await api.post("/users/login", {
+        identifier: loginIdentifier.trim(),
+        password,
+      });
       
       // Store user data in localStorage
       localStorage.setItem(
@@ -162,7 +165,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         window.location.href = paths[primaryRole] || "/dashboard";
       }
     } catch (err: any) {
-      setError(err.message || "Invalid email or password. Please try again.");
+      setError(err.message || "Invalid login details. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -249,28 +252,29 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className={styles.form}>
-              {/* Email Field */}
+              {/* Login Identifier Field */}
               <div className={styles.inputGroup}>
-                <label htmlFor="email" className={styles.inputLabel}>
-                  Email Address
+                <label htmlFor="loginIdentifier" className={styles.inputLabel}>
+                  Email or Parent Phone
                 </label>
                 <div className={styles.inputWrapper}>
                   <span
-                    className={`${styles.inputIcon} ${focusedField === "email" ? styles.inputIconFocused : ""}`}
+                    className={`${styles.inputIcon} ${focusedField === "loginIdentifier" ? styles.inputIconFocused : ""}`}
                   >
                     <MailIcon />
                   </span>
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setFocusedField("email")}
+                    id="loginIdentifier"
+                    type="text"
+                    inputMode="email"
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    onFocus={() => setFocusedField("loginIdentifier")}
                     onBlur={() => setFocusedField(null)}
-                    placeholder="your@school.com"
+                    placeholder="teacher@school.com or 0712345678"
                     required
-                    autoComplete="email"
-                    className={`${styles.input} ${focusedField === "email" ? styles.inputFocused : ""}`}
+                    autoComplete="username"
+                    className={`${styles.input} ${focusedField === "loginIdentifier" ? styles.inputFocused : ""}`}
                   />
                 </div>
               </div>

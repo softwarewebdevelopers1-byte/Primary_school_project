@@ -107,7 +107,7 @@ const teachersSchema = new Schema<teachers>({
 const studentSchema = new Schema<student>({
   password: {
     type: String,
-    default: "student123",
+    default: "student",
   },
   studentsName: String,
   role: String,

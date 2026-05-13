@@ -361,3 +361,44 @@ export const ExitedStudentModel = mongoose.model<IExitedStudent>(
   "ExitedStudent",
   ExitedStudentSchema,
 );
+
+export interface IParentConcern extends Document {
+  parentId: mongoose.Types.ObjectId;
+  parentName: string;
+  parentPhone: string;
+  studentId?: mongoose.Types.ObjectId | null;
+  studentName?: string | null;
+  admissionNo?: string | null;
+  classGrade?: string | null;
+  classStream?: string | null;
+  message: string;
+  status: "Open" | "Pending" | "Resolved";
+  priority: "Low" | "Medium" | "High";
+  expiresAt: Date;
+}
+
+const ParentConcernSchema = new Schema<IParentConcern>({
+  parentId: { type: Schema.Types.ObjectId, ref: "users", required: true, index: true },
+  parentName: { type: String, required: true },
+  parentPhone: { type: String, default: "" },
+  studentId: { type: Schema.Types.ObjectId, ref: "users", default: null },
+  studentName: { type: String, default: null },
+  admissionNo: { type: String, default: null },
+  classGrade: { type: String, default: null },
+  classStream: { type: String, default: null },
+  message: { type: String, required: true, trim: true },
+  status: { type: String, enum: ["Open", "Pending", "Resolved"], default: "Open", index: true },
+  priority: { type: String, enum: ["Low", "Medium", "High"], default: "Medium", index: true },
+  expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+    index: true,
+  },
+}, { timestamps: true });
+
+ParentConcernSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+export const ParentConcernModel = mongoose.model<IParentConcern>(
+  "ParentConcern",
+  ParentConcernSchema,
+);
