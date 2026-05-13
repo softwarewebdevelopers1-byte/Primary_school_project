@@ -873,3 +873,352 @@
     width: 100%;
   }
 }
+
+.parentShell {
+  --parent-green: #0b2018;
+  --parent-green-mid: #173d2f;
+  --parent-gold: #c9963d;
+  --parent-gold-light: #f5ead4;
+  --parent-sand: #f0e9dc;
+  --parent-border: #e8dcc8;
+  --parent-text: #1a1208;
+  --parent-muted: #7a6040;
+  display: flex;
+  min-height: 100vh;
+  background: var(--parent-sand);
+  color: var(--parent-text);
+}
+
+.parentShell .parentDashboard {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 28px 28px 40px;
+  overflow: auto;
+}
+
+.parentSidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: 0 0 280px;
+  flex-direction: column;
+  height: 100vh;
+  padding: 22px 16px;
+  background: var(--parent-green);
+  color: #fdf9f2;
+}
+
+.parentShellCollapsed .parentSidebar {
+  flex-basis: 86px;
+  align-items: stretch;
+}
+
+.parentShellCollapsed .sidebarText,
+.parentShellCollapsed .sidebarButton small,
+.parentShellCollapsed .sidebarFooter {
+  display: none;
+}
+
+.parentShellCollapsed .sidebarBrand {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.parentShellCollapsed .sidebarButton {
+  border-left-width: 0;
+  border-top: 3px solid transparent;
+  padding: 11px 8px;
+  text-align: center;
+}
+
+.parentShellCollapsed .sidebarButtonActive {
+  border-top-color: var(--parent-gold);
+}
+
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 6px 22px;
+  border-bottom: 1px solid rgba(201, 150, 61, 0.24);
+}
+
+.sidebarBrand strong,
+.sidebarBrand span,
+.sidebarButton span,
+.sidebarButton small {
+  display: block;
+}
+
+.sidebarBrand span,
+.sidebarButton small {
+  margin-top: 4px;
+  color: #9eb8aa;
+  font-size: 0.8rem;
+}
+
+.sidebarMark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--parent-gold);
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.sidebarNav {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.sidebarCollapseButton {
+  min-height: 38px;
+  margin-top: 14px;
+  border: 1px solid rgba(201, 150, 61, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8dcc8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.sidebarButton {
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #d8e7df;
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+}
+
+.sidebarButton:hover {
+  background: rgba(201, 150, 61, 0.12);
+}
+
+.sidebarButtonActive {
+  border-left-color: var(--parent-gold);
+  background: rgba(201, 150, 61, 0.2);
+  color: #ffffff;
+}
+
+.sidebarButton span {
+  font-weight: 800;
+}
+
+.sidebarFooter {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.sidebarFooter button {
+  min-height: 40px;
+  border: 1px solid rgba(201, 150, 61, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8dcc8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.mobileSidebarButton,
+.sidebarOverlay {
+  display: none;
+}
+
+.parentShell .brandBadge,
+.parentShell .eyebrow {
+  background: var(--parent-gold-light);
+  color: #8a5a12;
+}
+
+.parentShell .parentHeader p,
+.parentShell .profilePanel p,
+.parentShell .profilePanel span,
+.parentShell .summaryCard span,
+.parentShell .summaryCard small,
+.parentShell .chartSubject span,
+.parentShell .sectionHeader p,
+.parentShell .concernInfoPanel p {
+  color: var(--parent-muted);
+}
+
+.parentShell .primaryButton {
+  background: linear-gradient(135deg, var(--parent-gold), #a87a2a);
+  box-shadow: 0 14px 30px rgba(201, 150, 61, 0.22);
+}
+
+.parentShell .secondaryButton {
+  background: rgba(11, 32, 24, 0.08);
+  color: var(--parent-green);
+}
+
+.parentShell .studentSelectButton,
+.parentShell .profilePanel,
+.parentShell .summaryCard,
+.parentShell .performancePanel,
+.parentShell .messagePanel,
+.parentShell .concernInfoPanel,
+.parentShell .statePanel {
+  border-color: var(--parent-border);
+  box-shadow: 0 16px 40px rgba(11, 32, 24, 0.08);
+}
+
+.parentShell .studentSelectButtonActive {
+  border-color: var(--parent-gold);
+  background: var(--parent-gold-light);
+}
+
+.parentShell .avatarFallback,
+.parentShell .currentBar {
+  background: var(--parent-green-mid);
+}
+
+.parentShell .previousBar {
+  background: var(--parent-gold);
+}
+
+.bandCell {
+  border: 1px solid rgba(201, 150, 61, 0.35);
+}
+
+.pointsCell {
+  border: 1px solid rgba(11, 32, 24, 0.16);
+}
+
+.concernsPage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: 18px;
+}
+
+.concernInfoPanel {
+  padding: 18px;
+}
+
+.concernInfoPanel h2 {
+  margin: 12px 0 8px;
+  letter-spacing: 0;
+}
+
+@media (max-width: 980px) {
+  .parentShell,
+  .parentShellCollapsed {
+    display: block;
+  }
+
+  .parentSidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(84vw, 320px);
+    height: 100vh;
+    padding: 16px;
+    transform: translateX(-105%);
+    transition: transform 0.24s ease;
+    box-shadow: 24px 0 55px rgba(11, 32, 24, 0.28);
+  }
+
+  .parentSidebarOpen {
+    transform: translateX(0);
+  }
+
+  .parentShellCollapsed .parentSidebar {
+    flex-basis: auto;
+    align-items: stretch;
+  }
+
+  .parentShellCollapsed .sidebarText,
+  .parentShellCollapsed .sidebarButton small,
+  .parentShellCollapsed .sidebarFooter {
+    display: block;
+  }
+
+  .parentShellCollapsed .sidebarBrand {
+    justify-content: flex-start;
+    padding: 4px 6px 12px;
+  }
+
+  .parentShellCollapsed .sidebarButton {
+    border-left-width: 3px;
+    border-top: 0;
+    padding: 12px;
+    text-align: left;
+  }
+
+  .parentShellCollapsed .sidebarButtonActive {
+    border-left-color: var(--parent-gold);
+  }
+
+  .sidebarBrand {
+    padding-bottom: 12px;
+  }
+
+  .sidebarCollapseButton {
+    display: none;
+  }
+
+  .sidebarNav,
+  .sidebarFooter {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-top: 14px;
+  }
+
+  .parentShell .parentDashboard {
+    min-height: auto;
+    padding: 70px 16px 34px;
+  }
+
+  .concernsPage {
+    grid-template-columns: 1fr;
+  }
+
+  .mobileSidebarButton {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 35;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    border: 1px solid rgba(201, 150, 61, 0.45);
+    border-radius: 8px;
+    background: var(--parent-green);
+    color: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 900;
+    padding: 0 14px;
+    box-shadow: 0 12px 28px rgba(11, 32, 24, 0.2);
+  }
+
+  .sidebarOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: block;
+    border: 0;
+    background: rgba(11, 32, 24, 0.42);
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebarNav,
+  .sidebarFooter {
+    grid-template-columns: 1fr;
+  }
+}

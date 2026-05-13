@@ -1101,11 +1101,17 @@ router.get("/student-dashboard", authenticate, async (req: Request, res: Respons
       .populate("subjectId", "name department")
       .sort({ year: -1, term: -1, examType: 1 })
       .lean();
+    const cbcBands = await getCbcGradingBands();
 
     const marksByStudent = new Map<string, any[]>();
     for (const mark of marks as any[]) {
       const studentId = mark.studentId?.toString();
       const existing = marksByStudent.get(studentId) || [];
+      const percentage = computeMarkPercentage(mark);
+      const computedGrading = buildMarkGradingFields(percentage, cbcBands);
+      const cbcBand = mark.cbcBand || computedGrading.cbcBand;
+      const points = mark.points ?? computedGrading.points;
+
       existing.push({
         id: mark._id,
         subjectId: mark.subjectId?._id || mark.subjectId,
@@ -1122,9 +1128,9 @@ router.get("/student-dashboard", authenticate, async (req: Request, res: Respons
         cat5: mark.cat5,
         exam: mark.exam,
         finalScore: mark.finalScore,
-        percentage: computeMarkPercentage(mark),
-        cbcBand: mark.cbcBand || null,
-        points: mark.points ?? null,
+        percentage,
+        cbcBand,
+        points,
       });
       marksByStudent.set(studentId, existing);
     }

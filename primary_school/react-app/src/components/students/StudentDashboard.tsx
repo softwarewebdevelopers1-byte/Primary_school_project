@@ -1,4 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import styles from "./StudentDashboard.module.css";
@@ -90,6 +92,9 @@ function StudentDashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<StudentDashboardResponse | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [activeSection, setActiveSection] = useState<"performance" | "concerns">("performance");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [messageText, setMessageText] = useState("");
@@ -179,9 +184,26 @@ function StudentDashboard() {
       .filter((row) => row.currentScore !== null || row.previousScore !== null);
   }, [sortedMarks]);
 
-  const averageScore = getAverageScore(sortedMarks);
+  const currentSubjectMarks = useMemo(() => {
+    const latestBySubject = new Map<string, PerformanceMark>();
+
+    for (const mark of sortedMarks) {
+      if (!latestBySubject.has(mark.subjectId)) {
+        latestBySubject.set(mark.subjectId, mark);
+      }
+    }
+
+    return Array.from(latestBySubject.values());
+  }, [sortedMarks]);
+
+  const averageScore = getAverageScore(currentSubjectMarks);
   const latestMark = sortedMarks[0] || null;
-  const subjectsWithMarks = sortedMarks.filter((mark) => getScore(mark) !== null).length;
+  const subjectsWithMarks = currentSubjectMarks.filter((mark) => getScore(mark) !== null).length;
+  const totalPoints = currentSubjectMarks.reduce(
+    (sum, mark) => sum + (typeof mark.points === "number" ? mark.points : 0),
+    0,
+  );
+  const latestBand = latestMark?.cbcBand || "--";
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -218,6 +240,80 @@ function StudentDashboard() {
     }
   };
 
+  const handleDownloadResults = () => {
+    if (!selectedStudent || sortedMarks.length === 0) {
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const generatedAt = new Date().toLocaleDateString();
+    const title = "Student Results Report";
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(title, 40, 42);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Student: ${selectedStudent.name}`, 40, 64);
+    doc.text(`Admission No: ${selectedStudent.admissionNumber || "Not set"}`, 40, 80);
+    doc.text(`Class: ${formatClass(selectedStudent)}`, 280, 64);
+    doc.text(`Average: ${averageScore === null ? "--" : `${averageScore}%`}`, 280, 80);
+    doc.text(`Latest Band: ${latestBand}`, 500, 64);
+    doc.text(`Total Points: ${totalPoints}`, 500, 80);
+    doc.text(`Generated: ${generatedAt}`, 680, 64);
+
+    autoTable(doc, {
+      startY: 106,
+      head: [[
+        "Subject",
+        "Term",
+        "Year",
+        "Exam",
+        "CAT 1",
+        "CAT 2",
+        "CAT 3",
+        "CAT 4",
+        "CAT 5",
+        "Exam Mark",
+        "Final",
+        "%",
+        "Band",
+        "Points",
+      ]],
+      body: currentSubjectMarks.map((mark) => {
+        const score = getScore(mark);
+        return [
+          mark.subjectName,
+          mark.term,
+          mark.year,
+          formatExamType(mark.examType),
+          mark.cat1 ?? "--",
+          mark.cat2 ?? "--",
+          mark.cat3 ?? "--",
+          mark.cat4 ?? "--",
+          mark.cat5 ?? "--",
+          mark.exam ?? "--",
+          mark.finalScore ?? "--",
+          score === null ? "--" : Math.round(score),
+          mark.cbcBand || "--",
+          mark.points ?? "--",
+        ];
+      }),
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [11, 32, 24], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [253, 251, 247] },
+      margin: { left: 40, right: 40 },
+    });
+
+    doc.save(`${selectedStudent.name.replace(/\s+/g, "-").toLowerCase()}-results.pdf`);
+  };
+
+  const handleSectionChange = (section: "performance" | "concerns") => {
+    setActiveSection(section);
+    setMobileSidebarOpen(false);
+  };
+
   if (loading) {
     return (
       <main className={styles.parentDashboard}>
@@ -245,34 +341,97 @@ function StudentDashboard() {
   }
 
   return (
-    <main className={styles.parentDashboard}>
-      <header className={styles.parentHeader}>
-        <div>
-          <span className={styles.brandBadge}>Parent Portal</span>
-          <h1>Student Performance</h1>
-          <p>
-            Welcome {dashboard?.parent.name || "Parent"}. Review linked learners and their
-            current marks in one clear view.
-          </p>
+    <main className={`${styles.parentShell} ${sidebarCollapsed ? styles.parentShellCollapsed : ""}`}>
+      <button
+        className={styles.mobileSidebarButton}
+        onClick={() => setMobileSidebarOpen(true)}
+        type="button"
+      >
+        Menu
+      </button>
+      {mobileSidebarOpen && (
+        <button
+          aria-label="Close sidebar"
+          className={styles.sidebarOverlay}
+          onClick={() => setMobileSidebarOpen(false)}
+          type="button"
+        />
+      )}
+      <aside className={`${styles.parentSidebar} ${mobileSidebarOpen ? styles.parentSidebarOpen : ""}`}>
+        <div className={styles.sidebarBrand}>
+          <div className={styles.sidebarMark}>SM</div>
+          <div className={styles.sidebarText}>
+            <strong>Parent Portal</strong>
+            <span>School Management</span>
+          </div>
         </div>
 
-        <div className={styles.headerActions}>
+        <button
+          className={styles.sidebarCollapseButton}
+          onClick={() => setSidebarCollapsed((current) => !current)}
+          type="button"
+        >
+          {sidebarCollapsed ? "Expand" : "Collapse"}
+        </button>
+
+        <nav className={styles.sidebarNav} aria-label="Parent dashboard sections">
           <button
-            className={styles.secondaryButton}
-            onClick={() => navigate("/change-password")}
+            className={`${styles.sidebarButton} ${activeSection === "performance" ? styles.sidebarButtonActive : ""}`}
+            onClick={() => handleSectionChange("performance")}
             type="button"
           >
+            <span>Performance</span>
+            <small>Results and trends</small>
+          </button>
+          <button
+            className={`${styles.sidebarButton} ${activeSection === "concerns" ? styles.sidebarButtonActive : ""}`}
+            onClick={() => handleSectionChange("concerns")}
+            type="button"
+          >
+            <span>Concerns</span>
+            <small>Message deputy teacher</small>
+          </button>
+        </nav>
+
+        <div className={styles.sidebarFooter}>
+          <button onClick={() => navigate("/change-password")} type="button">
             Change password
           </button>
-          <button className={styles.logoutButton} onClick={handleLogout} type="button">
+          <button onClick={handleLogout} type="button">
             Log out
           </button>
         </div>
-      </header>
+      </aside>
 
-      {dashboard && dashboard.students.length > 1 && (
-        <section className={styles.studentSelector} aria-label="Linked students">
-          {dashboard.students.map((student) => (
+      <section className={styles.parentDashboard}>
+        <header className={styles.parentHeader}>
+          <div>
+            <span className={styles.brandBadge}>Parent Portal</span>
+            <h1>{activeSection === "performance" ? "Student Performance" : "Parent Concerns"}</h1>
+            <p>
+              Welcome {dashboard?.parent.name || "Parent"}. {activeSection === "performance"
+                ? "Review results, bands, points, and progress comparisons."
+                : "Send suggestions or concerns to the deputy teacher for school leadership follow-up."}
+            </p>
+          </div>
+
+          {activeSection === "performance" && (
+            <div className={styles.headerActions}>
+              <button
+                className={styles.secondaryButton}
+                onClick={handleDownloadResults}
+                disabled={!selectedStudent || sortedMarks.length === 0}
+                type="button"
+              >
+                Download results
+              </button>
+            </div>
+          )}
+        </header>
+
+        {dashboard && dashboard.students.length > 1 && (
+          <section className={styles.studentSelector} aria-label="Linked students">
+            {dashboard.students.map((student) => (
             <button
               key={student.id}
               className={`${styles.studentSelectButton} ${
@@ -284,116 +443,121 @@ function StudentDashboard() {
               <strong>{student.name}</strong>
               <span>{formatClass(student)}</span>
             </button>
-          ))}
-        </section>
-      )}
-
-      {!selectedStudent ? (
-        <section className={styles.statePanel}>
-          <h2>No student record found</h2>
-          <p>No active learner is linked to this parent phone number yet.</p>
-        </section>
-      ) : (
-        <>
-          <section className={styles.studentSummary}>
-            <article className={styles.profilePanel}>
-              <div className={styles.avatarFallback}>
-                {selectedStudent.name
-                  .split(" ")
-                  .map((part) => part[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </div>
-              <div>
-                <h2>{selectedStudent.name}</h2>
-                <p>{formatClass(selectedStudent)}</p>
-                <span>Admission: {selectedStudent.admissionNumber || "Not set"}</span>
-              </div>
-            </article>
-
-            <article className={styles.summaryCard}>
-              <span>Average score</span>
-              <strong className={getScoreTone(averageScore)}>
-                {averageScore === null ? "--" : `${averageScore}%`}
-              </strong>
-            </article>
-
-            <article className={styles.summaryCard}>
-              <span>Subjects graded</span>
-              <strong>{subjectsWithMarks}</strong>
-            </article>
-
-            <article className={styles.summaryCard}>
-              <span>Latest exam</span>
-              <strong>{latestMark ? `Term ${latestMark.term}` : "--"}</strong>
-              <small>{latestMark ? `${latestMark.year} ${formatExamType(latestMark.examType)}` : "No marks yet"}</small>
-            </article>
+            ))}
           </section>
+        )}
 
-          <section className={styles.performancePanel}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <span className={styles.eyebrow}>Performance</span>
-                <h2>Subject marks</h2>
-              </div>
-              <p>{sortedMarks.length} record{sortedMarks.length === 1 ? "" : "s"}</p>
-            </div>
-
-            {sortedMarks.length === 0 ? (
-              <div className={styles.emptyState}>
-                <h3>No marks have been posted yet</h3>
-                <p>When teachers publish marks, they will appear here for the parent to review.</p>
-              </div>
-            ) : (
-              <div className={styles.marksList}>
-                {sortedMarks.map((mark) => {
-                  const score = getScore(mark);
-                  return (
-                    <article key={mark.id} className={styles.markCard}>
-                      <div className={styles.markMain}>
-                        <div>
-                          <strong>{mark.subjectName}</strong>
-                          <span>
-                            Term {mark.term}, {mark.year} - {formatExamType(mark.examType)}
-                          </span>
-                        </div>
-                        <div className={`${styles.scoreBadge} ${getScoreTone(score)}`}>
-                          {score === null ? "--" : `${Math.round(score)}%`}
-                        </div>
-                      </div>
-
-                      <dl className={styles.markDetails}>
-                        <div>
-                          <dt>CAT 1</dt>
-                          <dd>{mark.cat1 ?? "--"}</dd>
-                        </div>
-                        <div>
-                          <dt>CAT 2</dt>
-                          <dd>{mark.cat2 ?? "--"}</dd>
-                        </div>
-                        <div>
-                          <dt>Exam</dt>
-                          <dd>{mark.exam ?? "--"}</dd>
-                        </div>
-                        <div>
-                          <dt>Band</dt>
-                          <dd>{mark.cbcBand || "--"}</dd>
-                        </div>
-                        <div>
-                          <dt>Points</dt>
-                          <dd>{mark.points ?? "--"}</dd>
-                        </div>
-                      </dl>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+        {!selectedStudent ? (
+          <section className={styles.statePanel}>
+            <h2>No student record found</h2>
+            <p>No active learner is linked to this parent phone number yet.</p>
           </section>
+        ) : activeSection === "performance" ? (
+          <>
+            <section className={styles.studentSummary}>
+              <article className={styles.profilePanel}>
+                <div className={styles.avatarFallback}>
+                  {selectedStudent.name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </div>
+                <div>
+                  <h2>{selectedStudent.name}</h2>
+                  <p>{formatClass(selectedStudent)}</p>
+                  <span>Admission: {selectedStudent.admissionNumber || "Not set"}</span>
+                </div>
+              </article>
 
-          <section className={styles.dashboardGrid}>
-            <article className={styles.performancePanel}>
+              <article className={styles.summaryCard}>
+                <span>Average score</span>
+                <strong className={getScoreTone(averageScore)}>
+                  {averageScore === null ? "--" : `${averageScore}%`}
+                </strong>
+              </article>
+
+              <article className={styles.summaryCard}>
+                <span>Latest band</span>
+                <strong>{latestBand}</strong>
+                <small>{totalPoints} total point{totalPoints === 1 ? "" : "s"}</small>
+              </article>
+
+              <article className={styles.summaryCard}>
+                <span>Subjects graded</span>
+                <strong>{subjectsWithMarks}</strong>
+              </article>
+
+              <article className={styles.summaryCard}>
+                <span>Latest exam</span>
+                <strong>{latestMark ? `Term ${latestMark.term}` : "--"}</strong>
+                <small>{latestMark ? `${latestMark.year} ${formatExamType(latestMark.examType)}` : "No marks yet"}</small>
+              </article>
+            </section>
+
+            <section className={styles.performancePanel}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Performance</span>
+                  <h2>Subject marks</h2>
+                </div>
+            <p>{currentSubjectMarks.length} subject{currentSubjectMarks.length === 1 ? "" : "s"}</p>
+              </div>
+
+              {currentSubjectMarks.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <h3>No marks have been posted yet</h3>
+                  <p>When teachers publish marks, they will appear here for the parent to review.</p>
+                </div>
+              ) : (
+                <div className={styles.marksList}>
+                  {currentSubjectMarks.map((mark) => {
+                    const score = getScore(mark);
+                    return (
+                      <article key={mark.id} className={styles.markCard}>
+                        <div className={styles.markMain}>
+                          <div>
+                            <strong>{mark.subjectName}</strong>
+                            <span>
+                              Term {mark.term}, {mark.year} - {formatExamType(mark.examType)}
+                            </span>
+                          </div>
+                          <div className={`${styles.scoreBadge} ${getScoreTone(score)}`}>
+                            {score === null ? "--" : `${Math.round(score)}%`}
+                          </div>
+                        </div>
+
+                        <dl className={styles.markDetails}>
+                          <div>
+                            <dt>CAT 1</dt>
+                            <dd>{mark.cat1 ?? "--"}</dd>
+                          </div>
+                          <div>
+                            <dt>CAT 2</dt>
+                            <dd>{mark.cat2 ?? "--"}</dd>
+                          </div>
+                          <div>
+                            <dt>Exam</dt>
+                            <dd>{mark.exam ?? "--"}</dd>
+                          </div>
+                          <div className={styles.bandCell}>
+                            <dt>CBC Band</dt>
+                            <dd>{mark.cbcBand || "--"}</dd>
+                          </div>
+                          <div className={styles.pointsCell}>
+                            <dt>Points</dt>
+                            <dd>{mark.points ?? "--"}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className={styles.performancePanel}>
               <div className={styles.sectionHeader}>
                 <div>
                   <span className={styles.eyebrow}>Comparison</span>
@@ -440,44 +604,55 @@ function StudentDashboard() {
                   ))}
                 </div>
               )}
-            </article>
-
+            </section>
+          </>
+        ) : (
+          <section className={styles.concernsPage}>
             <article className={styles.messagePanel}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Suggestion</span>
-                  <h2>Message headteacher</h2>
+                <div className={styles.sectionHeader}>
+                  <div>
+                    <span className={styles.eyebrow}>Suggestion</span>
+                    <h2>Message deputy teacher</h2>
+                  </div>
                 </div>
-              </div>
 
-              <form className={styles.messageForm} onSubmit={handleSendMessage}>
-                <label htmlFor="parentMessage">
-                  Suggestion or concern
-                </label>
-                <textarea
-                  id="parentMessage"
-                  value={messageText}
-                  onChange={(event) => setMessageText(event.target.value)}
-                  placeholder="Write your suggestion or concern here..."
-                  maxLength={1000}
-                  rows={6}
-                />
-                <div className={styles.messageFooter}>
-                  <span>{messageText.length}/1000</span>
-                  <button className={styles.primaryButton} disabled={sendingMessage} type="submit">
-                    {sendingMessage ? "Sending..." : "Send message"}
-                  </button>
-                </div>
-                {messageNotice && (
-                  <p className={`${styles.messageNotice} ${messageNotice.type === "success" ? styles.noticeSuccess : styles.noticeError}`}>
-                    {messageNotice.text}
-                  </p>
-                )}
-              </form>
-            </article>
+                <form className={styles.messageForm} onSubmit={handleSendMessage}>
+                  <label htmlFor="parentMessage">
+                    Suggestion or concern
+                  </label>
+                  <textarea
+                    id="parentMessage"
+                    value={messageText}
+                    onChange={(event) => setMessageText(event.target.value)}
+                    placeholder="Write your suggestion or concern here..."
+                    maxLength={1000}
+                    rows={8}
+                  />
+                  <div className={styles.messageFooter}>
+                    <span>{messageText.length}/1000</span>
+                    <button className={styles.primaryButton} disabled={sendingMessage} type="submit">
+                      {sendingMessage ? "Sending..." : "Send message"}
+                    </button>
+                  </div>
+                  {messageNotice && (
+                    <p className={`${styles.messageNotice} ${messageNotice.type === "success" ? styles.noticeSuccess : styles.noticeError}`}>
+                      {messageNotice.text}
+                    </p>
+                  )}
+                </form>
+              </article>
+
+              <article className={styles.concernInfoPanel}>
+                <span className={styles.eyebrow}>Follow up</span>
+                <h2>How school leadership receives it</h2>
+                <p>
+                  Your message appears in the deputy teacher and headteacher Parent Concerns page.
+                  Messages stay available for follow-up and are automatically removed after 20 days.
+                </p>
+              </article>
           </section>
-        </>
-      )}
+        )}
+      </section>
     </main>
   );
 }
