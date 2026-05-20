@@ -1,9 +1,8 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import styles from "./StudentDashboard.module.css";
+import { buildStudentReportSlipPdf } from "../shared/studentReportSlip";
 
 type PerformanceMark = {
   id: string;
@@ -69,23 +68,20 @@ const getScore = (mark: PerformanceMark) =>
       ? mark.finalScore
       : null;
 
-const getAverageScore = (marks: PerformanceMark[]) => {
-  const scores = marks
-    .map(getScore)
-    .filter((score): score is number => typeof score === "number");
-
-  if (scores.length === 0) {
-    return null;
-  }
-
-  return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
-};
-
 const getScoreTone = (score: number | null) => {
   if (score === null) return styles.scoreMuted;
   if (score >= 75) return styles.scoreStrong;
   if (score >= 50) return styles.scoreOkay;
   return styles.scoreLow;
+};
+
+const getSubjectRemark = (band: string | null) => {
+  if (!band) return "-";
+  if (band.startsWith("EE")) return "Exceeding Expectations";
+  if (band.startsWith("ME")) return "Meeting Expectations";
+  if (band.startsWith("AE")) return "Approaching Expectations";
+  if (band.startsWith("BE")) return "Below Expectations";
+  return "Configured CBC band";
 };
 
 function StudentDashboard() {
@@ -196,14 +192,16 @@ function StudentDashboard() {
     return Array.from(latestBySubject.values());
   }, [sortedMarks]);
 
-  const averageScore = getAverageScore(currentSubjectMarks);
   const latestMark = sortedMarks[0] || null;
   const subjectsWithMarks = currentSubjectMarks.filter((mark) => getScore(mark) !== null).length;
   const totalPoints = currentSubjectMarks.reduce(
     (sum, mark) => sum + (typeof mark.points === "number" ? mark.points : 0),
     0,
   );
-  const latestBand = latestMark?.cbcBand || "--";
+  const totalMarks = currentSubjectMarks.reduce((sum, mark) => {
+    const score = getScore(mark);
+    return sum + (typeof score === "number" ? Math.round(score) : 0);
+  }, 0);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -245,65 +243,28 @@ function StudentDashboard() {
       return;
     }
 
-    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-    const generatedAt = new Date().toLocaleDateString();
-    const title = "Student Results Report";
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text(title, 40, 42);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Student: ${selectedStudent.name}`, 40, 64);
-    doc.text(`Admission No: ${selectedStudent.admissionNumber || "Not set"}`, 40, 80);
-    doc.text(`Class: ${formatClass(selectedStudent)}`, 280, 64);
-    doc.text(`Average: ${averageScore === null ? "--" : `${averageScore}%`}`, 280, 80);
-    doc.text(`Latest Band: ${latestBand}`, 500, 64);
-    doc.text(`Total Points: ${totalPoints}`, 500, 80);
-    doc.text(`Generated: ${generatedAt}`, 680, 64);
-
-    autoTable(doc, {
-      startY: 106,
-      head: [[
-        "Subject",
-        "Term",
-        "Year",
-        "Exam",
-        "CAT 1",
-        "CAT 2",
-        "CAT 3",
-        "CAT 4",
-        "CAT 5",
-        "Exam Mark",
-        "Final",
-        "%",
-        "Band",
-        "Points",
-      ]],
-      body: currentSubjectMarks.map((mark) => {
+    const reportTerm = latestMark?.term || "-";
+    const reportYear = latestMark?.year || "-";
+    const reportExamType = latestMark?.examType || "exam";
+    const doc = buildStudentReportSlipPdf({
+      studentName: selectedStudent.name,
+      admissionNo: selectedStudent.admissionNumber || "Not set",
+      classLabel: formatClass(selectedStudent),
+      term: reportTerm,
+      year: reportYear,
+      examType: reportExamType,
+      subjects: currentSubjectMarks.map((mark) => {
         const score = getScore(mark);
-        return [
-          mark.subjectName,
-          mark.term,
-          mark.year,
-          formatExamType(mark.examType),
-          mark.cat1 ?? "--",
-          mark.cat2 ?? "--",
-          mark.cat3 ?? "--",
-          mark.cat4 ?? "--",
-          mark.cat5 ?? "--",
-          mark.exam ?? "--",
-          mark.finalScore ?? "--",
-          score === null ? "--" : Math.round(score),
-          mark.cbcBand || "--",
-          mark.points ?? "--",
-        ];
+        return {
+          subject: mark.subjectName,
+          marks: score === null ? "-" : `${Math.round(score)}%`,
+          cbcBand: mark.cbcBand || "-",
+          points: mark.points ?? "-",
+          remark: getSubjectRemark(mark.cbcBand),
+        };
       }),
-      styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [11, 32, 24], textColor: [255, 255, 255] },
-      alternateRowStyles: { fillColor: [253, 251, 247] },
-      margin: { left: 40, right: 40 },
+      totalMarks,
+      totalPoints,
     });
 
     doc.save(`${selectedStudent.name.replace(/\s+/g, "-").toLowerCase()}-results.pdf`);
@@ -472,16 +433,9 @@ function StudentDashboard() {
               </article>
 
               <article className={styles.summaryCard}>
-                <span>Average score</span>
-                <strong className={getScoreTone(averageScore)}>
-                  {averageScore === null ? "--" : `${averageScore}%`}
-                </strong>
-              </article>
-
-              <article className={styles.summaryCard}>
-                <span>Latest band</span>
-                <strong>{latestBand}</strong>
-                <small>{totalPoints} total point{totalPoints === 1 ? "" : "s"}</small>
+                <span>Total points</span>
+                <strong>{totalPoints}</strong>
+                <small>Across graded subjects</small>
               </article>
 
               <article className={styles.summaryCard}>
