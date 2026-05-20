@@ -573,8 +573,13 @@ const buildStudentExamSummaries = async (studentId: any) => {
 
   return Array.from(marksByCycle.entries())
     .map(([key, cycleMarks]) => {
-      const [yearValue = "0", termValue = "0", examType = "", classGrade = "", classStream = ""] =
-        key.split("::");
+      const [
+        yearValue = "0",
+        termValue = "0",
+        examType = "",
+        classGrade = "",
+        classStream = "",
+      ] = key.split("::");
       const scores = cycleMarks
         .map((mark) => marksToPercentage(mark))
         .filter((score): score is number => typeof score === "number");
@@ -582,10 +587,20 @@ const buildStudentExamSummaries = async (studentId: any) => {
       const points = cycleMarks.reduce((sum, mark) => {
         const score = marksToPercentage(mark);
         if (score === null) return sum;
-        return sum + Number(mark.points ?? buildMarkGradingFields(score, gradingBands).points ?? 0);
+        return (
+          sum +
+          Number(
+            mark.points ??
+              buildMarkGradingFields(score, gradingBands).points ??
+              0,
+          )
+        );
       }, 0);
       const average = scores.length > 0 ? Math.round(total / scores.length) : 0;
-      const averageBand = scores.length > 0 ? buildMarkGradingFields(average, gradingBands).cbcBand || "" : "";
+      const averageBand =
+        scores.length > 0
+          ? buildMarkGradingFields(average, gradingBands).cbcBand || ""
+          : "";
 
       return {
         term: Number(termValue),
@@ -631,7 +646,10 @@ const archiveAndIsolateFinalGradeStudents = async (
   const archived = [];
   for (const student of graduatingStudents as any[]) {
     const examSummaries = await buildStudentExamSummaries(student._id);
-    const totalPoints = examSummaries.reduce((sum, summary) => sum + summary.points, 0);
+    const totalPoints = examSummaries.reduce(
+      (sum, summary) => sum + summary.points,
+      0,
+    );
     const averagePercentage =
       examSummaries.length > 0
         ? Math.round(
@@ -664,20 +682,17 @@ const archiveAndIsolateFinalGradeStudents = async (
       { upsert: true, new: true },
     );
 
-    await studentModel.updateOne(
-      { _id: student._id },
-      {
-        $set: {
-          status: "completed",
-          class: null,
-          classStream: null,
-          term: currentTerm,
-          year: currentYear,
-          examType: currentExamType,
-          enrolledSubjects: [],
-        },
-      } as any,
-    );
+    await studentModel.updateOne({ _id: student._id }, {
+      $set: {
+        status: "completed",
+        class: null,
+        classStream: null,
+        term: currentTerm,
+        year: currentYear,
+        examType: currentExamType,
+        enrolledSubjects: [],
+      },
+    } as any);
 
     archived.push({
       id: student._id,
@@ -785,7 +800,9 @@ router.post("/login", async (req: Request, res: Response) => {
     // Extract all roles
     const roles = await extractRoles(user);
     const guardianPhone =
-      user.__t === rolesMapped.ST ? user.guardianPhone || loginIdentifier : undefined;
+      user.__t === rolesMapped.ST
+        ? user.guardianPhone || loginIdentifier
+        : undefined;
 
     const token = jwt.sign(
       {
@@ -1008,264 +1025,318 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
   }
 });
 
-router.get("/graduation-settings", authenticate, async (_req: Request, res: Response) => {
-  try {
-    const setting = await SchoolSettingModel.findOne({ key: "finalGrade" });
-    res.json({ finalGrade: setting?.value || "" });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.put("/graduation-settings", authenticate, async (req: Request, res: Response) => {
-  try {
-    const finalGrade = normalizeClassValue(req.body.finalGrade);
-    if (!finalGrade) {
-      return res.status(400).json({ message: "Final grade is required." });
+router.get(
+  "/graduation-settings",
+  authenticate,
+  async (_req: Request, res: Response) => {
+    try {
+      const setting = await SchoolSettingModel.findOne({ key: "finalGrade" });
+      res.json({ finalGrade: setting?.value || "" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
+  },
+);
 
-    await SchoolSettingModel.findOneAndUpdate(
-      { key: "finalGrade" },
-      { $set: { value: finalGrade } },
-      { upsert: true, new: true },
-    );
+router.put(
+  "/graduation-settings",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const finalGrade = normalizeClassValue(req.body.finalGrade);
+      if (!finalGrade) {
+        return res.status(400).json({ message: "Final grade is required." });
+      }
 
-    res.json({ finalGrade, message: `Final grade set to ${finalGrade}.` });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
+      await SchoolSettingModel.findOneAndUpdate(
+        { key: "finalGrade" },
+        { $set: { value: finalGrade } },
+        { upsert: true, new: true },
+      );
 
-router.get("/exited-students", authenticate, async (_req: Request, res: Response) => {
-  try {
-    const exitedStudents = await ExitedStudentModel.find().sort({
-      exitedAt: -1,
-      name: 1,
-    });
-    res.json(exitedStudents);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.delete("/exited-students/:id", authenticate, async (req: Request, res: Response) => {
-  try {
-    const deleted = await ExitedStudentModel.findByIdAndDelete(req.params.id);
-    if (!deleted) {
-      return res.status(404).json({ message: "Exited student record not found." });
+      res.json({ finalGrade, message: `Final grade set to ${finalGrade}.` });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
+  },
+);
 
-    res.json({ message: "Exited student archive deleted." });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.get("/student-dashboard", authenticate, async (req: Request, res: Response) => {
-  try {
-    const authUser = (req as any).user;
-    const roles = Array.isArray(authUser?.roles) ? authUser.roles : [];
-
-    if (!roles.includes(rolesMapped.ST)) {
-      return res.status(403).json({ message: "Student dashboard access only." });
-    }
-
-    const primaryStudent: any = await studentModel
-      .findById(authUser.id)
-      .select("-password")
-      .lean();
-
-    if (!primaryStudent) {
-      return res.status(404).json({ message: "Student record not found." });
-    }
-
-    const guardianPhone = authUser.guardianPhone || primaryStudent.guardianPhone;
-    const guardianPhoneQuery = buildGuardianPhoneQuery(guardianPhone);
-    const linkedStudents: any[] = guardianPhoneQuery
-      ? await studentModel
-          .find(guardianPhoneQuery as any)
-          .select("-password")
-          .sort({ studentsName: 1 })
-          .lean()
-      : [primaryStudent];
-
-    const studentMap = new Map<string, any>();
-    for (const student of linkedStudents) {
-      studentMap.set(student._id.toString(), student);
-    }
-    studentMap.set(primaryStudent._id.toString(), primaryStudent);
-
-    const students = Array.from(studentMap.values());
-    const studentIds = students.map((student) => student._id);
-    const marks = await MarkModel.find({ studentId: { $in: studentIds } } as any)
-      .populate("subjectId", "name department")
-      .sort({ year: -1, term: -1, examType: 1 })
-      .lean();
-    const cbcBands = await getCbcGradingBands();
-
-    const marksByStudent = new Map<string, any[]>();
-    for (const mark of marks as any[]) {
-      const studentId = mark.studentId?.toString();
-      const existing = marksByStudent.get(studentId) || [];
-      const percentage = computeMarkPercentage(mark);
-      const computedGrading = buildMarkGradingFields(percentage, cbcBands);
-      const cbcBand = mark.cbcBand || computedGrading.cbcBand;
-      const points = mark.points ?? computedGrading.points;
-
-      existing.push({
-        id: mark._id,
-        subjectId: mark.subjectId?._id || mark.subjectId,
-        subjectName: mark.subjectId?.name || "Unknown subject",
-        classGrade: mark.classGrade,
-        classStream: mark.classStream,
-        term: mark.term,
-        year: mark.year,
-        examType: mark.examType,
-        cat1: mark.cat1,
-        cat2: mark.cat2,
-        cat3: mark.cat3,
-        cat4: mark.cat4,
-        cat5: mark.cat5,
-        exam: mark.exam,
-        finalScore: mark.finalScore,
-        percentage,
-        cbcBand,
-        points,
+router.get(
+  "/exited-students",
+  authenticate,
+  async (_req: Request, res: Response) => {
+    try {
+      const exitedStudents = await ExitedStudentModel.find().sort({
+        exitedAt: -1,
+        name: 1,
       });
-      marksByStudent.set(studentId, existing);
+      res.json(exitedStudents);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
+  },
+);
 
-    res.json({
-      parent: {
-        name: primaryStudent.guardianName || "Parent",
-        phone: guardianPhone || "",
-      },
-      students: students.map((student) => ({
-        ...toStudentSummary(student),
-        performance: marksByStudent.get(student._id.toString()) || [],
-      })),
-    });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.delete(
+  "/exited-students/:id",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const deleted = await ExitedStudentModel.findByIdAndDelete(req.params.id);
+      if (!deleted) {
+        return res
+          .status(404)
+          .json({ message: "Exited student record not found." });
+      }
 
-router.post("/parent-concerns", authenticate, async (req: Request, res: Response) => {
-  try {
-    const authUser = (req as any).user;
-    const roles = Array.isArray(authUser?.roles) ? authUser.roles : [];
-
-    if (!roles.includes(rolesMapped.ST)) {
-      return res.status(403).json({ message: "Only parents can send suggestions from this portal." });
+      res.json({ message: "Exited student archive deleted." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
+  },
+);
 
-    const message = typeof req.body.message === "string" ? req.body.message.trim() : "";
-    if (message.length < 5) {
-      return res.status(400).json({ message: "Please enter a suggestion or concern." });
+router.get(
+  "/student-dashboard",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const authUser = (req as any).user;
+      const roles = Array.isArray(authUser?.roles) ? authUser.roles : [];
+
+      if (!roles.includes(rolesMapped.ST)) {
+        return res
+          .status(403)
+          .json({ message: "Student dashboard access only." });
+      }
+
+      const primaryStudent: any = await studentModel
+        .findById(authUser.id)
+        .select("-password")
+        .lean();
+
+      if (!primaryStudent) {
+        return res.status(404).json({ message: "Student record not found." });
+      }
+
+      const guardianPhone =
+        authUser.guardianPhone || primaryStudent.guardianPhone;
+      const guardianPhoneQuery = buildGuardianPhoneQuery(guardianPhone);
+      const linkedStudents: any[] = guardianPhoneQuery
+        ? await studentModel
+            .find(guardianPhoneQuery as any)
+            .select("-password")
+            .sort({ studentsName: 1 })
+            .lean()
+        : [primaryStudent];
+
+      const studentMap = new Map<string, any>();
+      for (const student of linkedStudents) {
+        studentMap.set(student._id.toString(), student);
+      }
+      studentMap.set(primaryStudent._id.toString(), primaryStudent);
+
+      const students = Array.from(studentMap.values());
+      const studentIds = students.map((student) => student._id);
+      const marks = await MarkModel.find({
+        studentId: { $in: studentIds },
+      } as any)
+        .populate("subjectId", "name department")
+        .sort({ year: -1, term: -1, examType: 1 })
+        .lean();
+      const cbcBands = await getCbcGradingBands();
+
+      const marksByStudent = new Map<string, any[]>();
+      for (const mark of marks as any[]) {
+        const studentId = mark.studentId?.toString();
+        const existing = marksByStudent.get(studentId) || [];
+        const percentage = computeMarkPercentage(mark);
+        const computedGrading = buildMarkGradingFields(percentage, cbcBands);
+        const cbcBand = mark.cbcBand || computedGrading.cbcBand;
+        const points = mark.points ?? computedGrading.points;
+
+        existing.push({
+          id: mark._id,
+          subjectId: mark.subjectId?._id || mark.subjectId,
+          subjectName: mark.subjectId?.name || "Unknown subject",
+          classGrade: mark.classGrade,
+          classStream: mark.classStream,
+          term: mark.term,
+          year: mark.year,
+          examType: mark.examType,
+          cat1: mark.cat1,
+          cat2: mark.cat2,
+          cat3: mark.cat3,
+          cat4: mark.cat4,
+          cat5: mark.cat5,
+          exam: mark.exam,
+          finalScore: mark.finalScore,
+          percentage,
+          cbcBand,
+          points,
+        });
+        marksByStudent.set(studentId, existing);
+      }
+
+      res.json({
+        parent: {
+          name: primaryStudent.guardianName || "Parent",
+          phone: guardianPhone || "",
+        },
+        students: students.map((student) => ({
+          ...toStudentSummary(student),
+          performance: marksByStudent.get(student._id.toString()) || [],
+        })),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
+  },
+);
 
-    if (message.length > 1000) {
-      return res.status(400).json({ message: "Message should be 1000 characters or fewer." });
-    }
+router.post(
+  "/parent-concerns",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const authUser = (req as any).user;
+      const roles = Array.isArray(authUser?.roles) ? authUser.roles : [];
 
-    const parentStudent: any = await studentModel.findById(authUser.id).lean();
-    if (!parentStudent) {
-      return res.status(404).json({ message: "Student record not found." });
-    }
+      if (!roles.includes(rolesMapped.ST)) {
+        return res
+          .status(403)
+          .json({
+            message: "Only parents can send suggestions from this portal.",
+          });
+      }
 
-    const selectedStudent =
-      req.body.studentId
+      const message =
+        typeof req.body.message === "string" ? req.body.message.trim() : "";
+      if (message.length < 5) {
+        return res
+          .status(400)
+          .json({ message: "Please enter a suggestion or concern." });
+      }
+
+      if (message.length > 1000) {
+        return res
+          .status(400)
+          .json({ message: "Message should be 1000 characters or fewer." });
+      }
+
+      const parentStudent: any = await studentModel
+        .findById(authUser.id)
+        .lean();
+      if (!parentStudent) {
+        return res.status(404).json({ message: "Student record not found." });
+      }
+
+      const selectedStudent = req.body.studentId
         ? await studentModel.findById(req.body.studentId).lean()
         : parentStudent;
-    const concernStudent: any = selectedStudent || parentStudent;
-    const parentName = parentStudent.guardianName || "Parent";
-    const parentPhone = authUser.guardianPhone || parentStudent.guardianPhone || "";
-    const concern = await ParentConcernModel.create({
-      parentId: parentStudent._id,
-      parentName,
-      parentPhone,
-      studentId: concernStudent?._id || parentStudent._id,
-      studentName: concernStudent?.studentsName || parentStudent.studentsName,
-      admissionNo: concernStudent?.ADM || parentStudent.ADM,
-      classGrade: concernStudent?.class || parentStudent.class,
-      classStream: concernStudent?.classStream || parentStudent.classStream,
-      message,
-      status: "Open",
-      priority: req.body.priority || "Medium",
-    });
+      const concernStudent: any = selectedStudent || parentStudent;
+      const parentName = parentStudent.guardianName || "Parent";
+      const parentPhone =
+        authUser.guardianPhone || parentStudent.guardianPhone || "";
+      const concern = await ParentConcernModel.create({
+        parentId: parentStudent._id,
+        parentName,
+        parentPhone,
+        studentId: concernStudent?._id || parentStudent._id,
+        studentName: concernStudent?.studentsName || parentStudent.studentsName,
+        admissionNo: concernStudent?.ADM || parentStudent.ADM,
+        classGrade: concernStudent?.class || parentStudent.class,
+        classStream: concernStudent?.classStream || parentStudent.classStream,
+        message,
+        status: "Open",
+        priority: req.body.priority || "Medium",
+      });
 
-    res.status(201).json({
-      message: "Suggestion sent to school leadership.",
-      concern: {
-        id: concern._id,
-        status: concern.status,
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.get("/parent-concerns", authenticate, async (req: Request, res: Response) => {
-  try {
-    const authUser = (req as any).user;
-    if (!canViewParentConcerns(authUser?.roles)) {
-      return res.status(403).json({ message: "Deputy or headteacher access required." });
+      res.status(201).json({
+        message: "Suggestion sent to school leadership.",
+        concern: {
+          id: concern._id,
+          status: concern.status,
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
+  },
+);
 
-    const concerns = await ParentConcernModel.find()
-      .sort({ createdAt: -1 })
-      .lean();
+router.get(
+  "/parent-concerns",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const authUser = (req as any).user;
+      if (!canViewParentConcerns(authUser?.roles)) {
+        return res
+          .status(403)
+          .json({ message: "Deputy or headteacher access required." });
+      }
 
-    res.json(
-      concerns.map((concern: any) => ({
-        id: concern._id,
-        parent: concern.parentName,
-        parentPhone: concern.parentPhone,
-        student: concern.studentName || "Linked student",
-        admissionNo: concern.admissionNo || "",
-        class: formatClassLabel(concern.classGrade, concern.classStream),
-        issue: concern.message,
-        date: concern.createdAt
-          ? new Date(concern.createdAt).toISOString().slice(0, 10)
-          : "",
-        status: concern.status,
-        priority: concern.priority,
-        expiresAt: concern.expiresAt,
-      })),
-    );
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
+      const concerns = await ParentConcernModel.find()
+        .sort({ createdAt: -1 })
+        .lean();
 
-router.put("/parent-concerns/:id/status", authenticate, async (req: Request, res: Response) => {
-  try {
-    const authUser = (req as any).user;
-    if (!canViewParentConcerns(authUser?.roles)) {
-      return res.status(403).json({ message: "Deputy or headteacher access required." });
+      res.json(
+        concerns.map((concern: any) => ({
+          id: concern._id,
+          parent: concern.parentName,
+          parentPhone: concern.parentPhone,
+          student: concern.studentName || "Linked student",
+          admissionNo: concern.admissionNo || "",
+          class: formatClassLabel(concern.classGrade, concern.classStream),
+          issue: concern.message,
+          date: concern.createdAt
+            ? new Date(concern.createdAt).toISOString().slice(0, 10)
+            : "",
+          status: concern.status,
+          priority: concern.priority,
+          expiresAt: concern.expiresAt,
+        })),
+      );
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
+  },
+);
 
-    const status = typeof req.body.status === "string" ? req.body.status : "";
-    if (!["Open", "Pending", "Resolved"].includes(status)) {
-      return res.status(400).json({ message: "Invalid concern status." });
+router.put(
+  "/parent-concerns/:id/status",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const authUser = (req as any).user;
+      if (!canViewParentConcerns(authUser?.roles)) {
+        return res
+          .status(403)
+          .json({ message: "Deputy or headteacher access required." });
+      }
+
+      const status = typeof req.body.status === "string" ? req.body.status : "";
+      if (!["Open", "Pending", "Resolved"].includes(status)) {
+        return res.status(400).json({ message: "Invalid concern status." });
+      }
+
+      const concern = await ParentConcernModel.findByIdAndUpdate(
+        req.params.id,
+        { status },
+        { new: true },
+      );
+
+      if (!concern) {
+        return res.status(404).json({ message: "Parent concern not found." });
+      }
+
+      res.json({ message: "Parent concern updated.", concern });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
-
-    const concern = await ParentConcernModel.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true },
-    );
-
-    if (!concern) {
-      return res.status(404).json({ message: "Parent concern not found." });
-    }
-
-    res.json({ message: "Parent concern updated.", concern });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-});
+  },
+);
 
 router.get("/:id", authenticate, async (req: Request, res: Response) => {
   try {
@@ -1299,18 +1370,12 @@ router.get(
       const { grade, stream } = req.params;
       const { term, year, examType } = req.query;
       const activeCycle =
-        term && year && examType
-          ? null
-          : await resolveActiveCycle();
-      const requestedTerm = term
-        ? Number(term)
-        : activeCycle?.term ?? 1;
-      const requestedYear = year
-        ? Number(year)
-        : activeCycle?.year ?? 2024;
+        term && year && examType ? null : await resolveActiveCycle();
+      const requestedTerm = term ? Number(term) : (activeCycle?.term ?? 1);
+      const requestedYear = year ? Number(year) : (activeCycle?.year ?? 2024);
       const requestedExamType = examType
         ? normalizeExamType(examType)
-        : activeCycle?.examType ?? "opener";
+        : (activeCycle?.examType ?? "opener");
 
       const students = await userModel.find({
         __t: rolesMapped.ST,
@@ -1538,7 +1603,9 @@ router.put("/password", authenticate, async (req: Request, res: Response) => {
   try {
     const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword) {
-      return res.status(400).json({ message: "Old and new passwords are required." });
+      return res
+        .status(400)
+        .json({ message: "Old and new passwords are required." });
     }
 
     const userId = (req as any).user?.id;
@@ -1648,14 +1715,15 @@ router.put(
       }
 
       const assignmentClassOffset = newYear - currentYear;
-      const exitedStudents = finalGradeSetting?.value && assignmentClassOffset > 0
-        ? await archiveAndIsolateFinalGradeStudents(
-            String(finalGradeSetting.value),
-            currentTerm,
-            currentYear,
-            currentExamType,
-          )
-        : [];
+      const exitedStudents =
+        finalGradeSetting?.value && assignmentClassOffset > 0
+          ? await archiveAndIsolateFinalGradeStudents(
+              String(finalGradeSetting.value),
+              currentTerm,
+              currentYear,
+              currentExamType,
+            )
+          : [];
 
       const usersToProcess = await userModel.find({
         $or: [
@@ -1677,9 +1745,12 @@ router.put(
         const shiftedClass = shiftClassName(currentClass, newYear - userYear);
 
         // Unassign teachers who were in the final grade
-        const isFinalGrade = finalGradeSetting?.value && extractClassLevel(currentClass) === extractClassLevel(String(finalGradeSetting.value));
+        const isFinalGrade =
+          finalGradeSetting?.value &&
+          extractClassLevel(currentClass) ===
+            extractClassLevel(String(finalGradeSetting.value));
         const isTeacher = (userDoc as any).__t !== rolesMapped.ST;
-        
+
         if (isFinalGrade && isTeacher && assignmentClassOffset > 0) {
           const roles = (userDoc as any).roles || {};
           return [
@@ -1690,9 +1761,14 @@ router.put(
                   $set: {
                     class: null,
                     classStream: null,
-                    "roles.role1": roles.role1 === rolesMapped.CT ? rolesMapped.SJ : roles.role1,
-                    "roles.role2": roles.role2 === rolesMapped.CT ? null : roles.role2,
-                    "roles.role3": roles.role3 === rolesMapped.CT ? null : roles.role3,
+                    "roles.role1":
+                      roles.role1 === rolesMapped.CT
+                        ? rolesMapped.SJ
+                        : roles.role1,
+                    "roles.role2":
+                      roles.role2 === rolesMapped.CT ? null : roles.role2,
+                    "roles.role3":
+                      roles.role3 === rolesMapped.CT ? null : roles.role3,
                   },
                 },
               },
@@ -1706,9 +1782,14 @@ router.put(
 
         // Student elective preservation and carry-forward
         let enrolledSubjects = (userDoc as any).enrolledSubjects;
-        if ((userDoc as any).__t === rolesMapped.ST && Array.isArray(enrolledSubjects)) {
+        if (
+          (userDoc as any).__t === rolesMapped.ST &&
+          Array.isArray(enrolledSubjects)
+        ) {
           const currentClassGrade = normalizeClassValue(currentClass);
-          const currentClassStream = normalizeClassValue((userDoc as any).classStream);
+          const currentClassStream = normalizeClassValue(
+            (userDoc as any).classStream,
+          );
           const shiftedClassGrade = normalizeClassValue(shiftedClass);
           const activeEnrollmentKeys = new Set(
             enrolledSubjects
@@ -1726,14 +1807,23 @@ router.put(
             .filter((e: any) => {
               if (e.isActive === false) return false;
               const subjectId = normalizeSubjectId(e.subjectId);
-              const enrollmentClassGrade = normalizeClassValue(e.classGrade) || currentClassGrade;
-              const enrollmentClassStream = normalizeClassValue(e.classStream) || currentClassStream;
-              const targetKey = [subjectId, shiftedClassGrade, enrollmentClassStream].join("::");
-              const setting = getClassSubjectEnrollmentSetting(classSubjectSettingsMap, {
+              const enrollmentClassGrade =
+                normalizeClassValue(e.classGrade) || currentClassGrade;
+              const enrollmentClassStream =
+                normalizeClassValue(e.classStream) || currentClassStream;
+              const targetKey = [
                 subjectId,
-                classGrade: currentClassGrade,
-                classStream: currentClassStream,
-              });
+                shiftedClassGrade,
+                enrollmentClassStream,
+              ].join("::");
+              const setting = getClassSubjectEnrollmentSetting(
+                classSubjectSettingsMap,
+                {
+                  subjectId,
+                  classGrade: currentClassGrade,
+                  classStream: currentClassStream,
+                },
+              );
 
               return (
                 subjectId &&
@@ -1747,10 +1837,11 @@ router.put(
             .map((e: any) => ({
               ...e,
               classGrade: shiftedClassGrade,
-              classStream: normalizeClassValue(e.classStream) || currentClassStream,
+              classStream:
+                normalizeClassValue(e.classStream) || currentClassStream,
               enrolledAt: new Date(),
             }));
-          
+
           // History remains (old classGrade entries), and new ones added for the shifted class
           enrolledSubjects = [...enrolledSubjects, ...newEnrollments];
         }
@@ -1778,9 +1869,15 @@ router.put(
         // Delete assignments and settings for classes that reached graduation
         if (finalGradeSetting?.value && assignmentClassOffset > 0) {
           const finalLevel = extractClassLevel(String(finalGradeSetting.value));
-          await AssignmentModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
-          await ClassSubjectSettingModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
-          await TimetableModel.deleteMany({ classGrade: new RegExp(`^${finalLevel}\\D*`, "i") });
+          await AssignmentModel.deleteMany({
+            classGrade: new RegExp(`^${finalLevel}\\D*`, "i"),
+          });
+          await ClassSubjectSettingModel.deleteMany({
+            classGrade: new RegExp(`^${finalLevel}\\D*`, "i"),
+          });
+          await TimetableModel.deleteMany({
+            classGrade: new RegExp(`^${finalLevel}\\D*`, "i"),
+          });
         }
 
         const assignments = await AssignmentModel.find();
