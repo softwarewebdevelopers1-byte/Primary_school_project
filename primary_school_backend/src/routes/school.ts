@@ -823,7 +823,6 @@ router.get("/archives/:id/results", async (req: Request, res: Response) => {
           name: student?.studentsName || "Unknown Student",
           admissionNo: student?.ADM || "-",
           subjects: {},
-          average: null,
         };
 
       row.subjects[subjectId] = {
@@ -844,18 +843,6 @@ router.get("/archives/:id/results", async (req: Request, res: Response) => {
     }
 
     const rows = Array.from(rowsByStudent.values())
-      .map((row) => {
-        const scores = Object.values(row.subjects)
-          .map((subject: any) => subject.percentage)
-          .filter((score): score is number => typeof score === "number");
-        return {
-          ...row,
-          average:
-            scores.length > 0
-              ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
-              : null,
-        };
-      })
       .sort((left, right) => left.name.localeCompare(right.name));
 
     res.json({

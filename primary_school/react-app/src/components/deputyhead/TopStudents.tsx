@@ -3,7 +3,6 @@ import React from "react";
 import { SectionHeader } from "./shared/SectionHeader";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { gc, avg } from "./shared/helpers";
 
 interface TopStudentsProps {
   students?: any[];
@@ -16,9 +15,10 @@ export const TopStudents: React.FC<TopStudentsProps> = ({ students = [], classes
   students.forEach(s => {
     const key = `${s.classGrade}${s.classStream || ""}`;
     if (!classStudentsMap.has(key)) classStudentsMap.set(key, []);
+    const totalMarks = Object.values(s.marks || {}).reduce((sum: number, mark: any) => sum + (typeof mark === "number" ? mark : 0), 0);
     classStudentsMap.get(key).push({
       ...s,
-      calculatedAvg: avg(s.marks || {})
+      totalMarks
     });
   });
 
@@ -30,14 +30,14 @@ export const TopStudents: React.FC<TopStudentsProps> = ({ students = [], classes
       <SectionHeader
         eyebrow="Excellence"
         title="Top performers"
-        sub="Best 5 students per stream based on overall average"
+        sub="Best 5 students per stream based on total marks"
       />
       
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20 }}>
         {sortedClassKeys.map(key => {
           const classStudents = classStudentsMap.get(key);
           const top5 = classStudents
-            .sort((a: any, b: any) => b.calculatedAvg - a.calculatedAvg)
+            .sort((a: any, b: any) => b.totalMarks - a.totalMarks)
             .slice(0, 5);
           
           const classObj = classes.find(c => c.id === key) || { name: key };
@@ -72,7 +72,8 @@ export const TopStudents: React.FC<TopStudentsProps> = ({ students = [], classes
                       <p style={{ margin: 0, fontFamily: F.sans, fontSize: 11, color: C.textMuted }}>Adm: {s.admissionNo || s.adm}</p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ margin: 0, fontFamily: F.serif, fontSize: 15, fontWeight: 700, color: gc(s.calculatedAvg) }}>{s.calculatedAvg}%</p>
+                      <p style={{ margin: 0, fontFamily: F.serif, fontSize: 15, fontWeight: 700, color: C.text }}>{s.totalMarks}</p>
+                      <p style={{ margin: 0, fontFamily: F.sans, fontSize: 10.5, color: C.textMuted }}>marks</p>
                     </div>
                   </div>
                 ))}

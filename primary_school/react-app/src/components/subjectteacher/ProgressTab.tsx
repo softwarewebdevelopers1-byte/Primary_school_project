@@ -61,14 +61,6 @@ export const ProgressTab: React.FC<ProgressTabProps> = ({
         </div>
         <div
           className={styles.metricCard}
-          style={{ borderTopColor: "var(--sText)" }}
-        >
-          <p className={styles.metricLabel}>Stream avg</p>
-          <p className={styles.metricValue}>{currentSubject.avg}%</p>
-          <p className={styles.metricNote}>Overall</p>
-        </div>
-        <div
-          className={styles.metricCard}
           style={{ borderTopColor: "var(--gold)" }}
         >
           <p className={styles.metricLabel}>Marks ready</p>

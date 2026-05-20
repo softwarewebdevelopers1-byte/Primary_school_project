@@ -1,6 +1,6 @@
 // components/classteacher/StudentDetails.tsx
 import React from "react";
-import { gradeColor, gradeBg, marksForStudentSubjects, subjectsForStudent, sumPoints, avg } from "./shared/helpers";
+import { gradeColor, gradeBg, marksForStudentSubjects, subjectsForStudent, sumPoints } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { BackIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
@@ -19,9 +19,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
 }) => {
   const { bands: cbcBands } = useCbcGradingBands();
   const studentMarks = marksForStudentSubjects(student, subjects);
-  const averageMarks = avg(studentMarks);
-  const summaryBand = resolveCbcBand(averageMarks, cbcBands).cbcBand;
-
+  const totalPoints = sumPoints(studentMarks, cbcBands);
 
   return (
     <div className="ct-anim">
@@ -97,11 +95,11 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                   fontFamily: FONT.serif,
                   fontSize: "2.4rem",
                   fontWeight: 600,
-                  color: gradeColor(summaryBand),
+                  color: C.text,
                   margin: 0,
                 }}
               >
-                {summaryBand}
+                {totalPoints}
               </p>
               <p
                 style={{
@@ -111,7 +109,7 @@ export const StudentDetails: React.FC<StudentDetailsProps> = ({
                   margin: 0,
                 }}
               >
-                {sumPoints(studentMarks, cbcBands)} points
+                total points
               </p>
             </div>
           </div>

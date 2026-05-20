@@ -19,7 +19,6 @@ interface SidebarProps {
   isMobile: boolean;
   onToggleCollapse: () => void;
   onSelectTab: (tabId: string) => void;
-  classAvg: number;
   user: any;
   onChangePassword: () => void;
   onLogout: () => void;
@@ -33,7 +32,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobile,
   onToggleCollapse,
   onSelectTab,
-  classAvg,
   user,
   onChangePassword,
   onLogout,
@@ -285,71 +283,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         ))}
       </nav>
-
-      {/* Sidebar pulse */}
-      {!collapsed && (
-        <div
-          style={{
-            padding: "12px 14px",
-            borderTop: `1px solid rgba(255,255,255,0.07)`,
-            borderBottom: `1px solid rgba(255,255,255,0.07)`,
-          }}
-        >
-          <p
-            style={{
-              fontFamily: FONT.sans,
-              fontSize: 10,
-              fontWeight: 700,
-              color: "#4a6b5a",
-              textTransform: "uppercase",
-              letterSpacing: "0.07em",
-              margin: "0 0 8px",
-            }}
-          >
-            Class pulse
-          </p>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: 6,
-            }}
-          >
-            <span
-              style={{ fontFamily: FONT.sans, fontSize: 12, color: "#6b9a82" }}
-            >
-              Class average
-            </span>
-            <span
-              style={{
-                fontFamily: FONT.serif,
-                fontSize: 14,
-                fontWeight: 600,
-                color: C.gold,
-              }}
-            >
-              {classAvg}%
-            </span>
-          </div>
-          <div
-            style={{
-              height: 5,
-              background: "rgba(255,255,255,0.08)",
-              borderRadius: 3,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: `${classAvg}%`,
-                height: "100%",
-                background: C.gold,
-                borderRadius: 3,
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <div

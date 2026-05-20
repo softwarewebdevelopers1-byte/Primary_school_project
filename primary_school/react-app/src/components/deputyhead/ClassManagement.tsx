@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { SectionHeader } from "./shared/SectionHeader";
 import { C, F } from "./shared/constants";
-import { gc } from "./shared/helpers";
 
 interface ClassManagementProps {
   classes?: any[];
@@ -79,34 +78,6 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({
                 {c.teacher}
               </p>
             </div>
-            <span
-              style={{
-                fontFamily: F.serif,
-                fontSize: "1.7rem",
-                fontWeight: 600,
-                color: gc(c.avg),
-              }}
-            >
-              {c.avg}%
-            </span>
-          </div>
-          <div
-            style={{
-              height: 6,
-              background: C.sand,
-              borderRadius: 3,
-              overflow: "hidden",
-              marginBottom: 12,
-            }}
-          >
-            <div
-              style={{
-                width: `${c.avg}%`,
-                height: "100%",
-                background: gc(c.avg),
-                borderRadius: 3,
-              }}
-            />
           </div>
           <div
             style={{

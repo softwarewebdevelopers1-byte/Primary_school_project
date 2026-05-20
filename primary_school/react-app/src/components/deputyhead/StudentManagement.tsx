@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { SectionHeader } from "./shared/SectionHeader";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { gc, avg } from "./shared/helpers";
+import { gc } from "./shared/helpers";
 
 interface StudentManagementProps {
   students?: any[];
@@ -65,7 +65,6 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                 "Class",
                 "Gender",
                 "Status",
-                "Average",
                 "",
               ].map((h, i) => (
                 <th
@@ -176,40 +175,6 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                   </span>
                 </td>
                 <td style={{ padding: "11px 14px" }}>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
-                    <div
-                      style={{
-                        width: 60,
-                        height: 6,
-                        background: C.sand,
-                        borderRadius: 3,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: `${avg(s.marks || {})}%`,
-                          height: "100%",
-                          background: gc(avg(s.marks || {})),
-                          borderRadius: 3,
-                        }}
-                      />
-                    </div>
-                    <span
-                      style={{
-                        fontFamily: F.serif,
-                        fontSize: 15,
-                        fontWeight: 600,
-                        color: gc(avg(s.marks || {})),
-                      }}
-                    >
-                      {avg(s.marks || {})}%
-                    </span>
-                  </div>
-                </td>
-                <td style={{ padding: "11px 14px" }}>
                   <button
                     className="dh-pill"
                     onClick={() => setSelectedStudent(s)}
@@ -304,12 +269,6 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ students =
                   )}
                 </tbody>
               </table>
-              <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", padding: 16, background: C.cream, borderRadius: 8 }}>
-                <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: C.textMid }}>Average Score</span>
-                <span style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 700, color: gc(avg(selectedStudent.marks || {})) }}>
-                  {avg(selectedStudent.marks || {})}%
-                </span>
-              </div>
             </div>
           </div>
         </div>

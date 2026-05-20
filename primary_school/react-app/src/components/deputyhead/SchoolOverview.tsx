@@ -5,7 +5,6 @@ import { MetricCard } from "./shared/MetricCard";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
 import { CONCERNS } from "./shared/data";
-import { gc } from "./shared/helpers";
 
 interface SchoolOverviewProps {
   isHT: boolean;
@@ -27,7 +26,6 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({
   const totalStudents = students.length;
   const totalTeachers = staff.length;
   const totalClasses = classes.length;
-  const classAvg = classes.length > 0 ? Math.round(classes.reduce((a, c) => a + c.avg, 0) / classes.length) : 0;
   const openConcerns = CONCERNS.filter((c) => c.status === "Open").length;
 
   return (
@@ -64,12 +62,6 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({
           accent={C.infoText}
         />
         <MetricCard
-          label="School average"
-          value={`${classAvg}%`}
-          note="All streams combined"
-          accent={gc(classAvg)}
-        />
-        <MetricCard
           label="Open alerts"
           value="3"
           note="Need attention today"
@@ -102,7 +94,7 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({
               margin: "0 0 1rem",
             }}
           >
-            Class performance
+            Class streams
           </p>
           {classes.map((c, i) => (
             <div key={c.id || i} style={{ marginBottom: 12 }}>
@@ -123,28 +115,11 @@ export const SchoolOverview: React.FC<SchoolOverviewProps> = ({
                     fontFamily: F.serif,
                     fontSize: 14,
                     fontWeight: 600,
-                    color: gc(c.avg),
+                    color: C.textMid,
                   }}
                 >
-                  {c.avg}%
+                  {c.students || 0} learners
                 </span>
-              </div>
-              <div
-                style={{
-                  height: 7,
-                  background: C.sand,
-                  borderRadius: 4,
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${c.avg}%`,
-                    height: "100%",
-                    background: gc(c.avg),
-                    borderRadius: 4,
-                  }}
-                />
               </div>
             </div>
           ))}

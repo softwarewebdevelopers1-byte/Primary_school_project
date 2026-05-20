@@ -48,10 +48,6 @@ function StudentPortfolio({
 
       <section className={styles.metricsGrid}>
         <article className={styles.metricCard}>
-          <span>Average score</span>
-          <strong>{portfolio.averageScore}%</strong>
-        </article>
-        <article className={styles.metricCard}>
           <span>Attendance</span>
           <strong>{portfolio.attendanceRate}%</strong>
         </article>

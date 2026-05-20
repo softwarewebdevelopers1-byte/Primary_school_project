@@ -347,7 +347,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {[
             ["Staff active", `${activeTeachers}/${TEACHERS.length}`],
             ["Open concerns", openConcerns],
-            ["School avg", "77%"],
+            ["Class streams", "Ready"],
           ].map(([k, v]) => (
             <div
               key={k}

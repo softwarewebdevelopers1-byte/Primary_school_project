@@ -235,6 +235,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
   }, [selectedId, targetClasses[0]?.term, targetClasses[0]?.year, targetClasses[0]?.examType, rankingMode, cbcBands.length]);
 
   const rankingLabel = rankingMode === "total_marks" ? "Total Marks" : "Total Points";
+  const tableColumnCount = 6 + availableSubjects.length;
 
   const handleDownloadExcel = () => {
     if (performanceRows.length === 0) return;
@@ -250,8 +251,6 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
       });
       data["Total Marks"] = row.total;
       data["Total Points"] = row.points;
-      data.Average = `${row.average}%`;
-      data["CBC Band"] = resolveCbcBand(row.average, cbcBands).cbcBand;
       data["Ranked By"] = rankingLabel;
       return data;
     });
@@ -277,7 +276,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
     }
     
     autoTable(doc, {
-      head: [["Rank", "Student", "Adm No", "Stream", ...availableSubjects.map(s => s.name), "Total Marks", "Total Points", "Average", "CBC Band"]],
+      head: [["Rank", "Student", "Adm No", "Stream", ...availableSubjects.map(s => s.name), "Total Marks", "Total Points"]],
       body: performanceRows.map(row => [
         row.rank,
         row.name,
@@ -285,9 +284,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         row.stream,
         ...availableSubjects.map(s => row.marks[s.id] ?? "-"),
         row.total,
-        row.points,
-        `${row.average}%`,
-        resolveCbcBand(row.average, cbcBands).cbcBand
+        row.points
       ]),
       startY: 30,
       theme: "grid",
@@ -299,7 +296,6 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
   };
 
   const scoredRows = performanceRows.filter(r => r.scoredSubjects > 0);
-  const classAvg = scoredRows.length > 0 ? Math.round(scoredRows.reduce((a, b) => a + b.average, 0) / scoredRows.length) : 0;
   const topStudent = performanceRows[0] || null;
 
   return (
@@ -346,12 +342,12 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
           </select>
         </label>
         <div style={statBoxStyle}>
-          <p style={labelStyle}>{isGradeSelected ? "Grade Average" : "Stream Average"}</p>
-          <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{isLoading ? "..." : `${classAvg}%`}</p>
+          <p style={labelStyle}>Scored Learners</p>
+          <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{isLoading ? "..." : scoredRows.length}</p>
         </div>
         <div style={statBoxStyle}>
           <p style={labelStyle}>Top Learner</p>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", overflowWrap: "anywhere" }}>{isLoading ? "..." : topStudent ? `${topStudent.name} (${topStudent.average}%)` : "N/A"}</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text)", overflowWrap: "anywhere" }}>{isLoading ? "..." : topStudent ? `${topStudent.name} (${topStudent.points} pts)` : "N/A"}</p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
            <button onClick={handleDownloadExcel} style={{ ...inputStyle, background: "var(--gold)", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Download Excel</button>
@@ -375,15 +371,13 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
               <th style={tableHeadStyle}>Stream</th>
               <th style={{ ...tableHeadStyle, background: rankingMode === "total_points" ? "var(--gold)" : undefined, color: rankingMode === "total_points" ? "#fff" : undefined, borderRadius: rankingMode === "total_points" ? "6px 6px 0 0" : undefined }}>Points</th>
               <th style={{ ...tableHeadStyle, background: rankingMode === "total_marks" ? "var(--gold)" : undefined, color: rankingMode === "total_marks" ? "#fff" : undefined, borderRadius: rankingMode === "total_marks" ? "6px 6px 0 0" : undefined }}>Total Marks</th>
-              <th style={tableHeadStyle}>Average</th>
-              <th style={tableHeadStyle}>CBC Band</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={8} style={{ ...tableCellStyle, padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
+              <tr><td colSpan={tableColumnCount} style={{ ...tableCellStyle, padding: "40px", textAlign: "center" }}>Loading performance data...</td></tr>
             ) : performanceRows.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...tableCellStyle, padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
+              <tr><td colSpan={tableColumnCount} style={{ ...tableCellStyle, padding: "40px", textAlign: "center", color: "var(--textMut)" }}>No results found for this scope.</td></tr>
             ) : performanceRows.map(row => (
               <tr key={row.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td style={{ ...tableCellStyle, position: "sticky", left: 0, zIndex: 5, background: "var(--white)", boxShadow: "2px 0 5px rgba(0,0,0,0.05)" }}>{row.rank}</td>
@@ -392,8 +386,6 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
                 <td style={{ ...tableCellStyle, fontSize: 12 }}>{row.stream}</td>
                 <td style={{ ...tableCellStyle, fontWeight: 700, color: "var(--gold)", background: rankingMode === "total_points" ? "#fff9eb" : undefined }}>{row.points}</td>
                 <td style={{ ...tableCellStyle, fontWeight: 700, background: rankingMode === "total_marks" ? "#fff9eb" : undefined }}>{row.total}</td>
-                <td style={tableCellStyle}>{row.average}%</td>
-                <td style={{ ...tableCellStyle, fontWeight: 700 }}>{resolveCbcBand(row.average, cbcBands).cbcBand}</td>
               </tr>
             ))}
           </tbody>

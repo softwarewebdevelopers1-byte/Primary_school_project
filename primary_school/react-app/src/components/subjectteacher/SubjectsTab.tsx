@@ -19,16 +19,11 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
   onSelectSubject,
   onEnterMarks,
   pushedSubjects,
-  gc,
   term,
   year,
 }) => {
   const totalStudents = subjects.reduce((sum, s) => sum + s.students, 0);
   const electiveCount = subjects.filter((subject) => subject.enrollmentMode === "elective").length;
-  const avgAll = Math.round(
-    subjects.reduce((sum, s) => sum + s.avg, 0) / subjects.length,
-  );
-
   return (
     <div className={styles.anim}>
       <div className={styles.sectionHeader}>
@@ -55,14 +50,6 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
           <p className={styles.metricLabel}>Total learners</p>
           <p className={styles.metricValue}>{totalStudents}</p>
           <p className={styles.metricNote}>Across all streams</p>
-        </div>
-        <div
-          className={styles.metricCard}
-          style={{ borderTopColor: gc(avgAll) }}
-        >
-          <p className={styles.metricLabel}>Average score</p>
-          <p className={styles.metricValue}>{avgAll}%</p>
-          <p className={styles.metricNote}>Combined streams</p>
         </div>
         <div
           className={styles.metricCard}
@@ -111,34 +98,6 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({
                   {subject.grade} | {formatSubjectOfferingTag(subject.enrollmentMode, subject.sharedSlotId)}
                 </p>
               </div>
-              <span
-                style={{
-                  fontFamily: "var(--serif)",
-                  fontSize: "1.6rem",
-                  fontWeight: 600,
-                  color: gc(subject.avg),
-                }}
-              >
-                {subject.avg}%
-              </span>
-            </div>
-            <div
-              style={{
-                height: 6,
-                background: "var(--sand)",
-                borderRadius: 3,
-                overflow: "hidden",
-                marginBottom: 10,
-              }}
-            >
-              <div
-                style={{
-                  width: `${subject.avg}%`,
-                  height: "100%",
-                  background: gc(subject.avg),
-                  borderRadius: 3,
-                }}
-              />
             </div>
             <div
               style={{

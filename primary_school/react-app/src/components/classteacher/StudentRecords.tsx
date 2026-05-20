@@ -1,9 +1,9 @@
 // components/classteacher/StudentRecords.tsx
 import React, { useState } from "react";
-import { averagePoints, gradeColor, isStudentSubject, marksForStudentSubjects, sumPoints } from "./shared/helpers";
+import { gradeColor, isStudentSubject, marksForStudentSubjects, sumPoints } from "./shared/helpers";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
-import { resolveCbcBand, resolveCbcBandByPoints, useCbcGradingBands } from "../../lib/cbcGrading";
+import { resolveCbcBand, useCbcGradingBands } from "../../lib/cbcGrading";
 
 interface StudentRecordsProps {
   students: any[];
@@ -238,8 +238,6 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
               ))}
               {[
                 "T.Pts",
-                "Avg Pts",
-                "CBC Band",
                 "Action",
               ].map((h) => (
                 <th
@@ -271,8 +269,6 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
 
             {filtered.map((s) => {
               const studentMarks = marksForStudentSubjects(s, subjects);
-              const avgPoint = averagePoints(studentMarks, cbcBands);
-              const summaryBand = resolveCbcBandByPoints(avgPoint, cbcBands).cbcBand;
               return (
                 <tr
                   key={s.id}
@@ -355,30 +351,6 @@ export const StudentRecords: React.FC<StudentRecordsProps> = ({
                       }}
                     >
                       {sumPoints(studentMarks, cbcBands)}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
-                    <span
-                      style={{
-                        fontFamily: FONT.serif,
-                        fontSize: 14,
-                        fontWeight: 900,
-                        color: gradeColor(summaryBand),
-                      }}
-                    >
-                      {avgPoint}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 14px", textAlign: "center", background: C.goldPale }}>
-                    <span
-                      style={{
-                        fontFamily: FONT.serif,
-                        fontSize: 14,
-                        fontWeight: 900,
-                        color: gradeColor(summaryBand),
-                      }}
-                    >
-                      {summaryBand}
                     </span>
                   </td>
                   <td style={{ padding: "12px 14px" }}>

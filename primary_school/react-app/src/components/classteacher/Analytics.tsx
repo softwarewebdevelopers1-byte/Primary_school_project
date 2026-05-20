@@ -1,7 +1,7 @@
 import React from "react";
 import { Avatar } from "./shared/Avatar";
 import { C, FONT } from "./shared/constants";
-import { avg, gradeColor, marksForStudentSubjects, getSubId, sumPoints } from "./shared/helpers";
+import { gradeColor, marksForStudentSubjects, getSubId, sumPoints } from "./shared/helpers";
 import { resolveCbcBand, useCbcGradingBands } from "../../lib/cbcGrading";
 
 interface AnalyticsProps {
@@ -55,28 +55,18 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   const studentAvgs = students
     .map((student) => {
       const studentMarks = marksForStudentSubjects(student, subjects);
-      const averageMarks = avg(studentMarks);
       const totalPoints = sumPoints(studentMarks, cbcBands);
+      const totalMarks = Object.values(studentMarks).reduce((sum, mark) => sum + (typeof mark === "number" ? mark : 0), 0);
       return {
         ...student,
-        avg: averageMarks,
+        totalMarks,
         points: totalPoints,
-        cbcBand: resolveCbcBand(averageMarks, cbcBands).cbcBand,
       };
     })
-    .sort((a, b) => b.points - a.points || b.avg - a.avg || String(a.name).localeCompare(String(b.name)));
+    .sort((a, b) => b.points - a.points || b.totalMarks - a.totalMarks || String(a.name).localeCompare(String(b.name)));
 
-  const classAvg = studentAvgs.length > 0
-    ? Math.round(studentAvgs.reduce((a, student) => a + student.avg, 0) / studentAvgs.length)
-    : 0;
-  const classBand = resolveCbcBand(classAvg, cbcBands).cbcBand;
   const bestSubject = [...subjectAvgs].sort((a, b) => b.avg - a.avg)[0];
-  const meetingRate = students.length > 0
-    ? Math.round((students.filter((student) => {
-      const band = resolveCbcBand(avg(marksForStudentSubjects(student, subjects)), cbcBands).cbcBand;
-      return band.startsWith("EE") || band.startsWith("ME");
-    }).length / students.length) * 100)
-    : 0;
+  const scoredLearners = studentAvgs.filter((student) => student.points > 0).length;
 
   return (
     <div className="ct-anim">
@@ -87,10 +77,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: "1.6rem" }}>
-        <MetricCard label="Class average marks" value={`${classAvg}%`} note={`CBC band: ${classBand}`} color={gradeColor(classBand)} />
-        <MetricCard label="Top student" value={studentAvgs[0]?.cbcBand || "N/A"} note={`${studentAvgs[0]?.name} (${studentAvgs[0]?.points} pts)`} color={C.successText} />
-        <MetricCard label="Best subject" value={bestSubject?.name.split(" ")[0] || "N/A"} note={bestSubject ? `${bestSubject.avg}% avg` : "N/A"} color={C.gold} />
-        <MetricCard label="Competency trend" value={`${meetingRate}%`} note="Learners in ME or EE bands" color={C.warnText} />
+        <MetricCard label="Scored learners" value={`${scoredLearners}`} note={`${students.length} learners enrolled`} color={C.successText} />
+        <MetricCard label="Top student" value={studentAvgs[0]?.name || "N/A"} note={studentAvgs[0] ? `${studentAvgs[0].points} pts` : "N/A"} color={C.successText} />
+        <MetricCard label="Best subject" value={bestSubject?.name.split(" ")[0] || "N/A"} note="Subject-level view" color={C.gold} />
+        <MetricCard label="Subjects tracked" value={`${subjects.length}`} note="Subject bands remain on subject marks" color={C.warnText} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -122,17 +112,17 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                 <span style={{ fontFamily: FONT.serif, fontSize: 17, fontWeight: 600, color: C.textFaint, width: 22, textAlign: "center" }}>{index + 1}</span>
                 <Avatar name={student.name} size={30} />
                 <span style={{ fontFamily: FONT.sans, fontSize: 13, fontWeight: 600, color: C.text, flex: 1 }}>{student.name}</span>
-                <span style={{ fontFamily: FONT.serif, fontSize: 14, fontWeight: 600, color: gradeColor(student.cbcBand), width: 90, textAlign: "right" }}>{student.points} pts</span>
+                <span style={{ fontFamily: FONT.serif, fontSize: 14, fontWeight: 600, color: C.text, width: 90, textAlign: "right" }}>{student.points} pts</span>
               </div>
             ))}
           </div>
         </div>
 
         <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: "1.4rem", gridColumn: "1/-1" }}>
-          <p style={{ fontFamily: FONT.sans, fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 1.2rem" }}>CBC band distribution</p>
+          <p style={{ fontFamily: FONT.sans, fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 1.2rem" }}>Subject band distribution</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
             {cbcBands.map((band) => {
-              const count = studentAvgs.filter((student) => student.cbcBand === band.cbcBand).length;
+              const count = subjectAvgs.filter((subject) => resolveCbcBand(subject.avg, cbcBands).cbcBand === band.cbcBand).length;
               const color = gradeColor(band.cbcBand);
               return (
                 <div key={band.cbcBand} style={{ background: `${color}18`, borderRadius: 11, padding: "1rem", textAlign: "center" }}>

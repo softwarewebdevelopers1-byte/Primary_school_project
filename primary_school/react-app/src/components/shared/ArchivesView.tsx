@@ -25,7 +25,6 @@ interface ArchiveResultStudent {
   studentId: string;
   name: string;
   admissionNo: string;
-  average: number | null;
   subjects: Record<
     string,
     {
@@ -545,7 +544,7 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
               <table style={{ width: "100%", minWidth: 720, borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    {["Student", "Adm No", ...results.subjects.map((subject) => subject.name), "Average"].map((heading) => (
+                    {["Student", "Adm No", ...results.subjects.map((subject) => subject.name)].map((heading) => (
                       <th
                         key={heading}
                         style={{
@@ -583,9 +582,6 @@ export const ArchivesView: React.FC<ArchivesViewProps> = ({
                           </td>
                         );
                       })}
-                      <td style={{ padding: "10px 12px", borderBottom: `1px solid ${C.borderLight}`, color: C.gold, fontWeight: 800 }}>
-                        {typeof student.average === "number" ? `${student.average}%` : "-"}
-                      </td>
                     </tr>
                   ))}
                 </tbody>

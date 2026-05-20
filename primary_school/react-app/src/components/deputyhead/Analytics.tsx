@@ -4,7 +4,6 @@ import { SectionHeader } from "./shared/SectionHeader";
 import { MetricCard } from "./shared/MetricCard";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { gc } from "./shared/helpers";
 interface AnalyticsProps {
   classes?: any[];
   staff?: any[];
@@ -19,19 +18,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({
   term = 1,
   year = 2024
 }) => {
-  const classAvg = classes.length > 0 ? Math.round(
-    classes.reduce((a, c) => a + (c.avg || 0), 0) / classes.length,
-  ) : 0;
-  
-  const teacherAvg = staff.length > 0 ? Math.round(
-    staff.reduce((a, t) => a + (t.avg || 0), 0) / staff.length,
-  ) : 0;
-  
-  const topClass = classes.length > 0 ? classes.reduce((a, b) => ((a.avg || 0) > (b.avg || 0) ? a : b)) : { name: "N/A", avg: 0 };
-  const bottomClass = classes.length > 0 ? classes.reduce((a, b) => ((a.avg || 0) < (b.avg || 0) ? a : b)) : { name: "N/A", avg: 0 };
-  const sorted = [...classes].sort((a, b) => (b.avg || 0) - (a.avg || 0));
+  const sorted = [...classes].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
   const activeTeachers = staff.filter((t) => t.status === "active" || t.status === "Active").length;
-  const highPerformers = classes.filter((c) => (c.avg || 0) >= 80).length;
 
   // Mock concerns since not in DB yet
   const openConcerns = 0;
@@ -53,27 +41,27 @@ export const Analytics: React.FC<AnalyticsProps> = ({
         }}
       >
         <MetricCard
-          label="School average"
-          value={`${classAvg}%`}
+          label="Class streams"
+          value={classes.length}
           note="All streams"
-          accent={gc(classAvg)}
+          accent={C.infoText}
         />
         <MetricCard
-          label="Teacher avg"
-          value={`${teacherAvg}%`}
-          note="Class outcomes"
+          label="Active teachers"
+          value={activeTeachers}
+          note={`${staff.length} on record`}
           accent={C.gold}
         />
         <MetricCard
-          label="Top stream"
-          value={topClass.name}
-          note={`${topClass.avg}% avg`}
+          label="Students covered"
+          value={classes.reduce((sum, item) => sum + Number(item.students || 0), 0)}
+          note="Across listed streams"
           accent={C.successText}
         />
         <MetricCard
-          label="Needs support"
-          value={bottomClass.name}
-          note={`${bottomClass.avg}% avg`}
+          label="Open concerns"
+          value={openConcerns}
+          note="Awaiting response"
           accent={C.dangerText}
         />
       </div>
@@ -144,28 +132,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                       fontFamily: F.serif,
                       fontSize: 13,
                       fontWeight: 600,
-                      color: gc(c.avg),
+                      color: C.textMid,
                     }}
                   >
-                    {c.avg}%
+                    {c.students || 0} learners
                   </span>
-                </div>
-                <div
-                  style={{
-                    height: 7,
-                    background: C.sand,
-                    borderRadius: 3,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${c.avg}%`,
-                      height: "100%",
-                      background: gc(c.avg),
-                      borderRadius: 3,
-                    }}
-                  />
                 </div>
               </div>
             </div>
@@ -226,28 +197,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                       fontFamily: F.serif,
                       fontSize: 13,
                       fontWeight: 600,
-                      color: gc(t.avg || 0),
+                      color: C.textMuted,
                     }}
                   >
-                    {t.avg || 0}%
+                    {t.status || "-"}
                   </span>
-                </div>
-                <div
-                  style={{
-                    height: 6,
-                    background: C.sand,
-                    borderRadius: 3,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${t.avg || 0}%`,
-                      height: "100%",
-                      background: gc(t.avg || 0),
-                      borderRadius: 3,
-                    }}
-                  />
                 </div>
               </div>
             </div>
@@ -315,8 +269,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({
                 text: C.infoText,
               },
               {
-                label: "Streams ≥ 80%",
-                value: highPerformers,
+                label: "Class streams",
+                value: classes.length,
                 bg: C.successBg,
                 text: C.successText,
               },

@@ -214,13 +214,12 @@ export async function archiveClassMarks(
   doc.text(`Term ${term}, ${year} | Phase: ${normalizedExamType.toUpperCase()}`, 14, 30);
   doc.text(`Generated on ${new Date().toLocaleString()}`, 14, 37);
 
-  const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Total", "Average", "Total Points"];
+  const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Total", "Total Points"];
   let hasAtLeastOneScore = false;
   const tableRows = students.map((student) => {
     const studentMarks = marksByStudent.get(student._id.toString()) || new Map();
     let total = 0;
     let totalPoints = 0;
-    let count = 0;
     const rowData = [student.studentsName || "Unknown Student", student.ADM || "-"];
 
     for (const subject of subjectColumns) {
@@ -234,16 +233,13 @@ export async function archiveClassMarks(
         rowData.push(`${percentage} | ${gradingFields.cbcBand} | ${gradingFields.points}`);
         total += percentage;
         totalPoints += Number(gradingFields.points || 0);
-        count += 1;
         hasAtLeastOneScore = true;
       } else {
         rowData.push("-");
       }
     }
 
-    const average = count > 0 ? Math.round(total / count) : 0;
     rowData.push(String(total));
-    rowData.push(`${average}%`);
     rowData.push(String(totalPoints));
     return rowData;
   });

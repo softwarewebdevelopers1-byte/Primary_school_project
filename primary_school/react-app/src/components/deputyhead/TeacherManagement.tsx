@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { SectionHeader } from "./shared/SectionHeader";
 import { Avatar } from "./shared/Avatar";
 import { C, F } from "./shared/constants";
-import { gc } from "./shared/helpers";
 
 interface TeacherManagementProps {
   staff?: any[];
@@ -64,7 +63,6 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = []
                 "Class",
                 "Students",
                 "Status",
-                "Class avg",
                 "",
               ].map((h, i) => (
                 <th
@@ -172,18 +170,6 @@ export const TeacherManagement: React.FC<TeacherManagementProps> = ({ staff = []
                     }}
                   >
                     {t.status || "Active"}
-                  </span>
-                </td>
-                <td style={{ padding: "11px 14px" }}>
-                  <span
-                    style={{
-                      fontFamily: F.serif,
-                      fontSize: 16,
-                      fontWeight: 600,
-                      color: gc(75),
-                    }}
-                  >
-                    -
                   </span>
                 </td>
                 <td style={{ padding: "11px 14px" }}>

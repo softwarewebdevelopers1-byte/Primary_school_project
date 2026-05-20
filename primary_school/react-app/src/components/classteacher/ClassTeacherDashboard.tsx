@@ -270,8 +270,6 @@ export default function ClassTeacherDashboard() {
   }, [isMobile]);
 
   const activeNav = NAV.find((n) => n.id === tab) || NAV[0];
-  const classAvg = students.length > 0 ? 75 : 0; // Simple placeholder
-
   const handleSelectTab = (t: string) => {
     setTab(t);
     setSelectedStudent(null);
@@ -421,7 +419,6 @@ export default function ClassTeacherDashboard() {
             setCollapsed(!collapsed);
           }}
           onSelectTab={handleSelectTab}
-          classAvg={classAvg}
           user={currentUser}
           onChangePassword={handleChangePassword}
           onLogout={handleLogout}
@@ -621,9 +618,9 @@ export default function ClassTeacherDashboard() {
                   note: "Grading on track",
                 },
                 {
-                  label: "Class average",
-                  value: `${classAvg}%`,
-                  note: "Across all subjects",
+                  label: "Reports",
+                  value: students.length,
+                  note: "Learners available",
                 },
               ].map(({ label, value, note }) => (
                 <div
