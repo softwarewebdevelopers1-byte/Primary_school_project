@@ -1,23 +1,29 @@
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
-import { ArchiveModel, MarkModel, SubjectModel } from "../models/school.model.js";
+import {
+  ArchiveModel,
+  MarkModel,
+  SubjectModel,
+} from "../models/school.model.js";
 import { rolesMapped, studentModel, userModel } from "../models/user.model.js";
 import {
   buildMarkGradingFields,
   computeMarkPercentage,
   getCbcGradingBands,
 } from "./grading.js";
-import dotenv from "dotenv";
 
-dotenv.config();
+import DotEnvFile from "../config/env.js";
 
 const allowedExamTypes = new Set(["opener", "midterm", "closing"]);
-const SUPABASE_URL = process.env.SUPABASE_URL?.trim();
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-const SUPABASE_BUCKET = process.env.SUPABASE_BUCKET?.trim();
+const SUPABASE_URL = DotEnvFile.SupabaseUrl;
+const SUPABASE_SERVICE_ROLE_KEY = DotEnvFile.SupabaseRoleKey;
+const SUPABASE_BUCKET = DotEnvFile.SupabaseBucket;
+
+console.log("credentials-->", SUPABASE_BUCKET, SUPABASE_URL, SUPABASE_URL);
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_BUCKET) {
+  console.log("credentials-->", SUPABASE_BUCKET, SUPABASE_URL, SUPABASE_URL);
   throw new Error("Missing Supabase environment variables.");
 }
 
@@ -44,7 +50,9 @@ const resolveMarkPercentage = (mark: any): number | null => {
 const removeStoredFiles = async (fileNames: string[]) => {
   if (fileNames.length === 0) return;
 
-  const { error } = await supabase.storage.from(supabaseBucket).remove(fileNames);
+  const { error } = await supabase.storage
+    .from(supabaseBucket)
+    .remove(fileNames);
 
   if (error) {
     throw new Error(`Supabase cleanup failed: ${error.message}`);
@@ -57,7 +65,10 @@ const getClassLabel = (classGrade: string, classStream: string) =>
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const resolveArchiveStoragePath = (archive: { storagePath?: string | null; pdfUrl?: string | null }) => {
+const resolveArchiveStoragePath = (archive: {
+  storagePath?: string | null;
+  pdfUrl?: string | null;
+}) => {
   const directPath = archive.storagePath?.trim();
   if (directPath) {
     return directPath;
@@ -78,7 +89,9 @@ const resolveArchiveStoragePath = (archive: { storagePath?: string | null; pdfUr
       return null;
     }
 
-    const storagePath = decodedPathname.slice(markerIndex + marker.length).replace(/^\/+/, "");
+    const storagePath = decodedPathname
+      .slice(markerIndex + marker.length)
+      .replace(/^\/+/, "");
     return storagePath || null;
   } catch (_error) {
     return null;
@@ -128,7 +141,9 @@ export async function archiveClassMarks(
   const classLabel = getClassLabel(classGrade, classStream);
 
   if (!classGrade?.trim() || !classStream?.trim()) {
-    throw new Error(`Class grade and stream are required to archive marks. Received "${classLabel || "unknown class"}".`);
+    throw new Error(
+      `Class grade and stream are required to archive marks. Received "${classLabel || "unknown class"}".`,
+    );
   }
 
   if (!allowedExamTypes.has(normalizedExamType)) {
@@ -145,13 +160,19 @@ export async function archiveClassMarks(
 
   if (marks.length === 0) return null;
 
-  const markStudentIds = Array.from(new Set(marks.map((mark) => mark.studentId.toString())));
+  const markStudentIds = Array.from(
+    new Set(marks.map((mark) => mark.studentId.toString())),
+  );
   const students = await studentModel
     .find({ class: classGrade, classStream } as any)
     .sort({ studentsName: 1 });
 
-  const knownStudentIds = new Set(students.map((student) => student._id.toString()));
-  const missingStudentIds = markStudentIds.filter((studentId) => !knownStudentIds.has(studentId));
+  const knownStudentIds = new Set(
+    students.map((student) => student._id.toString()),
+  );
+  const missingStudentIds = markStudentIds.filter(
+    (studentId) => !knownStudentIds.has(studentId),
+  );
 
   if (missingStudentIds.length > 0) {
     const missingStudents = await studentModel
@@ -168,11 +189,19 @@ export async function archiveClassMarks(
   }
 
   if (students.length === 0) {
-    throw new Error(`Could not find student records for ${classLabel} while preparing the archive.`);
+    throw new Error(
+      `Could not find student records for ${classLabel} while preparing the archive.`,
+    );
   }
 
   const [subjects, classTeacher] = await Promise.all([
-    SubjectModel.find({ _id: { $in: Array.from(new Set(marks.map((mark) => mark.subjectId.toString()))) } } as any),
+    SubjectModel.find({
+      _id: {
+        $in: Array.from(
+          new Set(marks.map((mark) => mark.subjectId.toString())),
+        ),
+      },
+    } as any),
     userModel.findOne({
       class: classGrade,
       classStream,
@@ -185,8 +214,12 @@ export async function archiveClassMarks(
   ]);
 
   const teacherName = (classTeacher as any)?.teachersName || "N/A";
-  const subjectNameMap = new Map(subjects.map((subject) => [subject._id.toString(), subject.name]));
-  const subjectColumns = Array.from(new Set(marks.map((mark) => mark.subjectId.toString())))
+  const subjectNameMap = new Map(
+    subjects.map((subject) => [subject._id.toString(), subject.name]),
+  );
+  const subjectColumns = Array.from(
+    new Set(marks.map((mark) => mark.subjectId.toString())),
+  )
     .map((subjectId) => ({
       id: subjectId,
       name: subjectNameMap.get(subjectId) || `Subject ${subjectId.slice(-6)}`,
@@ -197,7 +230,9 @@ export async function archiveClassMarks(
   for (const mark of marks) {
     const studentId = mark.studentId.toString();
     const subjectId = mark.subjectId.toString();
-    const studentMarks = marksByStudent.get(studentId) || new Map<string, (typeof marks)[number]>();
+    const studentMarks =
+      marksByStudent.get(studentId) ||
+      new Map<string, (typeof marks)[number]>();
     studentMarks.set(subjectId, mark);
     marksByStudent.set(studentId, studentMarks);
   }
@@ -211,26 +246,43 @@ export async function archiveClassMarks(
   doc.setFontSize(14);
   doc.setTextColor(100);
   doc.text(`Class: ${classLabel} | Teacher: ${teacherName}`, 14, 23);
-  doc.text(`Term ${term}, ${year} | Phase: ${normalizedExamType.toUpperCase()}`, 14, 30);
+  doc.text(
+    `Term ${term}, ${year} | Phase: ${normalizedExamType.toUpperCase()}`,
+    14,
+    30,
+  );
   doc.text(`Generated on ${new Date().toLocaleString()}`, 14, 37);
 
-  const tableColumns = ["Student", "ADM", ...subjectColumns.map((subject) => subject.name), "Total", "Total Points"];
+  const tableColumns = [
+    "Student",
+    "ADM",
+    ...subjectColumns.map((subject) => subject.name),
+    "Total",
+    "Total Points",
+  ];
   let hasAtLeastOneScore = false;
   const tableRows = students.map((student) => {
-    const studentMarks = marksByStudent.get(student._id.toString()) || new Map();
+    const studentMarks =
+      marksByStudent.get(student._id.toString()) || new Map();
     let total = 0;
     let totalPoints = 0;
-    const rowData = [student.studentsName || "Unknown Student", student.ADM || "-"];
+    const rowData = [
+      student.studentsName || "Unknown Student",
+      student.ADM || "-",
+    ];
 
     for (const subject of subjectColumns) {
       const mark = studentMarks.get(subject.id);
       const percentage = resolveMarkPercentage(mark);
 
       if (percentage !== null) {
-        const gradingFields = mark?.cbcBand && mark?.points !== null && mark?.points !== undefined
-          ? { cbcBand: mark.cbcBand, points: mark.points }
-          : buildMarkGradingFields(percentage, gradingBands);
-        rowData.push(`${percentage} | ${gradingFields.cbcBand} | ${gradingFields.points}`);
+        const gradingFields =
+          mark?.cbcBand && mark?.points !== null && mark?.points !== undefined
+            ? { cbcBand: mark.cbcBand, points: mark.points }
+            : buildMarkGradingFields(percentage, gradingBands);
+        rowData.push(
+          `${percentage} | ${gradingFields.cbcBand} | ${gradingFields.points}`,
+        );
         total += percentage;
         totalPoints += Number(gradingFields.points || 0);
         hasAtLeastOneScore = true;
@@ -256,24 +308,35 @@ export async function archiveClassMarks(
     startY: 45,
     theme: "grid",
     styles: { fontSize: 8, cellPadding: 3 },
-    headStyles: { fillColor: [201, 150, 61], textColor: 255, fontStyle: "bold" },
+    headStyles: {
+      fillColor: [201, 150, 61],
+      textColor: 255,
+      fontStyle: "bold",
+    },
     alternateRowStyles: { fillColor: [250, 248, 242] },
   });
 
   const pdfOutput = doc.output("arraybuffer");
   const pdfBuffer = Buffer.from(pdfOutput);
-  const fileName = `archives/${year}/Term${term}/${normalizedExamType}/${classGrade}_${classStream}_${Date.now()}.pdf`
-    .replace(/\s+/g, "_");
+  const fileName =
+    `archives/${year}/Term${term}/${normalizedExamType}/${classGrade}_${classStream}_${Date.now()}.pdf`.replace(
+      /\s+/g,
+      "_",
+    );
   const storagePath = fileName;
 
-  const { error: uploadError } = await supabase.storage.from(supabaseBucket).upload(storagePath, pdfBuffer, {
-    cacheControl: "3600",
-    contentType: "application/pdf",
-    upsert: false,
-  });
+  const { error: uploadError } = await supabase.storage
+    .from(supabaseBucket)
+    .upload(storagePath, pdfBuffer, {
+      cacheControl: "3600",
+      contentType: "application/pdf",
+      upsert: false,
+    });
 
   if (uploadError) {
-    throw new Error(`Supabase upload failed for ${classLabel}: ${uploadError.message}`);
+    throw new Error(
+      `Supabase upload failed for ${classLabel}: ${uploadError.message}`,
+    );
   }
 
   const {
@@ -316,26 +379,34 @@ export async function archiveClassMarks(
   }
 }
 
-export async function rollbackArchivedMarks(archives: ArchiveClassMarksResult[]) {
+export async function rollbackArchivedMarks(
+  archives: ArchiveClassMarksResult[],
+) {
   if (archives.length === 0) return;
 
   const fileNames = archives
     .map((archive) => archive.storagePath || archive.fileName)
     .filter(Boolean);
-  const archiveIds = archives.map((archive) => archive.archiveId).filter(Boolean);
+  const archiveIds = archives
+    .map((archive) => archive.archiveId)
+    .filter(Boolean);
   const cleanupProblems: string[] = [];
 
   try {
     await removeStoredFiles(fileNames);
   } catch (error: any) {
-    cleanupProblems.push(`storage files could not be removed (${error.message})`);
+    cleanupProblems.push(
+      `storage files could not be removed (${error.message})`,
+    );
   }
 
   if (cleanupProblems.length === 0 && archiveIds.length > 0) {
     try {
       await ArchiveModel.deleteMany({ _id: { $in: archiveIds } } as any);
     } catch (error: any) {
-      cleanupProblems.push(`archive records could not be removed (${error.message})`);
+      cleanupProblems.push(
+        `archive records could not be removed (${error.message})`,
+      );
     }
   }
 
@@ -352,7 +423,10 @@ export async function deleteStoredArchiveById(archiveId: string) {
   }
 
   const deletedSnapshot = deletedArchive.toObject();
-  const classLabel = getClassLabel(deletedSnapshot.classGrade, deletedSnapshot.classStream);
+  const classLabel = getClassLabel(
+    deletedSnapshot.classGrade,
+    deletedSnapshot.classStream,
+  );
   const storagePath = resolveArchiveStoragePath(deletedSnapshot);
 
   if (!storagePath) {
