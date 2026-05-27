@@ -1,9 +1,11 @@
 // components/ErrorPage.tsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import styles from "./error.module.css";
 
 const ErrorPage = () => {
   const [mounted, setMounted] = useState(false);
+  let errorRederictBack = useNavigate();
   const [dots, setDots] = useState(0);
 
   useEffect(() => {
@@ -85,7 +87,9 @@ const ErrorPage = () => {
         <div className={styles.btnGroup}>
           <button
             className={styles.btnSecondary}
-            onClick={() => window.history.back()}
+            onClick={() => {
+              errorRederictBack(-1);
+            }}
           >
             <svg
               width="16"
