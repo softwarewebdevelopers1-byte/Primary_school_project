@@ -2,18 +2,22 @@ import express, { type Response, type Request } from "express";
 import cors from "cors";
 import DotEnvFile from "./config/env.js";
 import dbConnection from "./database/db.js";
-import {  newStaff } from "./data/seed.js";
+import { newStaff } from "./data/seed.js";
 import userRoutes from "./routes/users.js";
 import schoolRoutes from "./routes/school.js";
 import marksRoutes from "./routes/marks.js";
 import gradingRoutes from "./routes/grading.js";
 import mongoose from "mongoose";
+import path from "path";
 
 let app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://primary-school-project-eta.vercel.app"],
+    origin: [
+      "http://localhost:8080",
+      "https://primary-school-project-eta.vercel.app",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // If you're using cookies/sessions
@@ -33,6 +37,9 @@ app.use("/api/users", userRoutes);
 app.use("/api/school", schoolRoutes);
 app.use("/api/marks", marksRoutes);
 app.use("/api/grading", gradingRoutes);
+app.use((req, res) => {
+  res.sendFile(path.resolve("./error/error.html"));
+});
 
 app.listen(DotEnvFile.DEVPort, (): void => {
   console.log(`Server is running on port ${DotEnvFile.DEVPort}`);

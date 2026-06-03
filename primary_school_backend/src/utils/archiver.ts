@@ -20,10 +20,7 @@ const SUPABASE_URL = DotEnvFile.SupabaseUrl;
 const SUPABASE_SERVICE_ROLE_KEY = DotEnvFile.SupabaseRoleKey;
 const SUPABASE_BUCKET = DotEnvFile.SupabaseBucket;
 
-console.log("credentials-->", SUPABASE_BUCKET, SUPABASE_URL, SUPABASE_URL);
-
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_BUCKET) {
-  console.log("credentials-->", SUPABASE_BUCKET, SUPABASE_URL, SUPABASE_URL);
   throw new Error("Missing Supabase environment variables.");
 }
 

@@ -392,7 +392,6 @@ const ParentConcernSchema = new Schema<IParentConcern>({
   expiresAt: {
     type: Date,
     default: () => new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-    index: true,
   },
 }, { timestamps: true });
 
