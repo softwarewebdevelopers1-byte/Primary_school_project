@@ -7,6 +7,7 @@ import userRoutes from "./routes/users.js";
 import schoolRoutes from "./routes/school.js";
 import marksRoutes from "./routes/marks.js";
 import gradingRoutes from "./routes/grading.js";
+import PayStackPayment from "./services/PayStack.js";
 import mongoose from "mongoose";
 import path from "path";
 
@@ -37,11 +38,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/school", schoolRoutes);
 app.use("/api/marks", marksRoutes);
 app.use("/api/grading", gradingRoutes);
+app.use("/api/payment/payStack", PayStackPayment);
 app.use((req, res) => {
   res.sendFile(path.resolve("./error/error.html"));
 });
 
-app.listen(DotEnvFile.DEVPort, (): void => {
+app.listen(DotEnvFile.DEVPort || process.env.PORT, (): void => {
   console.log(`Server is running on port ${DotEnvFile.DEVPort}`);
 });
 
