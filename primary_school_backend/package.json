@@ -15,7 +15,7 @@
     "typescript": "^6.0.3"
   },
   "scripts": {
-    "test": "jes",
+    "test": "jest",
     "dev": " tsc && nodemon ./dist/server.js ",
     "start": "node ./dist/server.js",
     "build": "tsc"
