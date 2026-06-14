@@ -29,6 +29,13 @@ interface MarksEntryProps {
   examType?: string;
   onTermChange?: (term: number) => void;
   onExamTypeChange?: (type: string) => void;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  };
 }
 
 type MarkRow = Student["marks"];
@@ -80,6 +87,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
   examType,
   onTermChange,
   onExamTypeChange,
+  pagination,
 }) => {
   const currentSubject = subjects.find((subject) => subject.id === activeSubjectId) || subjects[0] || null;
   const { bands: cbcBands } = useCbcGradingBands();
@@ -190,7 +198,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
           </p>
           {currentSubject && (
             <p className={styles.sectionSub} style={{ marginTop: 6 }}>
-              {formatSubjectOfferingTag(currentSubject.enrollmentMode, currentSubject.sharedSlotId)} | {students.length} learner{students.length === 1 ? "" : "s"}
+              {formatSubjectOfferingTag(currentSubject.enrollmentMode, currentSubject.sharedSlotId)} | {pagination ? pagination.total : students.length} learner{(pagination ? pagination.total : students.length) === 1 ? "" : "s"}
             </p>
           )}
         </div>
@@ -259,7 +267,7 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
       <div className={styles.card}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.9rem" }}>
           <p className={styles.cardLabel} style={{ margin: 0, flex: 1 }}>
-            {students.length} learners | {catsCount === 0 ? "No CATs" : Array.from({ length: catsCount }).map((_, index) => `CAT ${index + 1}`).join(" | ")} | Exam
+            {students.length} shown | {catsCount === 0 ? "No CATs" : Array.from({ length: catsCount }).map((_, index) => `CAT ${index + 1}`).join(" | ")} | Exam
           </p>
           <div style={{ display: "flex", gap: 10 }}>
             <button className={styles.btnAdd} onClick={addCat} disabled={catsCount >= 5}>
@@ -278,6 +286,32 @@ export const MarksEntry: React.FC<MarksEntryProps> = ({
             </button>
           </div>
         </div>
+
+        {pagination && pagination.totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: "0.9rem", flexWrap: "wrap" }}>
+            <span style={{ color: "var(--textMut)", fontSize: 12, fontWeight: 700 }}>
+              Page {pagination.page} of {pagination.totalPages} | {pagination.total} learners
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className={styles.btnGhost}
+                disabled={pagination.page <= 1}
+                onClick={() => pagination.onPageChange(pagination.page - 1)}
+                style={pagination.page <= 1 ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+              >
+                Previous
+              </button>
+              <button
+                className={styles.btnGhost}
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() => pagination.onPageChange(pagination.page + 1)}
+                style={pagination.page >= pagination.totalPages ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className={styles.tableWrapper}>
           <table className={styles.table}>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Class, Teacher } from "./types";
 
 const roleOptions = [
@@ -391,6 +391,8 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
   showConfirm,
 }) => {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
   const filteredTeachers = teachers.filter(
     (teacher) =>
@@ -399,6 +401,16 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
       teacher.email.toLowerCase().includes(search.toLowerCase()) ||
       teacher.roleLabel.toLowerCase().includes(search.toLowerCase()),
   );
+  const totalPages = Math.max(1, Math.ceil(filteredTeachers.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedTeachers = filteredTeachers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const openAddTeacher = (editId?: string) => {
     const teacher = editId ? teachers.find((current) => current.id === editId) || null : null;
@@ -482,7 +494,7 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filteredTeachers.map((teacher) => (
+            {pagedTeachers.map((teacher) => (
               <tr key={teacher.id} style={{ borderTop: "1px solid var(--borderL)" }}>
                 <td style={{ padding: "10px 13px", position: "sticky", left: 0, zIndex: 1, background: "var(--white)", minWidth: 230, boxShadow: "1px 0 0 var(--borderL)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -544,6 +556,29 @@ export const TeachersTab: React.FC<TeachersTabProps> = ({
           </tbody>
         </table>
       </div>
+      {filteredTeachers.length > pageSize && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--textMut)" }}>
+            Page {currentPage} of {totalPages} | {filteredTeachers.length} staff
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              style={secondaryButtonStyle}
+              disabled={currentPage <= 1}
+              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
+            >
+              Previous
+            </button>
+            <button
+              style={secondaryButtonStyle}
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

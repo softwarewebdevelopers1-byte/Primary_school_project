@@ -16,6 +16,26 @@ const router = Router();
 
 router.use(authenticate);
 
+const MAX_PAGE_SIZE = 100;
+
+const parsePositiveInt = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return Math.floor(parsed);
+};
+
+const buildPagination = (query: Request["query"]) => {
+  const page = parsePositiveInt(query.page, 1);
+  const requestedLimit = parsePositiveInt(query.limit, 50);
+  const limit = Math.min(requestedLimit, MAX_PAGE_SIZE);
+  const skip = (page - 1) * limit;
+
+  return { page, limit, skip };
+};
+
 // GET averages per assignment for a teacher
 router.get("/averages/teacher/:teacherId", async (req: Request, res: Response) => {
   try {
@@ -157,6 +177,8 @@ router.get("/cycles", async (_req: Request, res: Response) => {
 router.get("/", async (req: Request, res: Response) => {
   try {
     const { subjectId, classGrade, classStream, term, year, examType } = req.query;
+    const shouldPaginate = req.query.page !== undefined || req.query.limit !== undefined;
+    const pagination = buildPagination(req.query);
     
     if (!subjectId || !classGrade || classStream === undefined || classStream === null) {
       return res.status(400).json({ message: "Missing required query parameters" });
@@ -213,7 +235,12 @@ router.get("/", async (req: Request, res: Response) => {
         ),
     );
 
-    const studentMarks = enrolledStudents.map((s: any) => {
+    const total = enrolledStudents.length;
+    const pagedStudents = shouldPaginate
+      ? enrolledStudents.slice(pagination.skip, pagination.skip + pagination.limit)
+      : enrolledStudents;
+
+    const studentMarks = pagedStudents.map((s: any) => {
       const studentMark = markByStudentId.get(s._id.toString());
       return {
         studentId: s._id,
@@ -244,6 +271,18 @@ router.get("/", async (req: Request, res: Response) => {
         }
       };
     });
+
+    if (shouldPaginate) {
+      return res.json({
+        data: studentMarks,
+        pagination: {
+          page: pagination.page,
+          limit: pagination.limit,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / pagination.limit)),
+        },
+      });
+    }
 
     res.json(studentMarks);
   } catch (error: any) {

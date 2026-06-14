@@ -17,6 +17,18 @@ interface AdminMarksTabProps {
   avatar: (name: string, size: number) => string;
 }
 
+const MARKS_PAGE_SIZE = 50;
+
+type PaginatedMarksResponse = {
+  data: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
 const panelStyle: React.CSSProperties = {
   background: "var(--white)",
   border: "1px solid var(--border)",
@@ -92,6 +104,13 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   const [subjectStudents, setSubjectStudents] = useState<
     Record<string, MarksStudent[]>
   >({});
+  const [marksPage, setMarksPage] = useState(1);
+  const [marksPagination, setMarksPagination] = useState({
+    page: 1,
+    limit: MARKS_PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -152,7 +171,18 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
   useEffect(() => {
     setMarksData({});
     setSubjectStudents({});
+    setMarksPage(1);
+    setMarksPagination({
+      page: 1,
+      limit: MARKS_PAGE_SIZE,
+      total: 0,
+      totalPages: 1,
+    });
   }, [selectedClassId, currentClass?.term, currentClass?.year, currentClass?.examType]);
+
+  useEffect(() => {
+    setMarksPage(1);
+  }, [activeSubjectId]);
 
   useEffect(() => {
     if (!currentClass || !activeSubjectId) {
@@ -163,14 +193,25 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
 
     const loadDetailedMarks = async () => {
       try {
-        const data: any[] = await api.get("/marks", {
+        const response = await api.get<PaginatedMarksResponse | any[]>("/marks", {
           subjectId: activeSubjectId,
           classGrade: currentClass.grade,
           classStream: currentClass.stream || "",
           term: currentClass.term,
           year: currentClass.year,
           examType: currentClass.examType,
+          page: marksPage,
+          limit: MARKS_PAGE_SIZE,
         });
+        const data = Array.isArray(response) ? response : response.data;
+        const pagination = Array.isArray(response)
+          ? {
+              page: 1,
+              limit: data.length || MARKS_PAGE_SIZE,
+              total: data.length,
+              totalPages: 1,
+            }
+          : response.pagination;
 
         if (ignore) {
           return;
@@ -195,6 +236,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
             pushed: false,
           })),
         }));
+        setMarksPagination(pagination);
       } catch (error: any) {
         if (!ignore) {
           setMessage({
@@ -211,7 +253,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     return () => {
       ignore = true;
     };
-  }, [activeSubjectId, currentClass]);
+  }, [activeSubjectId, currentClass, marksPage]);
 
   const handleMarkUpdate = (
     subjectId: string,
@@ -376,7 +418,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
 
   const activeSubjectStudents = subjectStudents[activeSubjectId] || [];
   const hasStudentsForSelectedClass =
-    classStudents.length > 0 || activeSubjectStudents.length > 0;
+    marksPagination.total > 0 || classStudents.length > 0 || activeSubjectStudents.length > 0;
 
 
 
@@ -607,6 +649,10 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
           term={currentClass?.term}
           year={currentClass?.year}
           examType={currentClass?.examType}
+          pagination={{
+            ...marksPagination,
+            onPageChange: setMarksPage,
+          }}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Class, ClassSubjectSetting, Student, Subject } from "./types";
 import {
   buildElectiveSubjectGroups,
@@ -662,6 +662,8 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
 }) => {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
   const classLookup = useMemo(
     () =>
@@ -690,6 +692,16 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
       classFilter === "all" || student.classId === classFilter;
     return matchesSearch && matchesClass;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedStudents = filteredStudents.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, classFilter]);
 
   const openStudentModal = (studentId?: string) => {
     const student = studentId
@@ -822,7 +834,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filteredStudents.map((student) => {
+            {pagedStudents.map((student) => {
               const currentClass = classLookup[student.classId];
               const classElectives = (student.enrolledSubjects || [])
                 .filter(
@@ -906,6 +918,29 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
           </tbody>
         </table>
       </div>
+      {filteredStudents.length > pageSize && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--textMut)" }}>
+            Page {currentPage} of {totalPages} | {filteredStudents.length} students
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              style={secondaryButtonStyle}
+              disabled={currentPage <= 1}
+              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
+            >
+              Previous
+            </button>
+            <button
+              style={secondaryButtonStyle}
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

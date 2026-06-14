@@ -16,7 +16,7 @@ let app = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:8080",
+      "http://localhost:5173",
       "https://primary-school-project-eta.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
