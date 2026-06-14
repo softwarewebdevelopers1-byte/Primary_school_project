@@ -161,26 +161,40 @@ const buildStudentMessage = (params: {
   const rows = params.subjectRows
     .sort((left, right) => left.subjectName.localeCompare(right.subjectName))
     .map((row) => {
-      const scoreText = row.score === null ? "Pending" : `${row.score}%`;
-      const bandText = row.cbcBand ? ` ${row.cbcBand}` : "";
+      const scoreText = row.score === null ? "Pending" : `*${row.score}%*`;
+      const bandText = row.cbcBand ? ` - _${row.cbcBand}_` : "";
       const pointText =
-        row.points !== null && row.points !== undefined ? ` ${row.points}pts` : "";
-      return `${row.subjectName}: ${scoreText}${bandText}${pointText}\n${makeBar(row.score)}`;
+        row.points !== null && row.points !== undefined ? ` (*${row.points} pts*)` : "";
+      const progressBar = row.score !== null ? `\n\`\`\`[${makeBar(row.score)}]\`\`\`` : "";
+      return `📖 *${row.subjectName}*: ${scoreText}${bandText}${pointText}${progressBar}`;
     });
 
+  const classText = `Grade ${params.classGrade}${params.classStream ? ` ${params.classStream}` : ""}`;
+  const examText = `${formatExamType(params.examType)}`;
+
   return [
-    `Hello ${params.student.guardianName || "Parent"},`,
-    "",
-    `${params.student.studentsName}'s marks for Grade ${params.classGrade}${params.classStream ? ` ${params.classStream}` : ""}, Term ${params.term} ${params.year} (${formatExamType(params.examType)}) are ready.`,
-    "",
+    `*🏫 ACADEMIC REPORT CARD*`,
+    `----------------------------------------`,
+    `Hello *${params.student.guardianName || "Parent"}*,`,
+    ``,
+    `Here are the exam results for *${params.student.studentsName}*:`,
+    `• *Class:* ${classText}`,
+    `• *Term:* Term ${params.term}, ${params.year}`,
+    `• *Exam:* ${examText}`,
+    `----------------------------------------`,
+    `*📚 SUBJECT PERFORMANCE*`,
     ...rows,
-    "",
-    `Average: ${average === null ? "Pending" : `${average}%`} ${makeBar(average)}`,
-    `Total CBC points: ${Number(totalPoints.toFixed(1))}`,
-    "",
-    "Regards, School Administration",
+    `----------------------------------------`,
+    `📈 *SUMMARY*`,
+    `• *Average:* *${average === null ? "Pending" : `${average}%`}*`,
+    ...(average !== null ? [`\`\`\`[${makeBar(average)}]\`\`\``] : []),
+    `• *Total CBC Points:* *${Number(totalPoints.toFixed(1))}*`,
+    `----------------------------------------`,
+    `Regards,`,
+    `*School Administration Carlos Maina Wanjiku*`,
   ].join("\n");
 };
+
 
 export const getWhatsappMarksJob = (jobId: string) => jobs.get(jobId) || null;
 
