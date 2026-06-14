@@ -111,6 +111,7 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     total: 0,
     totalPages: 1,
   });
+  const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -416,6 +417,33 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
     }
   };
 
+  const handleSendWhatsappMarks = async () => {
+    if (!currentClass) return;
+
+    setIsSendingWhatsapp(true);
+    setMessage(null);
+    try {
+      const response = await api.post<{ message?: string }>("/marks/whatsapp/class", {
+        classGrade: currentClass.grade,
+        classStream: currentClass.stream || "",
+        term: currentClass.term || 1,
+        year: currentClass.year || new Date().getFullYear(),
+        examType: currentClass.examType || "opener",
+      });
+      setMessage({
+        text: response.message || "WhatsApp marks have been queued.",
+        type: "success",
+      });
+    } catch (error: any) {
+      setMessage({
+        text: error?.message || "Unable to queue WhatsApp marks.",
+        type: "error",
+      });
+    } finally {
+      setIsSendingWhatsapp(false);
+    }
+  };
+
   const activeSubjectStudents = subjectStudents[activeSubjectId] || [];
   const hasStudentsForSelectedClass =
     marksPagination.total > 0 || classStudents.length > 0 || activeSubjectStudents.length > 0;
@@ -591,6 +619,32 @@ export const AdminMarksTab: React.FC<AdminMarksTabProps> = ({
           >
             {(currentClass?.examType || "opener").toUpperCase()}
           </p>
+        </div>
+
+        <div style={{ ...statBoxStyle, display: "grid", alignContent: "center" }}>
+          <button
+            onClick={handleSendWhatsappMarks}
+            disabled={!currentClass || classStudents.length === 0 || isSendingWhatsapp}
+            style={{
+              padding: "10px 12px",
+              border: "none",
+              borderRadius: 8,
+              background: "var(--gold)",
+              color: "#fff",
+              fontSize: 12.5,
+              fontWeight: 800,
+              cursor:
+                !currentClass || classStudents.length === 0 || isSendingWhatsapp
+                  ? "not-allowed"
+                  : "pointer",
+              opacity:
+                !currentClass || classStudents.length === 0 || isSendingWhatsapp
+                  ? 0.55
+                  : 1,
+            }}
+          >
+            {isSendingWhatsapp ? "Queueing..." : "Send WhatsApp marks"}
+          </button>
         </div>
       </div>
 

@@ -5,6 +5,10 @@ import { userModel, rolesMapped, studentModel } from "../models/user.model.js";
 import { authenticate } from "../middleware/auth.js";
 import { buildClassSubjectSettingMap, filterStudentsForSubject } from "../utils/subjectEnrollment.js";
 import {
+  createWhatsappMarksJob,
+  getWhatsappMarksJob,
+} from "../services/whatsappMarksQueue.js";
+import {
   buildMarkGradingFields,
   computeMarkPercentage,
   getCbcGradingBands,
@@ -35,6 +39,105 @@ const buildPagination = (query: Request["query"]) => {
 
   return { page, limit, skip };
 };
+
+const hasRole = (roles: unknown, role: string) =>
+  Array.isArray(roles) && roles.includes(role);
+
+const canSendClassWhatsappMarks = async (
+  req: Request,
+  classGrade: string,
+  classStream: string,
+) => {
+  const authUser = (req as any).user;
+  const roles = authUser?.roles;
+
+  if (
+    hasRole(roles, rolesMapped.ADM) ||
+    hasRole(roles, rolesMapped.HT) ||
+    hasRole(roles, rolesMapped.DT)
+  ) {
+    return true;
+  }
+
+  if (!hasRole(roles, rolesMapped.CT) || !authUser?.id) {
+    return false;
+  }
+
+  const currentUser: any = await userModel
+    .findById(authUser.id)
+    .select("class classStream")
+    .lean();
+
+  return (
+    String(currentUser?.class || "").trim() === classGrade &&
+    String(currentUser?.classStream || "").trim() === classStream
+  );
+};
+
+router.post("/whatsapp/class", async (req: Request, res: Response) => {
+  try {
+    const { classGrade, classStream, term, year, examType } = req.body;
+    const normalizedClassGrade =
+      typeof classGrade === "string" ? classGrade.trim() : "";
+    const normalizedClassStream =
+      typeof classStream === "string" ? classStream.trim() : "";
+    const normalizedExamType =
+      typeof examType === "string" ? examType.trim().toLowerCase() : "";
+
+    if (
+      !normalizedClassGrade ||
+      classStream === undefined ||
+      classStream === null ||
+      !term ||
+      !year ||
+      !normalizedExamType
+    ) {
+      return res.status(400).json({
+        message: "classGrade, classStream, term, year and examType are required.",
+      });
+    }
+
+    const allowed = await canSendClassWhatsappMarks(
+      req,
+      normalizedClassGrade,
+      normalizedClassStream,
+    );
+
+    if (!allowed) {
+      return res.status(403).json({
+        message: "You are not allowed to send WhatsApp marks for this class.",
+      });
+    }
+
+    const job = await createWhatsappMarksJob({
+      classGrade: normalizedClassGrade,
+      classStream: normalizedClassStream,
+      term: Number(term),
+      year: Number(year),
+      examType: normalizedExamType,
+    });
+
+    res.status(202).json({
+      message:
+        job.queued > 0
+          ? `WhatsApp marks queued for ${job.queued} parent${job.queued === 1 ? "" : "s"}. ${job.skipped} skipped because of missing phone numbers or marks.`
+          : "No WhatsApp messages were queued. Check parent phone numbers and saved marks.",
+      job,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/whatsapp/jobs/:jobId", (req: Request, res: Response) => {
+  const jobId = String(req.params.jobId || "");
+  const job = getWhatsappMarksJob(jobId);
+  if (!job) {
+    return res.status(404).json({ message: "WhatsApp marks job not found." });
+  }
+
+  res.json(job);
+});
 
 // GET averages per assignment for a teacher
 router.get("/averages/teacher/:teacherId", async (req: Request, res: Response) => {
