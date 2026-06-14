@@ -1,0 +1,26 @@
+services:
+  school_management_app_version_2:
+    build: ./primary_school/react-app/
+    networks:
+      - school_network
+
+  school_management_server_version_2:
+    build: ./primary_school_backend
+    networks:
+      - school_network
+
+  nginx_app_router:
+    image: nginx:alpine
+    ports:
+      - "8080:80" # Maps Windows Port 80 -> Nginx Container Port 80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - school_network
+    depends_on:
+      - school_management_app_version_2
+      - school_management_server_version_2
+
+networks:
+  school_network:
+    driver: bridge
