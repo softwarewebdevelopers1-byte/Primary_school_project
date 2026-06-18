@@ -1,5 +1,5 @@
 import mongoose, { Model, Schema } from "mongoose";
-import { type teachers, type student, type user } from "./types.js";
+import { type teachers, type student, type user } from "./models.Types.js";
 import type { StudentSubjectEnrollment } from "../utils/subjectEnrollment.js";
 //
 type roles = "CT" | "SJ" | "DT" | "HT" | "ST" | "ADM";
