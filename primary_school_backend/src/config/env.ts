@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import { type dotEnv } from "./types.js";
+import { type dotEnv } from "../types/config.Types.js";
 import path from "path";
 dotenv.config({ path: path.join(process.cwd(), ".env") });
 const DotEnvFile: dotEnv = {
