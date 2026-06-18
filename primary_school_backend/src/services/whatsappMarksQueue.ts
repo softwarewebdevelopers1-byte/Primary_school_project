@@ -1,46 +1,33 @@
 import { MarkModel, SubjectModel } from "../models/school.model.js";
 import { studentModel } from "../models/user.model.js";
-import { computeMarkPercentage, getCbcGradingBands, buildMarkGradingFields } from "../utils/grading.js";
-
-type QueueStatus = "queued" | "sending" | "completed" | "failed";
-
-type WhatsappQueueItem = {
-  jobId: string;
-  studentId: string;
-  studentName: string;
-  guardianPhone: string;
-  chatId: string;
-  message: string;
-  status: QueueStatus;
-  attempts: number;
-  error?: string;
-};
-
-type QueueJob = {
-  id: string;
-  classGrade: string;
-  classStream: string;
-  term: number;
-  year: number;
-  examType: string;
-  createdAt: string;
-  total: number;
-  queued: number;
-  sent: number;
-  failed: number;
-  skipped: number;
-  status: QueueStatus;
-};
+import {
+  computeMarkPercentage,
+  getCbcGradingBands,
+  buildMarkGradingFields,
+} from "../utils/grading.js";
+import type {
+  QueueStatus,
+  WhatsappQueueItem,
+  QueueJob,
+} from "../types/whatsApp.Types.js";
 
 const queue: WhatsappQueueItem[] = [];
 const jobs = new Map<string, QueueJob>();
 let processing = false;
 
-const WAHA_BASE_URL = (process.env.WAHA_BASE_URL || "https://waha-production-ba86.up.railway.app").replace(/\/+$/, "");
+const WAHA_BASE_URL = (
+  process.env.WAHA_BASE_URL || "https://waha-production-ba86.up.railway.app"
+).replace(/\/+$/, "");
 const WAHA_SESSION = process.env.WAHA_SESSION || "default";
 const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
-const SEND_DELAY_MS = Math.max(1000, Number(process.env.WAHA_SEND_DELAY_MS || 15000));
-const SEND_JITTER_MS = Math.max(0, Number(process.env.WAHA_SEND_JITTER_MS || 6000));
+const SEND_DELAY_MS = Math.max(
+  1000,
+  Number(process.env.WAHA_SEND_DELAY_MS || 15000),
+);
+const SEND_JITTER_MS = Math.max(
+  0,
+  Number(process.env.WAHA_SEND_JITTER_MS || 6000),
+);
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -145,7 +132,9 @@ export const buildStudentMessage = (params: {
     .filter((score): score is number => typeof score === "number");
   const average =
     scores.length > 0
-      ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+      ? Math.round(
+          scores.reduce((sum, score) => sum + score, 0) / scores.length,
+        )
       : null;
   const totalPoints = params.subjectRows.reduce(
     (sum, row) => sum + Number(row.points || 0),
@@ -158,7 +147,9 @@ export const buildStudentMessage = (params: {
       const scoreText = row.score === null ? "Pending" : `*${row.score}%*`;
       const bandText = row.cbcBand ? ` - _${row.cbcBand}_` : "";
       const pointText =
-        row.points !== null && row.points !== undefined ? ` (*${row.points} pts*)` : "";
+        row.points !== null && row.points !== undefined
+          ? ` (*${row.points} pts*)`
+          : "";
       return `📖 *${row.subjectName}*: ${scoreText}${bandText}${pointText}`;
     });
 
@@ -188,7 +179,6 @@ export const buildStudentMessage = (params: {
     `*School Administration*`,
   ].join("\n");
 };
-
 
 export const getWhatsappMarksJob = (jobId: string) => jobs.get(jobId) || null;
 
@@ -226,7 +216,9 @@ export const createWhatsappMarksJob = async (params: {
   } as any).lean();
 
   const subjectIds = Array.from(
-    new Set(marks.map((mark: any) => mark.subjectId?.toString()).filter(Boolean)),
+    new Set(
+      marks.map((mark: any) => mark.subjectId?.toString()).filter(Boolean),
+    ),
   );
   const subjects = await SubjectModel.find({ _id: { $in: subjectIds } } as any)
     .select("_id name")
@@ -313,4 +305,3 @@ export const createWhatsappMarksJob = async (params: {
 
   return job;
 };
-
