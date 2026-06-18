@@ -106,7 +106,6 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
   const [term, setTerm] = useState<number>(user?.term || 1);
   const [year, setYear] = useState<number>(user?.year || 2024);
   const [examType, setExamType] = useState<string>(user?.examType || "opener");
-  const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
 
   const displaySubjects = useMemo<DisplaySubjectOption[]>(() => {
     const activeSubjects = subjects
@@ -482,34 +481,6 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
     }
   };
 
-  const handleSendWhatsappMarks = useCallback(async () => {
-    if (!user?.classGrade || user?.classStream === undefined || user?.classStream === null) {
-      return;
-    }
-
-    setIsSendingWhatsapp(true);
-    setMsg(null);
-    try {
-      const response = await api.post<{ message?: string }>("/marks/whatsapp/class", {
-        classGrade: user.classGrade,
-        classStream: user.classStream || "",
-        term,
-        year,
-        examType,
-      });
-      setMsg({
-        text: response.message || "WhatsApp marks have been queued.",
-        type: "success",
-      });
-    } catch (err: any) {
-      setMsg({
-        text: err?.message || "Unable to queue WhatsApp marks.",
-        type: "error",
-      });
-    } finally {
-      setIsSendingWhatsapp(false);
-    }
-  }, [examType, term, user?.classGrade, user?.classStream, year]);
 
   const activeSubjectStudents = subjectStudents[activeSubjectId] || [];
   const mappedStudents: Student[] = activeSubjectStudents.map((student) => {
@@ -554,31 +525,6 @@ export const MarksManagement: React.FC<MarksManagementProps> = ({
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <button
-          onClick={handleSendWhatsappMarks}
-          disabled={isSendingWhatsapp || rosterStudents.filter(isActiveStudent).length === 0}
-          style={{
-            padding: "10px 14px",
-            border: "none",
-            borderRadius: 8,
-            background: "var(--gold)",
-            color: "#fff",
-            fontSize: 12.5,
-            fontWeight: 800,
-            cursor:
-              isSendingWhatsapp || rosterStudents.filter(isActiveStudent).length === 0
-                ? "not-allowed"
-                : "pointer",
-            opacity:
-              isSendingWhatsapp || rosterStudents.filter(isActiveStudent).length === 0
-                ? 0.55
-                : 1,
-          }}
-        >
-          {isSendingWhatsapp ? "Queueing..." : "Send WhatsApp marks"}
-        </button>
-      </div>
 
       <MarksEntry
         mode="class"

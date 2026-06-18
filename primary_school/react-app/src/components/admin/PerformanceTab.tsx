@@ -121,6 +121,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
   const [isLoading, setIsLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [rankingMode, setRankingMode] = useState<"total_points" | "total_marks">("total_points");
+  const [isSendingWhatsapp, setIsSendingWhatsapp] = useState(false);
 
   const uniqueGrades = useMemo(() => {
     const grades = Array.from(new Set(classes.map(c => c.grade)));
@@ -233,6 +234,33 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
   useEffect(() => {
     loadPerformance();
   }, [selectedId, targetClasses[0]?.term, targetClasses[0]?.year, targetClasses[0]?.examType, rankingMode, cbcBands.length]);
+
+  const handleSendWhatsappMarks = async () => {
+    if (!currentClass) return;
+
+    setIsSendingWhatsapp(true);
+    setMsg(null);
+    try {
+      const response = await api.post<{ message?: string }>("/marks/whatsapp/class", {
+        classGrade: currentClass.grade,
+        classStream: currentClass.stream || "",
+        term: currentClass.term || 1,
+        year: currentClass.year || new Date().getFullYear(),
+        examType: currentClass.examType || "opener",
+      });
+      setMsg({
+        text: response.message || "WhatsApp marks have been queued.",
+        type: "success",
+      });
+    } catch (err: any) {
+      setMsg({
+        text: err?.message || "Unable to queue WhatsApp marks.",
+        type: "error",
+      });
+    } finally {
+      setIsSendingWhatsapp(false);
+    }
+  };
 
   const rankingLabel = rankingMode === "total_marks" ? "Total Marks" : "Total Points";
   const tableColumnCount = 6 + availableSubjects.length;
@@ -352,6 +380,20 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({ classes, student
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
            <button onClick={handleDownloadExcel} style={{ ...inputStyle, background: "var(--gold)", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Download Excel</button>
            <button onClick={handleDownloadPDF} style={{ ...inputStyle, background: "var(--white)", color: "var(--text)", cursor: "pointer", fontWeight: 700 }}>Download PDF</button>
+           <button
+             onClick={handleSendWhatsappMarks}
+             disabled={!currentClass || isLoading || isSendingWhatsapp}
+             style={{
+               ...inputStyle,
+               background: currentClass && !isLoading ? "var(--gold)" : "var(--border)",
+               color: "#fff",
+               cursor: !currentClass || isLoading || isSendingWhatsapp ? "not-allowed" : "pointer",
+               opacity: !currentClass || isLoading || isSendingWhatsapp ? 0.55 : 1,
+               fontWeight: 700,
+             }}
+           >
+             {isSendingWhatsapp ? "Queueing..." : "Send WhatsApp marks"}
+           </button>
         </div>
       </div>
 

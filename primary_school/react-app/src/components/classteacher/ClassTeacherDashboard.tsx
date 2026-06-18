@@ -346,6 +346,8 @@ export default function ClassTeacherDashboard() {
           <ResultsReports
             students={students}
             subjects={subjects}
+            classGrade={currentUser.classGrade}
+            classStream={currentUser.classStream}
             term={currentUser.term}
             year={currentUser.year}
             examType={currentUser.examType}

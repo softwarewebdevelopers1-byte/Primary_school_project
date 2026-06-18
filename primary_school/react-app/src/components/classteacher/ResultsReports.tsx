@@ -2,6 +2,7 @@ import React from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { api } from "../../lib/api";
 import { DlIcon } from "./shared/Icons";
 import { C, FONT } from "./shared/constants";
 import { gradeBg, gradeColor, getSubjectRemark, getSubId, isStudentSubject, marksForStudentSubjects, subjectsForStudent, sum, sumPoints } from "./shared/helpers";
@@ -12,6 +13,8 @@ import { buildStudentReportSlipPdf } from "../shared/studentReportSlip";
 interface ResultsReportsProps {
   students: any[];
   subjects: any[];
+  classGrade: string;
+  classStream: string;
   term?: number;
   year?: number;
   examType?: string;
@@ -46,6 +49,8 @@ const SectionHeader: React.FC<{ eyebrow: string; title: string; sub?: string }> 
 export const ResultsReports: React.FC<ResultsReportsProps> = ({
   students,
   subjects,
+  classGrade,
+  classStream,
   term = 1,
   year = 2024,
   examType = "opener",
@@ -53,6 +58,7 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
   const { bands: cbcBands } = useCbcGradingBands();
   const [msg, setMsg] = React.useState<{ text: string; type: "success" | "error" } | null>(null);
   const [rankingMode, setRankingMode] = React.useState<"total_points" | "total_marks">("total_points");
+  const [isSendingWhatsapp, setIsSendingWhatsapp] = React.useState(false);
 
   const buildMetrics = (student: any) => {
     const marks = marksForStudentSubjects(student, subjects);
@@ -93,6 +99,31 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
 
   const topStudent = rankedStudents[0] || null;
   const leastStudent = rankedStudents[rankedStudents.length - 1] || null;
+
+  const handleSendWhatsappMarks = async () => {
+    setIsSendingWhatsapp(true);
+    setMsg(null);
+    try {
+      const response = await api.post<{ message?: string }>("/marks/whatsapp/class", {
+        classGrade,
+        classStream,
+        term,
+        year,
+        examType,
+      });
+      setMsg({
+        text: response.message || "WhatsApp marks have been queued.",
+        type: "success",
+      });
+    } catch (error: any) {
+      setMsg({
+        text: error?.message || "Unable to queue WhatsApp marks.",
+        type: "error",
+      });
+    } finally {
+      setIsSendingWhatsapp(false);
+    }
+  };
 
   const handleDownload = (type: string, studentName?: string) => {
     try {
@@ -185,6 +216,27 @@ export const ResultsReports: React.FC<ResultsReportsProps> = ({
   return (
     <div className="ct-anim" style={{ display: "grid", gap: 30 }}>
       <SectionHeader eyebrow="Reports" title="Results & reports" sub={`Download and review CBC summaries for Term ${term}, ${year} (${examType}).`} />
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div />
+        <button
+          onClick={handleSendWhatsappMarks}
+          disabled={!classGrade || !classStream || isSendingWhatsapp}
+          style={{
+            padding: "11px 18px",
+            borderRadius: 10,
+            border: "none",
+            background: "var(--gold)",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: !classGrade || !classStream || isSendingWhatsapp ? "not-allowed" : "pointer",
+            opacity: !classGrade || !classStream || isSendingWhatsapp ? 0.55 : 1,
+          }}
+        >
+          {isSendingWhatsapp ? "Queueing..." : "Send WhatsApp marks"}
+        </button>
+      </div>
 
       {msg && <div style={{ padding: "10px 20px", borderRadius: 8, background: msg.type === "success" ? "#eaf3de" : "#fdeaea", color: msg.type === "success" ? "#3b6d11" : "#a32d2d", fontSize: 13, fontWeight: 600 }}>{msg.text}</div>}
 
