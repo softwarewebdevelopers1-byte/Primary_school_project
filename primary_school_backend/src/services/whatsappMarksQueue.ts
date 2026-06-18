@@ -155,6 +155,18 @@ export const buildStudentMessage = (params: {
   const classText = `Grade ${params.classGrade}${params.classStream ? ` ${params.classStream}` : ""}`;
   const examText = `${formatExamType(params.examType)}`;
 
+  // Determine performance level based on average
+  let performanceLevel = "";
+  if (average !== null) {
+    if (average >= 80) {
+      performanceLevel = "🌟 *Excellent*";
+    } else if (average >= 50) {
+      performanceLevel = "✅ *Good*";
+    } else {
+      performanceLevel = "📚 *Needs Improvement*";
+    }
+  }
+
   return [
     `*🏫 ACADEMIC REPORT CARD*`,
     `----------------------------------------`,
@@ -170,6 +182,7 @@ export const buildStudentMessage = (params: {
     `----------------------------------------`,
     `📈 *SUMMARY*`,
     `• *Average:* *${average === null ? "Pending" : `${average}%`}*`,
+    `• *Performance:* ${performanceLevel || "Pending"}`,
     `• *Total CBC Points:* *${Number(totalPoints.toFixed(1))}*`,
     `----------------------------------------`,
     `To stop receiving these messages, reply with STOP.`,
