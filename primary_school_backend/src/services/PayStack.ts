@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Response, Request } from "express";
-import type { PaymentService } from "./Types.js";
+import type { PaymentService } from "../types/Payment.Types.js";
 
 class PayStack implements PaymentService {
   public validateData(req: Request, res: Response): boolean {
