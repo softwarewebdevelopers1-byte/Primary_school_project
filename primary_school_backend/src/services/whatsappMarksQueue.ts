@@ -10,23 +10,22 @@ import type {
   WhatsappQueueItem,
   QueueJob,
 } from "../types/whatsApp.Types.js";
+import DotEnvFile from "../config/env.js";
 
 const queue: WhatsappQueueItem[] = [];
 const jobs = new Map<string, QueueJob>();
 let processing = false;
 
-const WAHA_BASE_URL = (
-  process.env.WAHA_BASE_URL || "https://waha-production-ba86.up.railway.app"
-).replace(/\/+$/, "");
-const WAHA_SESSION = process.env.WAHA_SESSION || "default";
-const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
+const WAHA_BASE_URL = DotEnvFile.WAHA_BASE_URL.replace(/\/+$/, "");
+const WAHA_SESSION = DotEnvFile.WAHA_session;
+const WAHA_API_KEY = DotEnvFile.WAHA_API || "";
 const SEND_DELAY_MS = Math.max(
   1000,
-  Number(process.env.WAHA_SEND_DELAY_MS || 15000),
+  Number(DotEnvFile.WAHA_SEND_DELAY_MS || 15000),
 );
 const SEND_JITTER_MS = Math.max(
   0,
-  Number(process.env.WAHA_SEND_JITTER_MS || 6000),
+  Number(DotEnvFile.WAHA_SEND_JITTER_MS || 6000),
 );
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
