@@ -146,6 +146,14 @@ const studentSchema = new Schema<student>({
     ],
     default: [],
   },
+  whatsappOptOut: {
+    type: Boolean,
+    default: false,
+  },
+  whatsappReplied: {
+    type: Boolean,
+    default: false,
+  },
 });
 export const userModel =
   (mongoose.models.users as Model<user>) ||

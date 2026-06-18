@@ -1,6 +1,6 @@
 import { MarkModel, SubjectModel } from "../models/school.model.js";
 import { studentModel } from "../models/user.model.js";
-import { computeMarkPercentage } from "../utils/grading.js";
+import { computeMarkPercentage, getCbcGradingBands, buildMarkGradingFields } from "../utils/grading.js";
 
 type QueueStatus = "queued" | "sending" | "completed" | "failed";
 
@@ -47,7 +47,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const normalizeClassValue = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
-const normalizeWhatsappPhone = (value: unknown) => {
+export const normalizeWhatsappPhone = (value: unknown) => {
   const raw = typeof value === "string" ? value.trim() : "";
   let digits = raw.replace(/\D/g, "");
 
@@ -62,16 +62,10 @@ const normalizeWhatsappPhone = (value: unknown) => {
   return digits.length >= 10 ? digits : null;
 };
 
-const makeBar = (value: number | null, width = 10) => {
-  if (value === null) return "----------";
-  const filled = Math.max(0, Math.min(width, Math.round((value / 100) * width)));
-  return `${"#".repeat(filled)}${"-".repeat(width - filled)}`;
-};
-
 const formatExamType = (examType: string) =>
   examType ? `${examType.charAt(0).toUpperCase()}${examType.slice(1)}` : "Exam";
 
-const sendWahaText = async (chatId: string, text: string) => {
+export const sendWahaText = async (chatId: string, text: string) => {
   const response = await fetch(`${WAHA_BASE_URL}/api/sendText`, {
     method: "POST",
     headers: {
@@ -132,7 +126,7 @@ const processQueue = async () => {
   processing = false;
 };
 
-const buildStudentMessage = (params: {
+export const buildStudentMessage = (params: {
   student: any;
   subjectRows: Array<{
     subjectName: string;
@@ -165,8 +159,7 @@ const buildStudentMessage = (params: {
       const bandText = row.cbcBand ? ` - _${row.cbcBand}_` : "";
       const pointText =
         row.points !== null && row.points !== undefined ? ` (*${row.points} pts*)` : "";
-      const progressBar = row.score !== null ? `\n\`\`\`[${makeBar(row.score)}]\`\`\`` : "";
-      return `📖 *${row.subjectName}*: ${scoreText}${bandText}${pointText}${progressBar}`;
+      return `📖 *${row.subjectName}*: ${scoreText}${bandText}${pointText}`;
     });
 
   const classText = `Grade ${params.classGrade}${params.classStream ? ` ${params.classStream}` : ""}`;
@@ -187,11 +180,12 @@ const buildStudentMessage = (params: {
     `----------------------------------------`,
     `📈 *SUMMARY*`,
     `• *Average:* *${average === null ? "Pending" : `${average}%`}*`,
-    ...(average !== null ? [`\`\`\`[${makeBar(average)}]\`\`\``] : []),
     `• *Total CBC Points:* *${Number(totalPoints.toFixed(1))}*`,
     `----------------------------------------`,
+    `To stop receiving these messages, reply with STOP.`,
+    `----------------------------------------`,
     `Regards,`,
-    `*School Administration Carlos Maina Wanjiku*`,
+    `*School Administration*`,
   ].join("\n");
 };
 
@@ -213,10 +207,13 @@ export const createWhatsappMarksJob = async (params: {
       status: { $ne: "inactive" },
       class: classGrade,
       classStream: classStream || { $in: ["", null] },
+      whatsappOptOut: { $ne: true },
     } as any)
-    .select("_id studentsName ADM guardianName guardianPhone")
+    .select("_id studentsName ADM guardianName guardianPhone whatsappOptOut")
     .sort({ studentsName: 1 })
     .lean();
+
+  const gradingBands = await getCbcGradingBands();
 
   const studentIds = students.map((student: any) => student._id);
   const marks = await MarkModel.find({
@@ -273,16 +270,19 @@ export const createWhatsappMarksJob = async (params: {
       continue;
     }
 
-    const subjectRows = studentMarks.map((mark: any) => ({
-      subjectName:
-        subjectNameById.get(mark.subjectId?.toString()) ||
-        `Subject ${String(mark.subjectId || "").slice(-6)}`,
-      score: computeMarkPercentage(mark),
-      cbcBand: mark.cbcBand || null,
-      points: mark.points ?? null,
-    }));
-
-    queue.push({
+    const subjectRows = studentMarks.map((mark: any) => {
+      const score = computeMarkPercentage(mark);
+      const gradingFields = buildMarkGradingFields(score, gradingBands);
+      return {
+        subjectName:
+          subjectNameById.get(mark.subjectId?.toString()) ||
+          `Subject ${String(mark.subjectId || "").slice(-6)}`,
+        score,
+        cbcBand: gradingFields.cbcBand,
+        points: gradingFields.points,
+      };
+    });
+    const queueItem: WhatsappQueueItem = {
       jobId,
       studentId: student._id.toString(),
       studentName: student.studentsName,
@@ -299,7 +299,8 @@ export const createWhatsappMarksJob = async (params: {
       }),
       status: "queued",
       attempts: 0,
-    });
+    };
+    queue.push(queueItem);
     job.queued += 1;
   }
 
@@ -312,3 +313,4 @@ export const createWhatsappMarksJob = async (params: {
 
   return job;
 };
+

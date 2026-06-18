@@ -38,4 +38,6 @@ export interface student {
   gender: string;
   joinDate: string;
   enrolledSubjects: StudentSubjectEnrollment[];
+  whatsappOptOut?: boolean;
+  whatsappReplied?: boolean;
 }

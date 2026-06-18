@@ -7,6 +7,8 @@ import { buildClassSubjectSettingMap, filterStudentsForSubject } from "../utils/
 import {
   createWhatsappMarksJob,
   getWhatsappMarksJob,
+  sendWahaText,
+  normalizeWhatsappPhone,
 } from "../services/whatsappMarksQueue.js";
 import {
   buildMarkGradingFields,
@@ -17,6 +19,87 @@ import {
 } from "../utils/grading.js";
 
 const router = Router();
+const repliedUnknownNumbers = new Set<string>();
+
+router.post("/whatsapp/webhook", async (req: Request, res: Response) => {
+  res.status(200).json({ status: "acknowledged" });
+
+  try {
+    const { event, payload } = req.body;
+    if (event === "message" && payload) {
+      const { from, fromMe, body } = payload;
+      if (!fromMe && from) {
+        const senderPhone = from.split("@")[0];
+        const rawBody = String(body || "").trim();
+        const lowerBody = rawBody.toLowerCase();
+
+        // Find matching active students in the database
+        const students = await studentModel.find({
+          status: { $ne: "inactive" }
+        });
+
+        // Filter students where their guardian phone matches the normalized sender's phone
+        const matchedStudents = students.filter(
+          (s: any) => normalizeWhatsappPhone(s.guardianPhone) === senderPhone
+        );
+
+        if (matchedStudents.length > 0) {
+          // Check if parent has already unsubscribed/opted out
+          const isOptedOut = matchedStudents.some((s: any) => s.whatsappOptOut === true);
+
+          if (lowerBody === "stop") {
+            if (!isOptedOut) {
+              // Mark all matching student records as opted out
+              for (const student of matchedStudents) {
+                student.whatsappOptOut = true;
+                await student.save();
+              }
+              // Send a one-time unsubscribe confirmation
+              await sendWahaText(
+                from,
+                "You have successfully unsubscribed from report card messages."
+              );
+            }
+            return;
+          }
+
+          // If they are opted out, we don't reply to any other messages either
+          if (isOptedOut) {
+            return;
+          }
+
+          // Check if we have already auto-replied to this contact
+          const hasReplied = matchedStudents.some((s: any) => s.whatsappReplied === true);
+          if (!hasReplied) {
+            // Mark all matching student records as replied
+            for (const student of matchedStudents) {
+              student.whatsappReplied = true;
+              await student.save();
+            }
+            // Send the one-time no-reply message
+            const replyText =
+              "This is a no-reply message. Please contact school administrator 0751433064 for more information.";
+            await sendWahaText(from, replyText);
+          }
+        } else {
+          // Sender is an unknown number (not a registered parent)
+          if (lowerBody === "stop") {
+            return;
+          }
+
+          if (!repliedUnknownNumbers.has(from)) {
+            repliedUnknownNumbers.add(from);
+            const replyText =
+              "This is a no-reply message. Please contact school administrator 0751433064 for more information.";
+            await sendWahaText(from, replyText);
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    console.error("Error in WhatsApp webhook handler:", error?.message || error);
+  }
+});
 
 router.use(authenticate);
 
