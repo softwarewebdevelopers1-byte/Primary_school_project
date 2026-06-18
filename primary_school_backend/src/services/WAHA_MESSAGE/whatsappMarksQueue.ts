@@ -1,16 +1,16 @@
-import { MarkModel, SubjectModel } from "../models/school.model.js";
-import { studentModel } from "../models/user.model.js";
+import { MarkModel, SubjectModel } from "../../models/school.model.js";
+import { studentModel } from "../../models/user.model.js";
 import {
   computeMarkPercentage,
   getCbcGradingBands,
   buildMarkGradingFields,
-} from "../utils/grading.js";
+} from "../../utils/grading.js";
 import type {
   QueueStatus,
   WhatsappQueueItem,
   QueueJob,
-} from "../types/whatsApp.Types.js";
-import DotEnvFile from "../config/env.js";
+} from "../../types/whatsApp.Types.js";
+import DotEnvFile from "../../config/env.js";
 
 const queue: WhatsappQueueItem[] = [];
 const jobs = new Map<string, QueueJob>();

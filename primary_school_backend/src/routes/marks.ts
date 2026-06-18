@@ -9,7 +9,7 @@ import {
   getWhatsappMarksJob,
   sendWahaText,
   normalizeWhatsappPhone,
-} from "../services/whatsappMarksQueue.js";
+} from "../services/WAHA_MESSAGE/whatsappMarksQueue.js";
 import {
   buildMarkGradingFields,
   computeMarkPercentage,
