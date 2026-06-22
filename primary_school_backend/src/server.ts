@@ -7,7 +7,7 @@ import userRoutes from "./routes/users.js";
 import schoolRoutes from "./routes/school.js";
 import marksRoutes from "./routes/marks.js";
 import gradingRoutes from "./routes/grading.js";
-import PayStackPayment from "./services/PayStack.js";
+import PayStackPayment from "./services/payments/PayStack.js";
 import mongoose from "mongoose";
 import path from "path";
 
